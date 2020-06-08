@@ -1,0 +1,53 @@
+acoustics==0.2.3
+affine==2.3.0
+attrs==19.3.0
+certifi==2020.4.5.1
+cffi==1.13.2
+chardet==3.0.4
+click==7.1.2
+click-plugins==1.1.1
+cligj==0.5.0
+configparser==4.0.2
+contextily==1.0.0
+cycler==0.10.0
+Deprecated==1.2.9
+descartes==1.1.0
+enum34==1.1.10
+Fiona @ file:///C:/Users/cleap/Downloads/Installation%20programs/Fiona-1.8.13-cp37-cp37m-win_amd64.whl
+GDAL @ file:///C:/Users/cleap/Downloads/Installation%20programs/GDAL-3.0.4-cp37-cp37m-win_amd64.whl
+geographiclib==1.50
+geopandas==0.7.0
+geopy==1.22.0
+idna==2.9
+joblib==0.14.1
+kiwisolver==1.1.0
+llvmlite==0.31.0
+mapclassify==2.2.0
+matplotlib==3.1.2
+mercantile==1.1.4
+munch==2.5.0
+numba==0.48.0
+numpy==1.18.1
+ordereddict==1.1
+pandas==0.25.3
+Pillow==7.1.2
+psycopg2==2.8.5
+pycparser==2.19
+pyhydrophone==0.1
+pyparsing==2.4.6
+pyproj==2.6.1.post1
+python-dateutil==2.8.1
+pytz==2019.3
+rasterio @ file:///C:/Users/cleap/Downloads/Installation%20programs/rasterio-1.1.4-cp37-cp37m-win_amd64.whl
+requests==2.23.0
+Rtree @ file:///C:/Users/cleap/Downloads/Installation%20programs/Rtree-0.9.4-cp37-cp37m-win_amd64.whl
+scikit-learn==0.23.0
+scipy==1.4.1
+Shapely==1.7.0
+six==1.14.0
+snuggs==1.4.7
+SoundFile==0.10.3.post1
+tabulate==0.8.6
+threadpoolctl==2.0.0
+urllib3==1.25.9
+wrapt==1.12.1
