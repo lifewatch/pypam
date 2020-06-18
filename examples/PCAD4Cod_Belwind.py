@@ -2,10 +2,8 @@ import os
 import sys
 import pyhydrophone as pyhy
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from acousticsurvey import acoustic_survey
-
+from pypam import acoustic_survey
 
 
 # Sound Analysis

@@ -15,11 +15,11 @@ class SurveyLocation:
         `geofile` can be a gpx file or a pickle file with a geopandas df
         """
         extension = geofile.split('.')[-1]
-        if extension == '.gpx':
+        if extension == 'gpx':
             geotrackpoints = geopandas.read_file(geofile, layer='track_points')
             geotrackpoints.drop_duplicates(subset='time', inplace=True)
             self.geotrackpoints = geotrackpoints.set_index(pd.to_datetime(geotrackpoints['time']))
-        elif extension == '.pkl':
+        elif extension == 'pkl':
             self.geotrackpoints = pd.read_pickle(geofile)
         else:
             raise Exception('The extension %s is not implemented' % (extension))
@@ -49,9 +49,13 @@ class SurveyLocation:
         """
         Add the closest location to each timestamp and color the points in a map
         """
-        df = self.add_survey_location(df)
+        if 'geometry' not in df.columns: 
+            df = self.add_survey_location(df)
         fig, ax = plt.subplots(1, 1)
-        ax = df.plot(column=column, ax=ax, legend=True, legend_kwds={'label': units}, cmap='YlOrRd') 
+        if df[column].dtype != float:
+            ax = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True) 
+        else: 
+            ax = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False) 
         if map_file is None:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Esri.OceanBasemap, reset_extent=False)
         else:

@@ -12,9 +12,8 @@ import scipy.integrate as integrate
 
 pd.plotting.register_matplotlib_converters()
 plt.style.use('ggplot')
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import events
+from pypam import event
 
 
 
@@ -262,6 +261,28 @@ class AcuFile:
             rms_df.loc[time] = rms
             
         return rms_df
+
+    
+    def get_timestamps_bins(self, binsize=None, nfft=None, dB=None):
+        """
+        Return a df with the timestamps of each bin 
+        `binsize` is the time window considered. If set to None, only one value is returned (in sec)
+        ---
+        The output is a dataframe with 'datetime'
+        """
+        if binsize is None:
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+        df = pd.DataFrame(columns=['datetime', 'instrument'])
+        time_list = []
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
+            time = self.date + datetime.timedelta(seconds=(blocksize * i)/self.fs)
+            time_list.append(time)
+        df['datetime'] = time_list
+        df['instrument'] = self.hydrophone.name
+            
+        return df
 
 
     def spectrogram(self, binsize=None, nfft=512, scaling='density', dB=True):

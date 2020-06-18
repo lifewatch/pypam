@@ -11,7 +11,6 @@ import soundfile as sf
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 plt.style.use('ggplot')
 

@@ -1,5 +1,5 @@
 """
-Module: event.py
+Module: piling_detector.py
 Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
@@ -11,14 +11,13 @@ import soundfile as sf
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
-from events.piling.event import Event
+from pypam.event import Event
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 plt.style.use('ggplot')
 
 
-class EventDetector:
+class PilingDetector:
     def __init__(self, min_duration, ref=-6, threshold=150, dt=None, continuous=True):
         """
         Event detector

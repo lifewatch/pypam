@@ -3,9 +3,8 @@ import sys
 import pandas as pd
 import pyhydrophone as pyhy
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from acousticsurvey import acoustic_survey, geolocation
+from pypam import acoustic_survey, geolocation
 
 
 
@@ -23,11 +22,10 @@ zipped = False
 include_dirs = False
 
 # GPS Location data
-# gps_29 = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Navionics_archive_export_Zeekat_29042020.gpx"
-# gps_rest = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-06 171724.gpx"
-# gps_rest2 = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-18 092212.gpx"
-gps = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/gps_sepam_covid.pkl"
+gps = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-18 092212.gpx"
+gps_sailing = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/sailing_trip.gpx"
 map_file = 'C:/Users/cleap/Documents/Data/Maps/BPNS_wrecks.tif'
+
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V              
@@ -90,7 +88,7 @@ REF_PRESSURE = 1e-6
 
 # SURVEY PARAMETERS
 nfft = 1024
-binsize = 60.0
+binsize = 120.0
 h = 0.1
 percentiles = [10, 50, 90]
 period = None
@@ -134,50 +132,47 @@ if __name__ == "__main__":
     #   df_rms = df_rms.append(df, sort=False)
 
     
-    for i, station in enumerate(stations_bk06): 
-      station_path = os.path.join(bk_folder06, station)
-      ref_file = os.path.join(bk_folder06, station + '_ref.wav')
-      amplif = bk_amplif[i]
-      bk.amplif = amplif
-      bk.update_calibration(ref_file)
-      asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
-                                binsize=binsize, nfft=nfft, period=period, band=band)
-      df = asa.evolution('rms', dB=True)
-      df['station'] = station
-      df['low_freq'] = band[0]
-      df['high_freq'] = band[1]
-      df_rms = df_rms.append(df, sort=False)
+    # for i, station in enumerate(stations_bk06): 
+    #   station_path = os.path.join(bk_folder06, station)
+    #   ref_file = os.path.join(bk_folder06, station + '_ref.wav')
+    #   amplif = bk_amplif[i]
+    #   bk.amplif = amplif
+    #   bk.update_calibration(ref_file)
+    #   asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
+    #                             binsize=binsize, nfft=nfft, period=period, band=band)
+    #   df = asa.evolution('rms', dB=True)
+    #   df['station'] = station
+    #   df['low_freq'] = band[0]
+    #   df['high_freq'] = band[1]
+    #   df_rms = df_rms.append(df, sort=False)
 
-    for i, station in enumerate(stations_bk07): 
-      station_path = os.path.join(bk_folder07, station)
-      ref_file = os.path.join(bk_folder07, station + '_ref.wav')
-      amplif = bk_amplif[i]
-      bk.amplif = amplif
-      bk.update_calibration(ref_file)
-      asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
-                                binsize=binsize, nfft=nfft, period=period, band=band)
-      df = asa.evolution('rms', dB=True)
-      df['station'] = station
-      df['low_freq'] = band[0]
-      df['high_freq'] = band[1]
-      df_rms = df_rms.append(df, sort=False)
+    # for i, station in enumerate(stations_bk07): 
+    #   station_path = os.path.join(bk_folder07, station)
+    #   ref_file = os.path.join(bk_folder07, station + '_ref.wav')
+    #   amplif = bk_amplif[i]
+    #   bk.amplif = amplif
+    #   bk.update_calibration(ref_file)
+    #   asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
+    #                             binsize=binsize, nfft=nfft, period=period, band=band)
+    #   df = asa.evolution('rms', dB=True)
+    #   df['station'] = station
+    #   df['low_freq'] = band[0]
+    #   df['high_freq'] = band[1]
+    #   df_rms = df_rms.append(df, sort=False)
 
-    for i, station in enumerate(stations_bk08): 
-      station_path = os.path.join(bk_folder08, station)
-      ref_file = os.path.join(bk_folder08, station + '_ref.wav')
-      amplif = bk_amplif[i]
-      bk.amplif = amplif
-      bk.update_calibration(ref_file)
-      asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
-                                binsize=binsize, nfft=nfft, period=period, band=band)
-      df = asa.evolution('rms', dB=True)
-      df['station'] = station
-      df['low_freq'] = band[0]
-      df['high_freq'] = band[1]
-      df_rms = df_rms.append(df, sort=False)
-    
-    # geoloc = geolocation.SurveyLocation(gps)
-    # geoloc.plot_survey_color(column='rms', units='dB', df=df_station, map_file=map_file)
+    # for i, station in enumerate(stations_bk08): 
+    #   station_path = os.path.join(bk_folder08, station)
+    #   ref_file = os.path.join(bk_folder08, station + '_ref.wav')
+    #   amplif = bk_amplif[i]
+    #   bk.amplif = amplif
+    #   bk.update_calibration(ref_file)
+    #   asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
+    #                             binsize=binsize, nfft=nfft, period=period, band=band)
+    #   df = asa.evolution('rms', dB=True)
+    #   df['station'] = station
+    #   df['low_freq'] = band[0]
+    #   df['high_freq'] = band[1]
+    #   df_rms = df_rms.append(df, sort=False)
   
     # for station in stations29: 
     #   station_path = os.path.join(folder_path29, station)
@@ -201,4 +196,40 @@ if __name__ == "__main__":
       # asa.plot_spd(h=h, percentiles=percentiles, save_path=save_path)
       # asa.apply_to_all('find_calibration_tone', max_duration=120, freq=159, min_duration=5.0)
       # asa.apply_to_all('cut_calibration_tone', max_duration=100, freq=159, save_path=ref_file)
+
+    geoloc = geolocation.SurveyLocation(gps_sailing)
+    geoloc.geotrackpoints.index = geoloc.geotrackpoints.index + pd.Timedelta(hours=2)
+    # df_instruments = pd.DataFrame()
+    # for campaign in os.listdir(bk_folder):
+    #   campaign_path = os.path.join(bk_folder, campaign)
+    #   if os.path.isdir(campaign_path):
+    #     for station in os.listdir(campaign_path):
+    #       station_path = os.path.join(campaign_path, station)
+    #       if os.path.isdir(station_path):
+    #         asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
+    #                                   binsize=binsize, nfft=nfft, period=None, band=None)
+    #         df = asa.evolution('get_timestamps_bins')
+    #         df['station'] = station
+    #         df['instrument'] = bk.name
+    #         df_instruments = df_instruments.append(df, sort=True)
+
+    # for campaign in os.listdir(st_folder):
+    #   campaign_path = os.path.join(st_folder, campaign)
+    #   if os.path.isdir(campaign_path):  
+    #     for station in os.listdir(campaign_path):
+    #       station_path = os.path.join(campaign_path, station)
+    #       if os.path.isdir(station_path):
+    #         asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
+    #                                   binsize=binsize, nfft=nfft, period=None, band=None)
+    #         df = asa.evolution('get_timestamps_bins')
+    #         df['station'] = station
+    #         df_instruments = df_instruments.append(df, sort=True)     
+    
+    df_instruments = pd.read_pickle('df_instruments.pkl')
+    df_instruments = df_instruments.reset_index()
+    geo_df = geoloc.add_survey_location(df_instruments)
+    
+    geoloc.plot_survey_color(column='instrument', units='', df=geo_df)
+    geoloc.plot_survey_color(column='station', units='', df=geo_df)
+
 

@@ -2,3 +2,5 @@ __pycache__
 .vscode/
 csv
 *.m
+*.pkl
+pypam.egg-info/

@@ -1,5 +1,4 @@
 import os
-import sys
 import glob
 import zipfile
 import datetime
@@ -17,9 +16,8 @@ from pathlib import Path
 
 pd.plotting.register_matplotlib_converters()
 plt.style.use('ggplot')
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
-from acousticsurvey.acoustic_file import HydroFile, MEMSFile, MEMS3axFile, Sxx2spd
+from pypam.acoustic_file import HydroFile, MEMSFile, MEMS3axFile, Sxx2spd
 
 
 
