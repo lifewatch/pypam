@@ -5,13 +5,12 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
 import os
-import sys
 import numpy as np
 import soundfile as sf
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
-from pypam.event import Event
+from pypam._event import Event
 
 
 plt.style.use('ggplot')
@@ -21,6 +20,11 @@ class PilingDetector:
     def __init__(self, min_duration, ref=-6, threshold=150, dt=None, continuous=True):
         """
         Event detector
+        `min_duration`: minimum duration of the event, in seconds
+        `ref`: noise reference value, in db 
+        `threshold`: threshold above which one it is considered piling
+        `dt`: window size in seconds for the analysis (time resolution)
+        `continuous`: TO BE IMPLEMENTED
         """
         self.min_duration = min_duration 
         self.reference_level(ref)
@@ -34,13 +38,15 @@ class PilingDetector:
 
     def detect_events(self, x=None, fs=None):
         """
-        Detection of event times
-        events are detected on the basis of the SPL time series (channel 1)
+        Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
+        The time resolution is dt
+        `x`: signal to analyze
+        `fs`: sampling frequency of the signal
         """
         # calculation of level-vs-time
         levels = []
         for block in self.Blocks(x=x, fs=fs, dt=self.dt):
-            level[i] = np.sqrt(block**2).mean()
+            level[i] = 10*np.log10(np.sqrt(block**2).mean())
 
         # find event start times
         times = self.find_time_events(levels=levels)
@@ -57,6 +63,7 @@ class PilingDetector:
         """
         Estimation of events that exceed the threshold,
         with at least the given min_duration (in seconds) in between events
+        `levels`: signal level in dB for each dt
         """
         indices = np.argmax(levels >= self.threshold)
         temp = indices * self.dt
@@ -75,6 +82,11 @@ class PilingDetector:
         """
         Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
         return an object event
+        `x`:
+        `fs`:
+        `t`:
+        `before`: 
+        `after`: 
         """
         n1 = int((t-before)*fs)
         if n1 < 0:
@@ -114,7 +126,7 @@ class PilingDetector:
     def reference_level(self, iref):
         """
         Calculation of reference level
-        Input is either a number (e.g. -6 dB rms), or the filename of a single-channel wavfile containing
+        `iref`: either a number (e.g. -6 dB rms), or the filename of a single-channel wavfile containing
         a calibration tone (mono, assumed to be clean, i.e. not too much background noise)
         """
         if os.path.exists(iref):

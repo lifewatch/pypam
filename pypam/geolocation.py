@@ -1,3 +1,9 @@
+"""
+Module: geolocation.py
+Authors: Clea Parcerisas
+Institution: VLIZ (Vlaams Institute voor de Zee)
+"""
+
 import math
 import shapely
 import datetime

@@ -5,7 +5,6 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
 import os
-import sys
 import numpy as np
 import soundfile as sf
 import scipy.signal as sig

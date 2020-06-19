@@ -4,3 +4,4 @@ csv
 *.m
 *.pkl
 pypam.egg-info/
+docs/build/

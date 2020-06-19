@@ -1,5 +1,10 @@
+"""
+Module: acoustic_file.py
+Authors: Clea Parcerisas
+Institution: VLIZ (Vlaams Institute voor de Zee)
+"""
+
 import os
-import sys
 import datetime
 import acoustics
 import numpy as np
@@ -13,7 +18,7 @@ import scipy.integrate as integrate
 pd.plotting.register_matplotlib_converters()
 plt.style.use('ggplot')
 
-from pypam import event
+from pypam import _event
 
 
 
@@ -480,6 +485,25 @@ class AcuFile:
         `fs_signal` sampling frequency of the signal. It will be down/up sampled in case it does not match with the file
         """
         return 0
+
+    
+    def detect_events(self, detector, binsize=None):
+        """
+        Detect events
+        `detector` object with a detect_events function that returns a list of Event objects
+        """
+        if binsize is None:
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+        
+        events_list = []
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
+            signal = self.wav2uPa(wav=block)
+            events = detector.detect_events(signal, self.fs)
+            events_list.append(events)
+        
+        return events_list
     
 
     # def level_vs_time(self, binsize=None, cal=0, ref=0):

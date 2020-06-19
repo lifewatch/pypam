@@ -1,3 +1,9 @@
+"""
+Module: acoustic_survey.py
+Authors: Clea Parcerisas
+Institution: VLIZ (Vlaams Institute voor de Zee)
+"""
+
 import os
 import glob
 import zipfile
