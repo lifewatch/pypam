@@ -184,7 +184,8 @@ class AcuFile:
 
         # First convert it to Volts and then to dB according to sensitivity
         Mv = 10 ** (self.hydrophone.sensitivity / 20.0) * self.ref
-        return (wav * self.hydrophone.Vpp/2.0) / Mv
+        Ma = 10 ** (self.hydrophone.preamp_gain / 20.0) * self.ref
+        return (wav * self.hydrophone.Vpp/2.0) / (Mv * Ma)
 
 
     def wav2dB(self, wav=None):
@@ -204,7 +205,7 @@ class AcuFile:
         """
         if dB is None:
             dB = self.signal('dB')
-        return np.power(10, dB / 20.0)
+        return np.power(10, dB / 20.0 - np.log10(self.ref))
     
 
     def uPa2dB(self, uPa=None):
@@ -487,23 +488,25 @@ class AcuFile:
         return 0
 
     
-    def detect_events(self, detector, binsize=None):
+    def detect_events(self, detector, params=[], binsize=None, nfft=None):
         """
         Detect events
-        `detector` object with a detect_events function that returns a list of Event objects
+        `detector` object with a detect_events() function that returns a list of Event objects
         """
         if binsize is None:
             blocksize = self.file.frames
         else:
             blocksize = int(binsize * self.fs)
         
-        events_list = []
+        events_df = pd.DataFrame()
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
             signal = self.wav2uPa(wav=block)
-            events = detector.detect_events(signal, self.fs)
-            events_list.append(events)
+            # TBI: Process the signal 
+            start_time =  self.date + datetime.timedelta(seconds=(blocksize/self.fs * i))
+            events = detector.detect_events(signal, self.fs, datetime_start=start_time)
+            events_df = events_df.append(events)
         
-        return events_list
+        return events_df
     
 
     # def level_vs_time(self, binsize=None, cal=0, ref=0):

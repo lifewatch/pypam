@@ -5,25 +5,26 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
 import os
+import datetime
 import numpy as np
+import pandas as pd
 import soundfile as sf
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
 from pypam._event import Event
 
-
 plt.style.use('ggplot')
 
 
 class PilingDetector:
-    def __init__(self, min_duration, ref=-6, threshold=150, dt=None, continuous=True):
+    def __init__(self, min_duration, ref=-6, threshold=150, dt=None, continuous=True, p_ref=1.0):
         """
         Event detector
         `min_duration`: minimum duration of the event, in seconds
         `ref`: noise reference value, in db 
         `threshold`: threshold above which one it is considered piling
-        `dt`: window size in seconds for the analysis (time resolution)
+        `dt`: window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
         `continuous`: TO BE IMPLEMENTED
         """
         self.min_duration = min_duration 
@@ -31,12 +32,15 @@ class PilingDetector:
         self.threshold = threshold
         self.continuous = continuous
         self.dt = dt
+        self.p_ref = 1.0
+        self.before = 0.0
+        self.after = dt
         # self.bands = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250',
         #              '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500',
         #              '3150', '4000', '5000', '6300', '8000', '10000', '12500']
 
 
-    def detect_events(self, x=None, fs=None):
+    def detect_events(self, x=None, fs=None, datetime_start=None):
         """
         Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
         The time resolution is dt
@@ -46,15 +50,21 @@ class PilingDetector:
         # calculation of level-vs-time
         levels = []
         for block in self.Blocks(x=x, fs=fs, dt=self.dt):
-            level[i] = 10*np.log10(np.sqrt(block**2).mean())
+            level = 20*np.log10(np.sqrt(block**2).mean() / self.p_ref)
+            levels.append(level)
 
         # find event start times
         times = self.find_time_events(levels=levels)
-        print('number of events: %d', len(times))
-        events = []
+
+        # print('number of events: %d', len(times))
+        columns = ['datetime', 'duration', 'rms', 'sel', 'peak']
+        events = pd.DataFrame(columns=columns)
+        events = events.set_index('datetime')
         for t in times: 
-            event = self.load_event(x, fs, t, self.before, self.start)
-            events.append(event)
+            # CHECK IF EVENT!
+            event = self.load_event(x, fs, t, self.before, self.after)
+            time = datetime_start + datetime.timedelta(seconds=t)
+            events.loc[time] = [event.duration(), event.rms(), event.sel(), event.peak()]
 
         return events
 
@@ -65,28 +75,21 @@ class PilingDetector:
         with at least the given min_duration (in seconds) in between events
         `levels`: signal level in dB for each dt
         """
-        indices = np.argmax(levels >= self.threshold)
-        temp = indices * self.dt
-        time = []
-        for t in temp:
-            if len(time) == 0:
-                time.append(t)
-            else:
-                if (t - time[-1]) >= self.min_duration:
-                    time.append(t)
+        indices = np.where(np.array(levels) >= self.threshold)[0]
+        times = indices * self.dt
 
-        return time
+        return times
 
 
     def load_event(self, x, fs, t, before, after):
         """
         Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
         return an object event
-        `x`:
-        `fs`:
-        `t`:
-        `before`: 
-        `after`: 
+        `x`: signal
+        `fs`: sampling frequency of the signal x
+        `t`: starting time of the event (in seconds)
+        `before`: time before the event to save
+        `after`: time after the event to save
         """
         n1 = int((t-before)*fs)
         if n1 < 0:
@@ -95,7 +98,7 @@ class PilingDetector:
         if n2 > x.shape[0]:
             n2 = x.shape[0]
 
-        event = event.Event(x[n1:n2], fs)
+        event = Event(x[n1:n2], fs)
         
         return event
 
@@ -151,16 +154,17 @@ class PilingDetector:
             Init
             """
             self.blocksize = int(dt*fs)
-            self.fs = fs
             self.x = x
             self.nsamples = x.shape[0]
 
 
-        def __iter__(self, blocksize):
+        def __iter__(self):
             """
             Iteration
             """
             self.n = 0
+
+            return self
             
 
         def __next__(self):
@@ -168,7 +172,7 @@ class PilingDetector:
             Return next block
             """
             if (self.n * self.blocksize) < self.nsamples:
-                block = x[self.n*self.blocksize : self.n*self.blocksize + self.blocksize]
+                block = self.x[self.n*self.blocksize : self.n*self.blocksize + self.blocksize]
                 self.n += 1
                 return block
             else:

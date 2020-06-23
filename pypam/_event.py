@@ -5,6 +5,7 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
 import os
+import operator
 import numpy as np
 import soundfile as sf
 import scipy.signal as sig
@@ -22,6 +23,24 @@ class Event:
         """
         self.x = x
         self.fs = fs
+    
+
+    def duration(self):
+        """
+        Return the duration of the event 
+        """
+        time = len(self.x)/self.fs
+
+        return time
+
+
+    def rms(self):
+        """
+        Return the rms sound pressure level
+        """
+        rms = 20*np.log10(np.sqrt((self.x**2).mean()))
+
+        return rms 
 
 
     def sel(self):
@@ -40,7 +59,7 @@ class Event:
         output:
         * y: 2-element array with peak values
         """
-        y = 10*np.log10(self.x.abs.max()**2)
+        y = 10*np.log10(np.abs(self.x).max()**2)
 
         return y
 
