@@ -22,7 +22,7 @@ include_dirs = False
 
 # GPS Location data
 gps = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-18 092212.gpx"
-gps_sailing = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/sailing_trip.gpx"
+gps_sailing = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/garmin/GPX/Current/sailing_trip.gpx"
 map_file = 'C:/Users/cleap/Documents/Data/Maps/BPNS_wrecks.tif'
 
 

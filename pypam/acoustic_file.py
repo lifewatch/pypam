@@ -26,9 +26,12 @@ class AcuFile:
     def __init__(self, sfile, hydrophone, ref, band=None):
         """
         Data recorded in a wav file.
-        `sfile` the sound file. Can be a path or an file object 
-        `hydrophone` is an object for the class hydrophone
-        `ref` is the reference pressure or acceleration in uPa or um/s
+
+        Parameters
+        ----------
+        sfile: the sound file. Can be a path or an file object 
+        hydrophone: is an object for the class hydrophone
+        ref: is the reference pressure or acceleration in uPa or um/s
         """
         # Save hydrophone model 
         self.hydrophone = hydrophone 
@@ -67,7 +70,10 @@ class AcuFile:
     def samples(self, bintime):
         """
         Return the samples according to the fs
-        bintime in seconds
+
+        Parameters
+        ----------
+        bintime: bintime in seconds
         """
         return int(bintime * self.fs)
 
@@ -75,7 +81,10 @@ class AcuFile:
     def is_in_period(self, period):
         """
         Return True if the WHOLE file is included in the specified period
-        `period` is a list or a tuple with (start, end). The values have to be a datetime object
+        
+        Parameters
+        ----------
+        period: list or a tuple with (start, end). The values have to be a datetime object
         """
         if period is None: 
             return True
@@ -86,7 +95,11 @@ class AcuFile:
     
     def contains_date(self, date):
         """
-        Return True if data is included in the file 
+        Return True if data is included in the file
+
+        Parameters
+        ----------
+        date:  
         """
         end = self.date + datetime.timedelta(seconds=self.file.frames/self.fs)
         return (self.date < date) & (end > date)
@@ -95,6 +108,10 @@ class AcuFile:
     def split(self, date):
         """
         Save two different files out of one splitting on the specified date
+
+        Parameters
+        ----------
+        date: date where to split the file
         """
         if not self.contains_date(date):
             raise Exception('This date is not included in the file!')
@@ -119,6 +136,10 @@ class AcuFile:
     def freq_resolution_window(self, freq_resolution):
         """
         Given the frequency resolution, window length needed to obtain it (only 2 to the power)
+
+        Parameters
+        ----------
+        freq_resolution: XXXXXXXXXXXX
         """
         n = np.log2(self.fs / freq_resolution)
         nfft = 2**n
@@ -130,6 +151,10 @@ class AcuFile:
     def signal(self, units='wav'):
         """
         Get the signal in the specified units
+
+        Parameters
+        ----------
+        units: XXXXXXXXXX
         """
         # First time, read the file and store it to not read it over and over
         if 'wav' not in self.__dict__.keys():
@@ -153,6 +178,11 @@ class AcuFile:
     def downsample(self, signal, new_fs):
         """
         Reduce the sampling frequency
+
+        Parameters
+        ----------
+        signal: XXXXXXXXXXXX
+        new_fs: XXXXXXXXXXXXXXX
         """
         if new_fs > self.fs: 
             raise Exception('This is upsampling!')
@@ -177,6 +207,10 @@ class AcuFile:
     def wav2uPa(self, wav=None):
         """ 
         Compute the pressure from the wav signal 
+        
+        Parameters
+        ----------
+        wav: XXXXXXXXXXXXXX
         """
         # Read if no signal is passed
         if wav is None:
@@ -191,6 +225,10 @@ class AcuFile:
     def wav2dB(self, wav=None):
         """ 
         Compute the dB from the wav signal. Consider the hydrophone sensitivity in dB
+
+        Parameters
+        ----------
+        wav: XXXXXXXXX
         """
         # Read if no signal is passed
         if wav is None:
@@ -202,6 +240,10 @@ class AcuFile:
     def dB2uPa(self, dB=None):
         """
         Compute the uPa from the dB signals
+
+        Parameters
+        ----------
+        dB: signal in dB
         """
         if dB is None:
             dB = self.signal('dB')
@@ -211,6 +253,10 @@ class AcuFile:
     def uPa2dB(self, uPa=None):
         """ 
         Compute the dB from the uPa signal
+
+        Parameters
+        ----------
+        uPa: signal in uPa
         """
         if uPa is None:
             uPa = self.signal('uPa')
@@ -220,6 +266,10 @@ class AcuFile:
     def wav2acc(self, wav=None):
         """
         Convert the wav file to acceleration 
+
+        Parameters
+        ----------
+        wav: wav file
         """
         if wav is None: 
             wav = self.file.read()
@@ -230,6 +280,11 @@ class AcuFile:
     def fill_or_crop(self, n_samples, signal):
         """ 
         Crop the signal to the number specified or fill it with Nan values in case it is too short 
+
+        Parameters
+        ----------
+        n_samples: XXXXXX
+        signal: XXXXXXX
         """
         if signal.size >= n_samples: 
             return signal[0:n_samples]
@@ -242,9 +297,14 @@ class AcuFile:
     def rms(self, binsize=None, dB=True):
         """
         Return the root mean squared value of the signal in uPa
-        `binsize` is the time window considered. If set to None, only one value is returned (in sec)
-        `dB` if set to True the result will be given in dB. Otherwise in uPa
-        ---
+
+        Parameters
+        ----------
+        binsize: is the time window considered. If set to None, only one value is returned (in sec)
+        dB: if set to True the result will be given in dB. Otherwise in uPa
+        
+        Returns
+        -------
         The output is a dataframe with 'datetime' as index and 'rms' value as a column
         """
         if binsize is None:
@@ -272,8 +332,13 @@ class AcuFile:
     def get_timestamps_bins(self, binsize=None, nfft=None, dB=None):
         """
         Return a df with the timestamps of each bin 
-        `binsize` is the time window considered. If set to None, only one value is returned (in sec)
-        ---
+
+        Parameters
+        ----------
+        binsize: is the time window considered. If set to None, only one value is returned (in sec)
+        
+        Returns
+        -------
         The output is a dataframe with 'datetime'
         """
         if binsize is None:

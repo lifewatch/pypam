@@ -63,7 +63,7 @@ class SurveyLocation:
         else: 
             ax = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False) 
         if map_file is None:
-            ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Esri.OceanBasemap, reset_extent=False)
+            ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite, reset_extent=False)
         else:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False, cmap='BrBG')
         ax.set_axis_off()

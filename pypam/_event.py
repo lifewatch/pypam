@@ -11,15 +11,20 @@ import soundfile as sf
 import scipy.signal as sig
 import matplotlib.pyplot as plt
 
-
 plt.style.use('ggplot')
+
+from pypam.utils import *
 
 
 class Event:
     def __init__(self, x, fs):
         """
-        * x: 2-channel signal (sound pressure and norm of velocity components)
-        * fs: sample rate (in Hz)
+        Definition of an acoustic event
+        
+        Parameters
+        ----------
+        x: 2-channel signal (sound pressure and norm of velocity components)
+        fs: sample rate (in Hz)
         """
         self.x = x
         self.fs = fs
@@ -46,8 +51,10 @@ class Event:
     def sel(self):
         """
         Calculate the sound exposure level of an event (pressure and velocity)
-        output:
-        * y: 2-element array with SEL values
+        
+        Returns
+        ------
+        y: 2-element array with SEL values
         """
         y = 10*np.log10((self.x**2).sum()/self.fs)
 
@@ -55,9 +62,12 @@ class Event:
 
 
     def peak(self):
-        """Calculate the peak sound exposure level of an event (pressure and velocity)
-        output:
-        * y: 2-element array with peak values
+        """
+        Calculate the peak sound exposure level of an event (pressure and velocity)
+        
+        Returns
+        ------
+        y: 2-element array with peak values
         """
         y = 10*np.log10(np.abs(self.x).max()**2)
 
@@ -67,10 +77,14 @@ class Event:
     def sel_spectrum(self, spg, dt):
         """
         Calculation of total spectrum (SEL) of the calibrated spectrogram
-        * spg: cell array with in each cell the spectrogram of a single channel of the input signal
-        * dt: timestep of the spectrogram calculation
-        output:
-        * y: cell array with in each cell the spectrum of a single channel of the input signal
+        Parameters
+        ----------
+        spg: cell array with in each cell the spectrogram of a single channel of the input signal
+        dt: timestep of the spectrogram calculation
+        
+        Returns
+        -------
+        y: cell array with in each cell the spectrum of a single channel of the input signal
         """
         y = []
         for spg_i in spg:
@@ -82,10 +96,14 @@ class Event:
     def average_spectrum(self, spg, dt):
         """
         Calculation of average spectrum (Leq) of the calibrated spectrogram
-        * spg: cell array with in each cell the spectrogram of a single channel of the input signal
-        * dt: timestep of the spectrogram calculation
-        output:
-        * y: cell array with in each cell the spectrum of a single channel of the input signal
+        Parameters
+        ----------
+        spg: cell array with in each cell the spectrogram of a single channel of the input signal
+        dt: timestep of the spectrogram calculation
+        
+        Returns
+        -------
+        y: cell array with in each cell the spectrum of a single channel of the input signal
         """
         y = []
         for spg_i in spg:
@@ -97,19 +115,22 @@ class Event:
     def spectrogram(self, dt):
         """
         Calculation of calibrated 1/3-octave band spectrogram for 28 bands from 25 Hz to 12.5 kHz
-        parameters:
-        * dt: timestep (in seconds) for calculation of spectrogram
-        output:
-        * t: array with the time values of the spectrogram
-        * f: array with the frequency values of the spectrogram
-        * spg: cell array with in each cell the spectrogram of a single channel of the input signal
+        Parameters
+        ----------
+        dt: timestep (in seconds) for calculation of spectrogram
+        
+        Returns
+        -------
+        t: array with the time values of the spectrogram
+        f: array with the frequency values of the spectrogram
+        spg: cell array with in each cell the spectrogram of a single channel of the input signal
         """
         # resample signal to 48 kHz
         new_fs = 48000
         frames = self.x.shape[0]       # total number of samples
         channels = self.x.shape[1]      # number of channels
 
-        new_lenght = int(frames * new_fs / self.fs)
+        new_lenght = int(frames / self.fs)
         x = sig.resample(self.x, new_lenght)
 
         n = np.floor(new_fs*dt)     # number of samples in one timestep
@@ -150,6 +171,10 @@ class Event:
     def analyze(self, dt):
         """
         Perform all necessary calculations for a single event
+
+        Parameters
+        ----------
+        dt: integration time
         """
         sel = self.sel()
         peak = self.peak()
@@ -162,6 +187,15 @@ class Event:
     def plot(self, sel, spec, t, f, spg, interval):
         """
         Plot the event 
+
+        Parameters
+        ----------
+        sel: sel
+        spec: spec
+        t: time
+        f: frequency 
+        spg: spg
+        interval: interval
         """
         print('plotting event...')
         fig, ax = plt.subplots(4, 1)
@@ -203,67 +237,22 @@ class Event:
     def draw_box(self, ax):
         """
         Draw a box marking the event
+
+        Parameters
+        ----------
+        ax: matplotlib axis
         """
-        
 
+        return 0
 
+    
+    def oct3bands(self, N=3):
+        """
+        Return the 1/3 octave band levels of the event
 
-# Utility functions -------------------------------------------------------------------------------%
+        Parameters
+        ----------
+        N: number of bands
+        """
 
-def oct3dsgn(fc, fs, N=3):
-    """
-    Design of a 1/3-octave band filter with center frequency fc for sampling frequency fs.
-    Default value for N is 3. For meaningful results, fc should be in range fs/200 < fc < fs/5.
-    """
-    if (fc > 0.88*(fs/2)):
-        raise Exception('Design not possible - check frequencies')
-    # design Butterworth 2N-th-order 1/3-octave band filter
-    f1 = fc/(2**(1/6))
-    f2 = fc*(2**(1/6))
-    Qr = fc/(f2-f1)
-    Qd = (np.pi/2/N)/(np.sin(np.pi/2/N))*Qr
-    alpha = (1 + np.sqrt(1+4*Qd**2))/2/Qd
-    W1 = fc/(fs/2)/alpha
-    W2 = fc/(fs/2)*alpha
-    b, a = sig.butter(N, [W1, W2])
-
-    return b, a
-
-
-def oct3bankdsgn(fs, bands, N):
-    """
-    Construction of a 1/3 octave band filterbank.
-    parameters:
-    * fs: samplefrequency (Hz), at least 2.3x the center frequency of the highest 1/3 octave band
-    * bands: row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
-      e.g. [-16:11] gives all bands with center frequency between 25 Hz and 12.5 kHz
-    * N: order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
-      Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
-    output:
-    * b, a: matrices with filter coefficients, one row per filter.
-    * d: column vector with downsampling factors for each filter 1 means no downsampling, 2 means
-      downsampling with factor 2, 3 means downsampling with factor 4 and so on.
-    * fsnew: column vector with new sample frequencies.
-    """
-    fc = (1000)*((2**(1/3))**bands)     # exact center frequencies
-    fclimit = 1/200                     # limit for center frequency compared to sample frequency
-    # calculate downsampling factors
-    d = np.ones(len(fc))
-    for i in np.arange(len(fc)):
-        while fc(i) < (fclimit*(fs/2**(d(i)-1))):
-            d[i] += 1
-    # calculate new sample frequencies
-    fsnew = fs/(2**(d-1))
-    # construct filterbank
-    a = []
-    b = []
-    for i in np.arange(len(fc)):
-        # construct filter coefficients
-        tb, ta = oct3dsgn(fc(i), fsnew(i), N)
-        a = [a, ta]
-        b = [b, tb]
-
-    return b, a, d, fsnew
-
-
-
+        return 0
