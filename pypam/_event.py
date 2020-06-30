@@ -1,5 +1,5 @@
 """
-Module: event.py
+Module: _event.py
 Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
@@ -23,8 +23,10 @@ class Event:
         
         Parameters
         ----------
-        x: 2-channel signal (sound pressure and norm of velocity components)
-        fs: sample rate (in Hz)
+        x : 2D numy array
+            2-channel signal (sound pressure and norm of velocity components)
+        fs : float
+            Sample rate, in Hz
         """
         self.x = x
         self.fs = fs
@@ -51,10 +53,7 @@ class Event:
     def sel(self):
         """
         Calculate the sound exposure level of an event (pressure and velocity)
-        
-        Returns
-        ------
-        y: 2-element array with SEL values
+        Returns a 2-element array with SEL values
         """
         y = 10*np.log10((self.x**2).sum()/self.fs)
 
@@ -64,10 +63,7 @@ class Event:
     def peak(self):
         """
         Calculate the peak sound exposure level of an event (pressure and velocity)
-        
-        Returns
-        ------
-        y: 2-element array with peak values
+        Returns a 2-element array with peak values
         """
         y = 10*np.log10(np.abs(self.x).max()**2)
 
@@ -77,14 +73,14 @@ class Event:
     def sel_spectrum(self, spg, dt):
         """
         Calculation of total spectrum (SEL) of the calibrated spectrogram
+        Returns a numpy matrix with in each cell the spectrum of a single channel of the input signal
+        
         Parameters
         ----------
-        spg: cell array with in each cell the spectrogram of a single channel of the input signal
-        dt: timestep of the spectrogram calculation
-        
-        Returns
-        -------
-        y: cell array with in each cell the spectrum of a single channel of the input signal
+        spg: numpy matrix
+            Array with in each cell the spectrogram of a single channel of the input signal
+        dt : float
+            timestep of the spectrogram calculation, in seconds
         """
         y = []
         for spg_i in spg:
@@ -96,14 +92,14 @@ class Event:
     def average_spectrum(self, spg, dt):
         """
         Calculation of average spectrum (Leq) of the calibrated spectrogram
+        Returns a numpy array with in each cell the spectrum of a single channel of the input signal
+        
         Parameters
         ----------
-        spg: cell array with in each cell the spectrogram of a single channel of the input signal
-        dt: timestep of the spectrogram calculation
-        
-        Returns
-        -------
-        y: cell array with in each cell the spectrum of a single channel of the input signal
+        spg: numpy matrix
+            Array with in each cell the spectrogram of a single channel of the input signal
+        dt : float
+            timestep of the spectrogram calculation, in seconds
         """
         y = []
         for spg_i in spg:
@@ -117,13 +113,17 @@ class Event:
         Calculation of calibrated 1/3-octave band spectrogram for 28 bands from 25 Hz to 12.5 kHz
         Parameters
         ----------
-        dt: timestep (in seconds) for calculation of spectrogram
+        dt: float
+            Timestep for calculation of spectrogram, in seconds
         
         Returns
         -------
-        t: array with the time values of the spectrogram
-        f: array with the frequency values of the spectrogram
-        spg: cell array with in each cell the spectrogram of a single channel of the input signal
+        t : numpy array 
+            Array with the time values of the spectrogram, in seconds
+        f : numpy array
+            Array with the frequency values of the spectrogram
+        spg : numpy matrix
+            Array with in each cell the spectrogram of a single channel of the input signal
         """
         # resample signal to 48 kHz
         new_fs = 48000
@@ -174,7 +174,19 @@ class Event:
 
         Parameters
         ----------
-        dt: integration time
+        dt : float
+            Integration time, in seconds
+
+        Returns
+        -------
+        sel : float
+            Sound exposure level 
+        spec : numpy array
+            Spectrum
+        t : numpy array 
+            Time array in seconds 
+        spg : numpy matrix
+            Spectrogram
         """
         sel = self.sel()
         peak = self.peak()
@@ -190,12 +202,16 @@ class Event:
 
         Parameters
         ----------
-        sel: sel
-        spec: spec
-        t: time
-        f: frequency 
-        spg: spg
-        interval: interval
+        sel : float
+            Sound exposure level 
+        spec : numpy array
+            Spectrum
+        t : numpy array 
+            Time array in seconds 
+        spg : numpy matrix
+            Spectrogram
+        interval : tuple or list
+            min and max values of the y axis
         """
         print('plotting event...')
         fig, ax = plt.subplots(4, 1)
@@ -252,7 +268,8 @@ class Event:
 
         Parameters
         ----------
-        N: number of bands
+        N: int
+            Number of bands
         """
 
         return 0

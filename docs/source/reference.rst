@@ -1,9 +1,10 @@
 .. currentmodule:: pypam
 
-References
+Classes, Attributes and Methods
+-------------------------------
 
 Acoustic File
--------------
+^^^^^^^^^^^^^
 
 .. automodule:: pypam.acoustic_file
    :members:
@@ -11,7 +12,7 @@ Acoustic File
    :show-inheritance:
 
 Acoustic Survey
----------------
+^^^^^^^^^^^^^^^
 
 .. automodule:: pypam.acoustic_survey
    :members:
@@ -19,7 +20,7 @@ Acoustic Survey
    :show-inheritance:
 
 GeoLocation
-------------------------
+^^^^^^^^^^^
 
 .. automodule:: pypam.geolocation
    :members:
@@ -27,10 +28,10 @@ GeoLocation
    :show-inheritance:
 
 Event Detectors
------------------------------
+^^^^^^^^^^^^^^^
 
 Event
-^^^^^
+~~~~~
 .. automodule:: pypam._event
    :members:
    :undoc-members:
@@ -38,18 +39,9 @@ Event
 
 
 Piling Detector
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 .. automodule:: pypam.piling_detector
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: pypam
    :members:
    :undoc-members:
    :show-inheritance:

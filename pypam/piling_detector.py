@@ -18,14 +18,22 @@ plt.style.use('ggplot')
 
 
 class PilingDetector:
-    def __init__(self, min_duration, ref=-6, threshold=150, dt=None, continuous=True, p_ref=1.0):
+    def __init__(self, min_duration, ref=0, threshold=150, dt=None, continuous=True, p_ref=1.0):
         """
         Event detector
-        `min_duration`: minimum duration of the event, in seconds
-        `ref`: noise reference value, in db 
-        `threshold`: threshold above which one it is considered piling
-        `dt`: window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
-        `continuous`: TO BE IMPLEMENTED
+
+        Parameters
+        ----------
+        min_duration : float
+            Minimum duration of the event, in seconds
+        ref : float
+            Noise reference value, in db 
+        threshold : float
+            Threshold above ref value which one it is considered piling, in dB
+        dt : float
+            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+        continuous : boolean
+            Weather the file is continuous or not (TO BE IMPLEMENTED)
         """
         self.min_duration = min_duration 
         self.reference_level(ref)
@@ -44,8 +52,13 @@ class PilingDetector:
         """
         Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
         The time resolution is dt
-        `x`: signal to analyze
-        `fs`: sampling frequency of the signal
+
+        Parameters
+        ----------
+        x : numpy array
+            Signal to analyze
+        fs : float
+            Sampling frequency of the signal
         """
         # calculation of level-vs-time
         levels = []
@@ -73,7 +86,11 @@ class PilingDetector:
         """
         Estimation of events that exceed the threshold,
         with at least the given min_duration (in seconds) in between events
-        `levels`: signal level in dB for each dt
+
+        Parameters
+        ----------
+        levels : numpy array 
+            Signal level in dB for each dt
         """
         indices = np.where(np.array(levels) >= self.threshold)[0]
         times = indices * self.dt
@@ -85,11 +102,19 @@ class PilingDetector:
         """
         Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
         return an object event
-        `x`: signal
-        `fs`: sampling frequency of the signal x
-        `t`: starting time of the event (in seconds)
-        `before`: time before the event to save
-        `after`: time after the event to save
+
+        Parameters
+        ----------
+        x : numpy array 
+            Signal
+        fs : float
+            Sampling frequency of the signal x
+        t : float
+            Starting time of the event (in seconds)
+        before : float
+            Time before the event to save, in seconds
+        after : float
+            Time after the event to save, in seconds
         """
         n1 = int((t-before)*fs)
         if n1 < 0:
@@ -107,10 +132,15 @@ class PilingDetector:
         """
         Function that plots the number of events for a range of thresholds
         Can be used to pick the best threshold value
-        * levels: 1-D array of sound levels
-        * dt: timestep (in seconds)
-        * thresholds: 1-D array of sound level thresholds
-        * min_duration: the minimum duration between events (in seconds)
+
+        Parameters
+        ----------
+        levels : numpy array
+            1-D array of sound levels
+        thresholds : numpy array
+            1-D array of sound level thresholds to be compared
+        min_duration : float
+            the minimum duration between events (in seconds)
         """
         fig, ax = plt.subplots(2,1)
         ax[0].plot(np.arange(len(levels))*self.dt, levels)
@@ -129,8 +159,12 @@ class PilingDetector:
     def reference_level(self, iref):
         """
         Calculation of reference level
-        `iref`: either a number (e.g. -6 dB rms), or the filename of a single-channel wavfile containing
-        a calibration tone (mono, assumed to be clean, i.e. not too much background noise)
+
+        Parameters
+        ----------
+        iref : number or file path
+            Either a number (e.g. -6 dB rms), or the filename of a single-channel wavfile containing
+            a calibration tone (mono, assumed to be clean, i.e. not too much background noise)
         """
         if os.path.exists(iref):
             print('calculating reference level...')
@@ -152,6 +186,15 @@ class PilingDetector:
         def __init__(self, x, fs, dt):
             """
             Init
+
+            Parameters
+            ----------
+            x : numpy array 
+                Signal
+            fs : float
+                Sampling frequency
+            dt : float
+                Window integration time, in seconds
             """
             self.blocksize = int(dt*fs)
             self.x = x

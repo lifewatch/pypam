@@ -28,7 +28,7 @@ data management.
   :maxdepth: 1
   :caption: Reference Guide
 
-  Reference to All Attributes and Methods <reference>
+  Classes, Attributes and Methods <reference>
 
 Contact
 ------------

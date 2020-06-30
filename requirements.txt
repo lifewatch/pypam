@@ -17,6 +17,8 @@ Deprecated==1.2.9
 descartes==1.1.0
 docutils==0.16
 enum34==1.1.10
+Fiona @ file:///C:/Users/cleap/Downloads/Installation%20programs/Fiona-1.8.13-cp37-cp37m-win_amd64.whl
+GDAL @ file:///C:/Users/cleap/Downloads/Installation%20programs/GDAL-3.0.4-cp37-cp37m-win_amd64.whl
 geographiclib==1.50
 geopandas==0.7.0
 geopy==1.22.0
@@ -40,12 +42,16 @@ Pillow==7.1.2
 psycopg2==2.8.5
 pycparser==2.19
 Pygments==2.6.1
+pyhydrophone @ file:///C:/Users/cleap/Documents/code/pyhydrophone
+-e git+https://github.com/cparcerisas/sound-survey.git@698417ff370c7c4ca776a1a27046a011940ad7ab#egg=pypam
 pyparsing==2.4.6
 pyproj==2.6.1.post1
 python-dateutil==2.8.1
 pytz==2019.3
+rasterio @ file:///C:/Users/cleap/Downloads/Installation%20programs/rasterio-1.1.4-cp37-cp37m-win_amd64.whl
 requests==2.23.0
 rstcheck==3.3.1
+Rtree @ file:///C:/Users/cleap/Downloads/Installation%20programs/Rtree-0.9.4-cp37-cp37m-win_amd64.whl
 scikit-learn==0.23.0
 scipy==1.4.1
 Shapely==1.7.0

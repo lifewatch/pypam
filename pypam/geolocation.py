@@ -18,7 +18,11 @@ class SurveyLocation:
     def __init__(self, geofile):
         """
         Location of all the survey points
-        `geofile` can be a gpx file or a pickle file with a geopandas df
+
+        Parameters
+        ----------
+        geofile : string or Path
+            Can be a gpx file or a pickle file with a GeoDataFrame
         """
         extension = geofile.split('.')[-1]
         if extension == 'gpx':
@@ -33,7 +37,13 @@ class SurveyLocation:
 
     def add_survey_location(self, df):
         """
-        Add the closest location for each timestamp
+        Add the closest location of the GeoSurvey to each timestamp of the DataFrame.
+        Returns a new GeoDataFrame with all the information of df but with added geometry
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame from an ASA output
         """
         # df['geo_time'] = 0
         for i in df.index:
@@ -54,6 +64,17 @@ class SurveyLocation:
     def plot_survey_color(self, column, units, df, map_file=None):
         """
         Add the closest location to each timestamp and color the points in a map
+
+        Parameters
+        ----------
+        column : string 
+            Column of the df to plot
+        units : string 
+            Units of the legend 
+        df : DataFrame or GeoDataFrame
+            DataFrame from an ASA output or GeoDataFrame
+        map_file : string or Path 
+            Map that will be used as a basemap
         """
         if 'geometry' not in df.columns: 
             df = self.add_survey_location(df)
@@ -73,7 +94,18 @@ class SurveyLocation:
     
     def add_distance_to(self, df, lat, lon):
         """
-        Add the distances to a certain point
+        Add the distances to a certain point. 
+        Returns GeoDataFrame with an added column with the distance to the point lat, lon
+
+        Parameters
+        ----------
+        df : DataFrame or GeoDataFrame
+            ASA output or GeoDataFrame
+        lat : float 
+            Latitude of the point 
+        lon : float
+            Longitude of the point
+
         """
         if "geometry" not in df.columns: 
             df = self.add_survey_location(df)

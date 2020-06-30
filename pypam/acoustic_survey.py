@@ -31,14 +31,24 @@ class ASA:
     def __init__(self, hydrophone, folder_path, zipped=False, include_dirs=False, p_ref=1.0, binsize=None, nfft=1.0, period=None, band=None):
         """ 
         Init a AcousticSurveyAnalysis (ASA)
-        `hydrophone` is a Hydrophone class from pyhy
-        `folder_path` is where all the sound files are 
-        `zipped` set to True if the directory is zipped
-        `include_dirs` set to True if the folder contains other folders with sound files
-        `p_ref` is the reference pressure in uPa
-        `binsize` is the time window considered. If set to None, only one value is returned (in sec)
-        `nfft` is the time of the fft bin used for the spectral analysis (in seconds!)
-        `period` is a tuple or a list with two elements: start and stop. Has to be a string in the format YYYY-MM-DD HH:MM:SS
+
+        Parameters
+        ----------
+        hydrophone : Hydrophone class from pyhhydrophone
+        folder_path : string or Path
+            Where all the sound files are 
+        zipped : boolean
+            Set to True if the directory is zipped
+        include_dirs : boolean
+            Set to True if the folder contains other folders with sound files
+        p_ref : float
+            Reference pressure in uPa
+        binsize : float
+            Time window considered, in seconds. If set to None, only one value is returned
+        nfft : int
+            Samples of the fft bin used for the spectral analysis
+        period : tuple or list
+            Tuple or list with two elements: start and stop. Has to be a string in the format YYYY-MM-DD HH:MM:SS
         """
         self.hydrophone = hydrophone
         self.acu_files = self.AcousticFolder(folder_path=folder_path, zipped=zipped, include_dirs=include_dirs)
@@ -59,7 +69,14 @@ class ASA:
     def evolution(self, method_name, **kwargs):
         """
         Compute the method in each file and output the evolution
-        `method_name` is a method present in the HydroFile
+        Returns a DataFrame with datetime as index and one row for each bin of each file
+
+        Parameters
+        ----------
+        method_name : string
+            Method name present in HydroFile
+        **kwargs : 
+            Any accepted parameter for the method_name
         """
         df = pd.DataFrame()
         if method_name == 'rms':
@@ -83,7 +100,14 @@ class ASA:
     def apply_to_all(self, method_name, **kwargs):
         """
         Apply the method to all the files
-        `method_name` is a method present in the HydroFile
+        
+        Parameters
+        ----------
+        method_name : string
+            Method name present in HydroFile
+        **kwargs : 
+            Any accepted parameter for the method_name
+
         """
         f = operator.methodcaller(method_name, **kwargs)
         for file_list in self.acu_files:
@@ -100,9 +124,13 @@ class ASA:
     def mean_rms(self, **kwargs):
         """
         Return the mean root mean squared value of the survey
-        Accepts any other input than the correspondant method in the acoustic file
-        ---
-        The output is the rms value of the whole survey
+        Accepts any other input than the correspondant method in the acoustic file.
+        Returns the rms value of the whole survey
+
+        Parameters
+        ----------
+        **kwargs : 
+            Any accepted arguments for the rms function of the AcuFile
         """
         rms_evolution = self.evolution('rms', **kwargs)
             
@@ -112,15 +140,26 @@ class ASA:
     def spd(self, dB=True, h=0.1, percentiles=[]):
         """
         Return the empirical power density. 
-        `dB` if set to True the result will be given in dB. Otherwise in uPa^2
-        `h` histogram bin (in the correspondent units, uPa or dB)
-        `percentiles` is a list of all the percentiles that have to be returned. If set to None, no percentiles is returned
-        ---
-        The output is 
-        `fbands` is a list of all the frequencies
-        `bin_edges` is a list of the psd values of the distribution
-        `spd`  dataframe with 'frequency' as index and a colum for each psd bin and for each percentile
-        `p` is a matrix with all the probabilities
+
+        Parameters
+        ----------
+        dB : boolean
+            If set to True the result will be given in dB. Otherwise in uPa^2
+        h : float
+            Histogram bin (in the correspondent units, uPa or dB)
+        percentiles : list
+            All the percentiles that have to be returned. If set to None, no percentiles is returned
+
+        Returns
+        ------- 
+        fbands : list
+            List of all the frequencies
+        bin_edges : list
+            List of the psd values of the distribution
+        spd : DataFrame
+            DataFrame with 'frequency' as index and a colum for each psd bin and for each percentile
+        p : numpy matrix
+            Matrix with all the probabilities
         """
         psd_evolution = self.evolution('psd', dB=dB, percentiles=percentiles)
         fbands = psd_evolution['band_density'].columns
@@ -135,8 +174,13 @@ class ASA:
     def cut_and_place_files_periods(self, periods, extensions=[]):
         """
         Cut the files in the specified periods and store them in the right folder 
-        * periods: list with a tupple with the form ([start, end], position_name)
-        * extensions: the extensions that want to be moved (csv will be splitted, log will just be moved)
+
+        Parameters
+        ----------
+        periods: list 
+            List with a tupple with the form ([start, end], position_name)
+        extensions: list of strings
+            the extensions that want to be moved (csv will be splitted, log will just be moved)
         """
         for period, folder_name in periods: 
             start_date = datetime.datetime.strptime(period[0], '%d/%m/%Y %H:%M:%S')
@@ -197,7 +241,12 @@ class ASA:
     def plot_all_files(self, method_name, **kwargs):
         """
         Apply the plot method to all the files
-        `method_name` is a method present in the HydroFile
+
+        Parameters
+        ----------
+        method_name : string 
+            Plot method present in HydroFile
+        **kwargs : Any accepted in the method_name
         """
         self.apply_to_all(binsize=self.binsize, nfft=self.nfft, **kwargs)
 
@@ -205,6 +254,13 @@ class ASA:
     def plot_rms_evolution(self, dB=True, save_path=None):
         """
         Plot the rms evolution
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', dB=dB)
         plt.figure()
@@ -227,6 +283,13 @@ class ASA:
     def plot_rms_daily_patterns(self, dB=True, save_path=None):
         """
         Plot the daily rms patterns
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', dB=dB)
         rms_evolution['date'] = rms_evolution.index.date.unique()
@@ -263,8 +326,18 @@ class ASA:
     def plot_mean_power_spectrum(self, dB=True, save_path=None, log=True, **kwargs):
         """
         Plot the resulting mean power spectrum
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        log : boolean 
+            If set to True, y axis in logarithmic scale
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
+        **kwargs : Any accepted for the power_spectrum method
         """
-        power = self.evolution(method_name='psd', dB=dB, **kwargs)
+        power = self.evolution(method_name='power_spectrum', dB=dB, **kwargs)
         if dB: 
             units = 'dB re 1V %s uPa^2' % (self.p_ref)
         else:
@@ -275,7 +348,17 @@ class ASA:
 
     def plot_mean_psd(self, dB=True, save_path=None, log=True, **kwargs):
         """
-        Plot the resulting mean power spectrum
+        Plot the resulting mean psd
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        log : boolean 
+            If set to True, y axis in logarithmic scale
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
+        **kwargs : Any accepted for the psd method
         """
         psd = self.evolution(method_name='psd', dB=dB, **kwargs)
         if dB: 
@@ -289,6 +372,23 @@ class ASA:
     def _plot_spectrum_mean(self, df, units, col_name, output_name, dB=True, save_path=None, log=True):
         """
         Plot the mean spectrum
+
+        Parameters
+        ----------
+        df : DataFrame
+            Output of evolution
+        units : string 
+            Units of the spectrum
+        col_name : string 
+            Column name of the value to plot. Can be 'density' or 'spectrum'
+        output_name : string
+            Name of the label. 'PSD' or 'SPL'
+        dB : boolean 
+            If set to True, output in dB 
+        log : boolean 
+            If set to True, y axis in logarithmic scale
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
         """
         fbands = df['band_'+col_name].columns
         fig = plt.figure()
@@ -315,6 +415,14 @@ class ASA:
     def plot_power_spectrum_evolution(self, dB=True, save_path=None, **kwargs):
         """
         Plot the evolution of the power frequency distribution
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
+        **kwargs : Any accepted for the power spectrum method
         """
         power_evolution = self.evolution('power_spectrum', dB=dB, **kwargs)
         if dB: 
@@ -329,6 +437,14 @@ class ASA:
     def plot_psd_evolution(self, dB=True, save_path=None, **kwargs):
         """
         Plot the evolution of the psd 
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
+        **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution('psd', dB=dB, **kwargs)
         if dB: 
@@ -343,6 +459,21 @@ class ASA:
     def _plot_spectrum_evolution(self, df, col_name, output_name, units, dB=True, save_path=None):
         """
         Plot the evolution of the df containing percentiles and band values
+
+        Parameters
+        ----------
+        df : DataFrame
+            Output of evolution
+        units : string 
+            Units of the spectrum
+        col_name : string 
+            Column name of the value to plot. Can be 'density' or 'spectrum'
+        output_name : string
+            Name of the label. 'PSD' or 'SPL'
+        dB : boolean 
+            If set to True, output in dB 
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
         """
         # Plot the evolution  
         # Extra axes for the colorbar and delete the unused one
@@ -374,6 +505,16 @@ class ASA:
     def plot_spd(self, dB=True, log=True, save_path=None, **kwargs):
         """
         Plot the the SPD graph
+
+        Parameters
+        ----------
+        dB : boolean 
+            If set to True, output in dB 
+        log : boolean 
+            If set to True, y axis in logarithmic scale
+        save_path : string or Path 
+            Where to save the output graph. If None, it is not saved
+        **kwargs : Any accepted for the spd method
         """
         fbands, bin_edges, spd, percentiles, p = self.spd(dB=dB, **kwargs)
         if dB: 
@@ -411,7 +552,20 @@ class ASA:
         """
         def __init__(self, folder_path, zipped=False, include_dirs=False, extensions=[]):
             """
-            Store the information about the folder
+            Store the information about the folder.
+            It will create an iterator that returns all the pairs of extensions having the same name than the wav file 
+
+            Parameters
+            ----------
+            folder_path : string
+                Path to the folder containing the acoustic files
+            zipped : boolean
+                Set to True if the subfolders are zipped
+            include_dirs : boolean 
+                Set to True if the subfolders are included in the study
+            extensions : list
+                List of strings with all the extensions that will be returned (.wav is automatic)
+                i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
             """
             self.folder_path = Path(folder_path)
             self.zipped = zipped
@@ -422,8 +576,6 @@ class ASA:
         def __iter__(self):
             """
             Iteration
-            It will create an iterator that returns all the pairs of extensions having the same name than the wav file 
-            i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
             """
             self.n = 0       
             if not self.zipped:
@@ -480,6 +632,13 @@ class ASA:
 def move_file(file_path, new_folder_path):
     """
     Move the file to the new folder
+
+    Parameters
+    ----------
+    file_path : string or Path 
+        Original file path 
+    new_folder_path : string or Path 
+        New folder destination (without the file name)
     """
     file_name = os.path.split(file_path)[-1]
     new_path = os.path.join(new_folder_path, file_name)

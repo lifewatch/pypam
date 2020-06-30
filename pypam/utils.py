@@ -17,6 +17,16 @@ def oct3dsgn(fc, fs, N=3):
     """
     Design of a 1/3-octave band filter with center frequency fc for sampling frequency fs.
     Default value for N is 3. For meaningful results, fc should be in range fs/200 < fc < fs/5.
+
+    Parameters
+    ----------
+    fc : float
+      Center frequency, in Hz
+    fs : float
+      Sample frequency at least 2.3x the center frequency of the highest 1/3 octave band, in Hz
+    N : int 
+      Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
+      Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
     """
     if (fc > 0.88*(fs/2)):
         raise Exception('Design not possible - check frequencies')
@@ -36,17 +46,27 @@ def oct3dsgn(fc, fs, N=3):
 def oct3bankdsgn(fs, bands, N):
     """
     Construction of a 1/3 octave band filterbank.
-    parameters:
-    * fs: samplefrequency (Hz), at least 2.3x the center frequency of the highest 1/3 octave band
-    * bands: row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
+    
+    Parameters
+    ----------
+    fs : float
+      Sample frequency, at least 2.3x the center frequency of the highest 1/3 octave band, in Hz
+    bands : numpy array
+      row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
       e.g. [-16:11] gives all bands with center frequency between 25 Hz and 12.5 kHz
-    * N: order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
+    N : int 
+      Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
       Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
-    output:
-    * b, a: matrices with filter coefficients, one row per filter.
-    * d: column vector with downsampling factors for each filter 1 means no downsampling, 2 means
+    
+    Returns
+    -------
+    b, a : numpy matrix
+      Matrices with filter coefficients, one row per filter.
+    d : numpy array
+      Downsampling factors for each filter 1 means no downsampling, 2 means
       downsampling with factor 2, 3 means downsampling with factor 4 and so on.
-    * fsnew: column vector with new sample frequencies.
+    fsnew : numpy array
+      New sample frequencies.
     """
     fc = (1000)*((2**(1/3))**bands)     # exact center frequencies
     fclimit = 1/200                     # limit for center frequency compared to sample frequency
