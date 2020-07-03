@@ -65,7 +65,7 @@ class AcuFile:
             return self.signal('uPa')
         elif name == 'time' :
             return self.time()
-        else :
+        else:
             return self.__dict__[name]
 
 
@@ -92,7 +92,7 @@ class AcuFile:
         """
         if period is None : 
             return True
-        else : 
+        else: 
             end = self.date + datetime.timedelta(seconds=self.file.frames/self.fs)
             return (self.date >= period[0]) & (self.date <= period[1])
         
@@ -121,7 +121,7 @@ class AcuFile:
         """
         if not self.contains_date(date):
             raise Exception('This date is not included in the file!')
-        else :
+        else:
             self.file.seek(0)
         seconds = (date - self.date).seconds
         frames = self.samples(seconds)
@@ -178,7 +178,7 @@ class AcuFile:
             signal = self.wav2uPa() / 1e6
         elif units == 'acc' :
             signal = self.wav2acc()
-        else :
+        else:
             raise Exception('%s is not implemented as an outcome unit' % (units))
         
         return signal
@@ -305,9 +305,9 @@ class AcuFile:
         signal : numpy array 
             Signal to modify
         """
-        if signal.size >= n_samples : 
+        if signal.size >= n_samples: 
             return signal[0 :n_samples]
-        else :
+        else:
             nan_array = np.full((n_samples,), np.nan)
             nan_array[0 :signal.size] = signal
             return nan_array
@@ -327,7 +327,7 @@ class AcuFile:
         """
         if binsize is None :
             blocksize = self.file.frames
-        else :
+        else:
             blocksize = int(binsize * self.fs)
         rms_df = pd.DataFrame(columns=['datetime', 'rms'])
         rms_df = rms_df.set_index('datetime')
@@ -340,7 +340,7 @@ class AcuFile:
             time = self.date + datetime.timedelta(seconds=(blocksize * i)/self.fs)
             rms = np.sqrt((signal**2).mean())
             # Convert it to dB if applicatble
-            if dB :
+            if dB:
                 rms = 10 * np.log10(rms**2)
             rms_df.loc[time] = rms
             
@@ -364,7 +364,7 @@ class AcuFile:
         """
         if binsize is None :
             blocksize = self.file.frames
-        else :
+        else:
             blocksize = int(binsize * self.fs)
         df = pd.DataFrame(columns=['datetime', 'instrument'])
         time_list = []
@@ -405,7 +405,7 @@ class AcuFile:
         """
         if binsize is None :
             blocksize = self.file.frames
-        else :
+        else:
             blocksize = self.samples(binsize)
         Sxx_list = []
         time = []
@@ -413,28 +413,28 @@ class AcuFile:
         window = sig.get_window('boxcar', nfft)
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
             signal = self.wav2uPa(wav=block)
-            if signal.size != blocksize :
+            if signal.size != blocksize:
                 signal = self.fill_or_crop(n_samples=blocksize, signal=signal)
-            if self.band is not None : 
+            if self.band is not None: 
                 # Filter the signal
                 sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
                 signal = sig.sosfilt(sosfilt, signal)
                 # If the max frequency is lower than the nyquist freq, downsample the signal 
                 # This will give better frequency resolution without loosing time resolution
-                if self.band[1] < self.fs / 2 : 
+                if self.band[1] < self.fs / 2: 
                     new_fs = self.band[1] * 2
                     signal = self.downsample(signal, new_fs)
-                else :
+                else:
                     new_fs = self.fs
-            else :
+            else:
                 new_fs = self.fs
             
             freq, t, Sxx = sig.spectrogram(signal, fs=new_fs, nfft=nfft, window=window, scaling=scaling)
-            if dB :
+            if dB:
                 Sxx = 10 * np.log10(Sxx)
-            if self.band is not None : 
+            if self.band is not None: 
                 low_freq = np.argmax(freq >= self.band[0])
-            else :
+            else:
                 low_freq = 0
             Sxx_list.append(Sxx[low_freq :, :])
             time.append(self.date + datetime.timedelta(seconds=(blocksize/self.fs * i)))
@@ -464,49 +464,49 @@ class AcuFile:
         """
         if binsize is None :
             blocksize = self.file.frames
-        else :
+        else:
             blocksize = int(binsize * self.fs)
         
         columns_df = pd.DataFrame({'variable' : 'percentiles', 'value' : percentiles})
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
             signal = self.wav2uPa(wav=block)
-            if self.band is not None : 
+            if self.band is not None: 
                 # If the max frequency is lower than the nyquist freq, downsample the signal 
                 # This will give better frequency resolution without loosing time resolution
-                if self.band[1] < self.fs / 2 : 
+                if self.band[1] < self.fs / 2: 
                     new_fs = self.band[1] * 2
                     signal = self.downsample(signal, new_fs)
-                else :
+                else:
                     new_fs = self.fs
                 
                 if self.band[0] != 0 :
                     # Filter the signal
                     sosfilt = sig.butter(N=2, btype='highpass', Wn=self.band[0], analog=False, output='sos', fs=new_fs)
                     signal = sig.sosfilt(sosfilt, signal)
-            else :
+            else:
                 new_fs = self.fs
-            if bands == 'third_octaves' :
+            if bands == 'third_octaves':
                 # Return the power for each third octave band (log output)
                 fbands, spectra = acoustics.signal.third_octaves(signal, new_fs)
-            elif bands == 'octaves' :
+            elif bands == 'octaves':
                 # Return the power for each octave band (log output)
                 fbands, spectra = acoustics.signal.octaves(signal, new_fs)
-            elif bands == 'all' :
+            elif bands == 'all':
                 window = sig.get_window('boxcar', nfft)
                 noverlap = int(nfft * 0.5)
-                if signal.size < nfft : 
+                if signal.size < nfft: 
                     continue
                 fbands, spectra = sig.periodogram(signal, fs=new_fs, window=window, nfft=nfft, scaling=scaling)
                 # fbands, spectra = sig.welch(signal, fs=new_fs, window=window, nperseg=nfft, nfft=nfft, noverlap=noverlap, scaling=scaling)
             
-            if dB :
+            if dB:
                 spectra = 10 * np.log10(spectra)
             
             # Add the spectra of the bin and the correspondent time step
             time = self.date + datetime.timedelta(seconds=(blocksize/self.fs * i))
             if self.band is not None :
                 low_freq = np.argmax(fbands >= self.band[0])
-            else :
+            else:
                 low_freq = 1
             try :
                 spectra_df.loc[time, ('band_'+scaling, fbands[low_freq :])] = spectra[low_freq :]
@@ -647,7 +647,7 @@ class AcuFile:
         """
         if binsize is None :
             blocksize = self.file.frames
-        else :
+        else:
             blocksize = int(binsize * self.fs)
         
         events_df = pd.DataFrame()
@@ -668,7 +668,7 @@ class AcuFile:
     #     """
     #     if binsize is None :
     #         blocksize = self.file.frames
-    #     else :
+    #     else:
     #         blocksize = int(binsize * self.fs)
 
     #     y = []
@@ -684,7 +684,7 @@ class AcuFile:
     #             if self.band[1] < self.fs / 2 : 
     #                 new_fs = self.band[1] * 2
     #                 signal = self.downsample(signal, new_fs)
-    #             else :
+    #             else:
     #                 new_fs = self.fs
     #             # calculate level of first channel
     #             z = z[ :,1]
@@ -771,7 +771,7 @@ class AcuFile:
                 sf.write(file=str(self.file_path), data=signal, samplerate=self.fs)
             return calibration_signal, signal
         
-        else :
+        else:
             return None
 
 
@@ -790,9 +790,9 @@ class AcuFile:
         **kwargs : any attribute valid on psd() function
         """
         psd = self.psd(dB=dB, **kwargs)
-        if dB : 
-            units = 'dB re 1V %s uPa^2/Hz' % (self.ref)
-        else :
+        if dB: 
+            units = 'dB %s uPa^2/Hz' % (self.ref)
+        else:
             units = 'uPa^2/Hz' 
         self._plot_spectrum(df=psd, col_name='density', output_name='PSD', units=units, dB=dB, log=log, save_path=save_path)
 
@@ -812,9 +812,9 @@ class AcuFile:
         **kwargs : any attribute valid on power_spectrum() function
         """
         power = self.power_spectrum(dB=dB, **kwargs)
-        if dB : 
-            units = 'dB re 1V %s uPa^2' % (self.ref)
-        else :
+        if dB: 
+            units = 'dB %s uPa^2' % (self.ref)
+        else:
             units = 'uPa^2' 
         self._plot_spectrum(df=power, col_name='spectrum', output_name='SPL', units=units, dB=dB, log=log, save_path=save_path)
 
@@ -845,7 +845,7 @@ class AcuFile:
             plt.ylabel('%s [%s]' % (output_name, units))
 
             plt.hlines(y=df.loc[i, 'percentiles'].values, xmin=fbands.min(), xmax=fbands.max(), label=df['percentiles'].columns)
-            if log : 
+            if log: 
                 plt.xscale('log')
             plt.tight_layout()
             plt.show()
@@ -876,11 +876,11 @@ class AcuFile:
             plt.title('Spectrogram of bin %s' % (time[i])) 
             plt.xlabel('Time [s]')
             plt.ylabel('Frequency [Hz]')
-            if log : 
+            if log: 
                 plt.yscale('log')
-            if dB : 
-                units = 'dB re 1V %s uPa' % (self.ref)
-            else :
+            if dB: 
+                units = 'dB %s uPa' % (self.ref)
+            else:
                 units = 'uPa'
             cbar = plt.colorbar(im)
             cbar.set_label('SPL [%s]' % (units), rotation=90)
@@ -906,15 +906,15 @@ class AcuFile:
         **kwargs : any attribute valid on spd() function
         """
         time, fbands, percentiles, edges_list, spd_list, p_list = self.spd(dB=dB, **kwargs)
-        if dB : 
-            units = 'dB re 1V %s uPa^2/Hz' % (self.ref)
-        else :
+        if dB: 
+            units = 'dB %s uPa^2/Hz' % (self.ref)
+        else:
             units = 'uPa^2/Hz'
         for i, spd in enumerate(spd_list): 
             # Plot the EPD
             fig = plt.figure()
             im = plt.pcolormesh(fbands, edges_list[i], spd.T, cmap='BuPu')
-            if log : 
+            if log: 
                 plt.xscale('log')
             plt.title('Spectral probability density at bin %s' % time[i])
             plt.xlabel('Frequency [Hz]')

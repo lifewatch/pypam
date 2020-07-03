@@ -149,7 +149,7 @@ class PilingDetector:
         
         numbers = np.zeros(thresholds.size)
         for i, th in enumerate(thresholds):
-            numbers[i] = len(find_time_events(levels, self.dt, th, self.min_duration))
+            numbers[i] = len(self.find_time_events(levels, self.dt, th, self.min_duration))
             
         ax[1].plot(thresholds, numbers)
         ax[1].set_xlabel('Threshold [dB]')
