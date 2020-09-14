@@ -43,7 +43,7 @@ psycopg2==2.8.5
 pycparser==2.19
 Pygments==2.6.1
 pyhydrophone @ file:///C:/Users/cleap/Documents/code/pyhydrophone
--e git+https://github.com/cparcerisas/sound-survey.git@698417ff370c7c4ca776a1a27046a011940ad7ab#egg=pypam
+-e git+https://github.com/cparcerisas/sound-survey.git@fcd39e5cffd400c8c0b8246b7415952d15af1f4a#egg=pypam
 pyparsing==2.4.6
 pyproj==2.6.1.post1
 python-dateutil==2.8.1
