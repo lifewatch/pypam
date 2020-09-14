@@ -6,6 +6,7 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 
 import os
 import glob
+import pathlib
 import zipfile
 import datetime
 import operator
@@ -49,6 +50,8 @@ class ASA:
             Samples of the fft bin used for the spectral analysis
         period : tuple or list
             Tuple or list with two elements: start and stop. Has to be a string in the format YYYY-MM-DD HH:MM:SS
+        band : tuple or list
+            Tuple or list with two elements: low-cut and high-cut of the band to analyze
         """
         self.hydrophone = hydrophone
         self.acu_files = self.AcousticFolder(folder_path=folder_path, zipped=zipped, include_dirs=include_dirs)
@@ -66,23 +69,20 @@ class ASA:
         
 
 
-    def evolution(self, method_name, **kwargs):
+    def evolution_multiple(self, method_list, **kwargs):
         """
         Compute the method in each file and output the evolution
         Returns a DataFrame with datetime as index and one row for each bin of each file
 
         Parameters
         ----------
-        method_name : string
+        method_list : string
             Method name present in HydroFile
         **kwargs : 
             Any accepted parameter for the method_name
         """
         df = pd.DataFrame()
-        if method_name == 'rms':
-            f = operator.methodcaller(method_name, binsize=self.binsize, **kwargs)
-        else:
-            f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
+        f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize, **kwargs)
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
@@ -96,6 +96,42 @@ class ASA:
         
         return df
     
+
+    def evolution(self, method_name, **kwargs):
+        """
+        Evolution of only one param name 
+        """
+        return self.evolution_multiple(method_list=[method_name], **kwargs)
+
+
+
+    def timestamps_df(self):
+        """
+        Return a pandas dataframe with the timestamps of each bin.
+        Parameters
+        ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
+        dB : None
+            Does not apply. It is ignored
+        nfft : None
+            Does not apply. It is ignored
+        """
+        df = pd.DataFrame()
+        f = operator.methodcaller('timestamps_df', binsize=self.binsize)
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            if sound_file.is_in_period(self.period):
+                try:
+                    df_output = f(sound_file)
+                    df = df.append(df_output)
+                except:
+                    print('%s had some problems and was not added to the evolution' % (wav_file))
+        
+        return df
+
 
     def apply_to_all(self, method_name, **kwargs):
         """
@@ -119,6 +155,24 @@ class ASA:
                     f(sound_file)
                 except:
                     print('%s had some problems and was not added to the analysis' % (wav_file))
+    
+
+    def duration(self):
+        """
+        Return the duration in seconds of all the survey
+        """
+        total_time = 0
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            if sound_file.is_in_period(self.period):
+                try:
+                    total_time += sound_file.total_time()
+                except:
+                    print('%s had some problems and was not added to the analysis' % (wav_file))  
+
+            return total_time      
 
 
     def mean_rms(self, **kwargs):
@@ -171,69 +225,69 @@ class ASA:
         return fbands, bin_edges, spd, percentiles, p
 
 
-    def cut_and_place_files_periods(self, periods, extensions=[]):
+    def cut_and_place_files_period(self, period, folder_name, extensions=[]):
         """
         Cut the files in the specified periods and store them in the right folder 
 
         Parameters
         ----------
-        periods: list 
-            List with a tupple with the form ([start, end], position_name)
+        period: Tuple or list
+            Tuple or list with (start, stop)
         extensions: list of strings
             the extensions that want to be moved (csv will be splitted, log will just be moved)
         """
-        for period, folder_name in periods: 
-            start_date = datetime.datetime.strptime(period[0], '%d/%m/%Y %H:%M:%S')
-            end_date = datetime.datetime.strptime(period[1], '%d/%m/%Y %H:%M:%S')
-            print(start_date, end_date)
-            folder_path = os.path.join(self.acu_files.folder_path, folder_name)
-            self.acu_files.extensions = extensions
-            for file_list in self.acu_files:
-                wav_file = file_list[0]
-                sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
-                if sound_file.contains_date(start_date):
-                    print('start!', wav_file)
-                    # Split the sound file in two files
-                    first, second = sound_file.split(start_date)
-                    move_file(second, folder_path)   
-                    # Split the metadata files
-                    for i, metadata_file in enumerate(file_list[1:]):
-                        if extensions[i] != '.log.xml':
-                            df = pd.read_csv(metadata_file)
-                            df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
-                            df_first = df[df['datetime'] < start_date]
-                            df_second = df[df['datetime'] >= start_date]
-                            df_first.to_csv(metadata_file)
-                            new_metadata_path = second.replace('.wav', extensions[i])
-                            df_second.to_csv(new_metadata_path)
-                            # Move the file 
-                            move_file(new_metadata_path, folder_path)                         
-                elif sound_file.contains_date(end_date):  
-                    print('end!', wav_file)          
-                    # Split the sound file in two files
-                    first, second = sound_file.split(end_date)
-                    move_file(first, folder_path)   
-                    # Split the metadata files
-                    for i, metadata_file in enumerate(file_list[1:]):
-                        if extensions[i] != '.log.xml':
-                            df = pd.read_csv(metadata_file)
-                            df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
-                            df_first = df[df['datetime'] < start_date]
-                            df_second = df[df['datetime'] >= start_date]
-                            df_first.to_csv(metadata_file)
-                            new_metadata_path = second.replace('.wav', extensions[i])
-                            df_second.to_csv(new_metadata_path)
-                        # Move the file (also if log)
-                        move_file(metadata_file, folder_path)    
-                  
-                else: 
-                    if sound_file.is_in_period([start_date, end_date]):
-                        sound_file.file.close()
-                        move_file(wav_file, folder_path)
-                        for metadata_file in file_list[1:]:
-                            move_file(metadata_file, folder_path)       
-                    else:
-                        pass         
+        start_date = datetime.datetime.strptime(period[0], '%d/%m/%Y %H:%M:%S')
+        end_date = datetime.datetime.strptime(period[1], '%d/%m/%Y %H:%M:%S')
+        print(start_date, end_date)
+        folder_path = os.path.join(self.acu_files.folder_path, folder_name)
+        self.acu_files.extensions = extensions
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            if sound_file.contains_date(start_date):
+                print('start!', wav_file)
+                # Split the sound file in two files
+                first, second = sound_file.split(start_date)
+                move_file(second, folder_path)   
+                # Split the metadata files
+                for i, metadata_file in enumerate(file_list[1:]):
+                    if extensions[i] != '.log.xml':
+                        df = pd.read_csv(metadata_file)
+                        df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
+                        df_first = df[df['datetime'] < start_date]
+                        df_second = df[df['datetime'] >= start_date]
+                        df_first.to_csv(metadata_file)
+                        new_metadata_path = second.replace('.wav', extensions[i])
+                        df_second.to_csv(new_metadata_path)
+                        # Move the file 
+                        move_file(new_metadata_path, folder_path)                         
+            elif sound_file.contains_date(end_date):  
+                print('end!', wav_file)          
+                # Split the sound file in two files
+                first, second = sound_file.split(end_date)
+                move_file(first, folder_path)   
+                # Split the metadata files
+                for i, metadata_file in enumerate(file_list[1:]):
+                    if extensions[i] != '.log.xml':
+                        df = pd.read_csv(metadata_file)
+                        df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
+                        df_first = df[df['datetime'] < start_date]
+                        df_second = df[df['datetime'] >= start_date]
+                        df_first.to_csv(metadata_file)
+                        new_metadata_path = second.replace('.wav', extensions[i])
+                        df_second.to_csv(new_metadata_path)
+                    # Move the file (also if log)
+                    move_file(metadata_file, folder_path)    
+                
+            else: 
+                if sound_file.is_in_period([start_date, end_date]):
+                    print('moving', wav_file)
+                    sound_file.file.close()
+                    move_file(wav_file, folder_path)
+                    for metadata_file in file_list[1:]:
+                        move_file(metadata_file, folder_path)       
+                else:
+                    pass         
 
         return 0 
 
@@ -343,7 +397,7 @@ class ASA:
         else:
             units = 'uPa^2' 
         
-        return self._plot_spectrum_mean(df=power, units=units, col_name='spectrum', output_name='SPL', dB=dB, save_path=save_path, log=log)
+        return self._plot_spectrum_mean(df=power, units=units, col_name='spectrum', output_name='SPLrms', dB=dB, save_path=save_path, log=log)
 
 
     def plot_mean_psd(self, dB=True, save_path=None, log=True, **kwargs):
@@ -382,7 +436,7 @@ class ASA:
         col_name : string 
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
-            Name of the label. 'PSD' or 'SPL'
+            Name of the label. 'PSD' or 'SPLrms'
         dB : boolean 
             If set to True, output in dB 
         log : boolean 
@@ -429,7 +483,7 @@ class ASA:
             units = 'dB re 1V %s uPa^2' % (self.p_ref)
         else:
             units = 'uPa^2' 
-        self._plot_spectrum_evolution(df=power_evolution, col_name='spectrum', output_name='SPL', units=units, dB=dB, save_path=save_path)
+        self._plot_spectrum_evolution(df=power_evolution, col_name='spectrum', output_name='SPLrms', units=units, dB=dB, save_path=save_path)
 
         return power_evolution
     
@@ -469,7 +523,7 @@ class ASA:
         col_name : string 
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
-            Name of the label. 'PSD' or 'SPL'
+            Name of the label. 'PSD' or 'SPLrms'
         dB : boolean 
             If set to True, output in dB 
         save_path : string or Path 
@@ -534,7 +588,8 @@ class ASA:
         cbar.set_label('Empirical Probability Density', rotation=90)
         
         # Plot the lines of the percentiles
-        plt.plot(fbands, p, label=percentiles)
+        if len(percentiles) != 0:
+            plt.plot(fbands, p, label=percentiles)
 
         plt.tight_layout()
         if save_path is not None: 
@@ -640,8 +695,14 @@ def move_file(file_path, new_folder_path):
     new_folder_path : string or Path 
         New folder destination (without the file name)
     """
-    file_name = os.path.split(file_path)[-1]
-    new_path = os.path.join(new_folder_path, file_name)
+    if not isinstance(file_path, pathlib.Path):
+        file_path = pathlib.Path(file_path)
+    if not isinstance(new_folder_path, pathlib.Path):
+        new_folder_path = pathlib.Path(new_folder_path)
+    file_name = file_path.name
+    if not os.path.exists(new_folder_path):
+        os.makedirs(new_folder_path)
+    new_path = new_folder_path.joinpath(file_name)
     os.rename(file_path, new_path)
 
 

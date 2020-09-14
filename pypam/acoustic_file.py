@@ -5,6 +5,8 @@ Institution : VLIZ (Vlaams Institute voor de Zee)
 """
 
 import os
+import pathlib
+import operator
 import datetime
 import acoustics
 import numpy as np
@@ -39,11 +41,18 @@ class AcuFile:
         self.hydrophone = hydrophone 
 
         # Get the date from the name
-        try :
-            file_name = sfile.name
-        except :
+        if type(sfile) == str:
             file_name = os.path.split(sfile)[-1]
-        self.date = hydrophone.get_name_date(file_name)
+        elif issubclass(sfile.__class__, pathlib.Path):
+            file_name = sfile.name
+        else:
+            raise Exception('The filename has to be either a Path object or a string')
+            
+        try:
+            self.date = hydrophone.get_name_datetime(file_name, utc=False)
+        except:
+            print('Filename %s does not match the %s file structure. Setting time to now...' % (file_name, self.hydrophone.name))
+            self.date = datetime.datetime.now()
 
         # Signal
         self.file_path = sfile
@@ -79,6 +88,32 @@ class AcuFile:
             Seconds of bintime desired to convert to samples
         """
         return int(bintime * self.fs)
+    
+
+    def instrument(self):
+        """
+        Instrument will be the name of the hydrophone
+        """
+        return self.hydrophone.name
+    
+
+    def total_time(self):
+        """
+        Return the total time in seconds of the file 
+        """
+        return self.samples2time(self.file.frames)
+
+
+    def samples2time(self, samples):
+        """
+        Return the samples according to the fs
+
+        Parameters
+        ----------
+        samples : Int
+            Number of samples to convert to seconds
+        """
+        return samples / self.fs
 
     
     def is_in_period(self, period):
@@ -127,14 +162,12 @@ class AcuFile:
         frames = self.samples(seconds)
         first_file = self.file.read(frames=frames)
         second_file = self.file.read()
-        # THIS HAS TO BE CHANGED FOR OTHER HYDROPHONES
-        old_date_string = self.date.strftime("%y%m%d%H%M%S")
-        new_date_string = date.strftime("%y%m%d%H%M%S")
-        new_file_path = str(self.file_path).replace(old_date_string, new_date_string)
+        self.file.close()
+        
+        new_file_name = self.hydrophone.get_new_name(filename=self.file_path.name, new_date=date)
+        new_file_path = self.file_path.parent.joinpath(new_file_name)
         sf.write(self.file_path, first_file, samplerate=self.fs)
         sf.write(new_file_path, second_file, samplerate=self.fs)
-
-        self.file.close()
 
         return self.file_path, new_file_path
     
@@ -182,8 +215,9 @@ class AcuFile:
             raise Exception('%s is not implemented as an outcome unit' % (units))
         
         return signal
-
     
+
+
     def downsample(self, signal, new_fs):
         """
         Reduce the sampling frequency
@@ -197,8 +231,12 @@ class AcuFile:
         """
         if new_fs > self.fs : 
             raise Exception('This is upsampling!')
-        new_lenght = int(signal.size * (new_fs / self.fs))
-        new_signal = sig.resample(signal, new_lenght)
+        ratio = (self.fs / new_fs)
+        if (ratio % 2) != 0:
+            new_lenght = int(signal.size * (new_fs / self.fs))
+            new_signal = sig.resample(signal, new_lenght)
+        else:
+            new_signal = sig.resample_poly(signal, up=1, down=int(ratio))
         return new_signal
     
 
@@ -247,7 +285,9 @@ class AcuFile:
         # Read if no signal is passed
         if wav is None :
             wav = self.signal('wav')
-        signal_db = 10*np.log10(wav**2) - self.hydrophone.sensitivity
+        uPa = self.wav2uPa(wav)
+        signal_db = 10*np.log10(uPa**2)
+        # signal_db = 10*np.log10(wav**2) + 20*np.log10(self.hydrophone.Vpp/2.0) - self.hydrophone.sensitivity - self.hydrophone.preamp_gain - 2*20*np.log10(self.ref)
         return signal_db
 
     
@@ -311,7 +351,96 @@ class AcuFile:
             nan_array = np.full((n_samples,), np.nan)
             nan_array[0 :signal.size] = signal
             return nan_array
+        
 
+    def _filter_and_downsample(self, signal):
+        """
+        Filter and downsample the signal
+        """
+        if self.band is not None : 
+            # Filter the signal
+            sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
+            signal = sig.sosfilt(sosfilt, signal)
+
+            # Downsample if frequency analysis to get better resolution
+            if self.band[1] < self.fs / 2: 
+                    new_fs = self.band[1] * 2
+                    signal = self.downsample(signal, new_fs)
+            else:
+                new_fs = self.fs
+        else:
+            new_fs = self.fs
+        
+        return new_fs, signal
+    
+
+    def timestamps_df(self, binsize=None, nfft=None, dB=None):
+        """
+        Return a pandas dataframe with the timestamps of each bin.
+        Parameters
+        ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
+        dB : None
+            Does not apply. It is ignored
+        nfft : None
+            Does not apply. It is ignored
+        """
+        if binsize is None :
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+        df = pd.DataFrame(columns=['datetime'])
+        time_list = []
+        i = 0
+        while i < self.file.frames: 
+            time = self.date + datetime.timedelta(seconds=i/self.fs)
+            time_list.append(time)
+            i += blocksize
+        df['datetime'] = time_list
+            
+        return df
+
+
+    def _apply_multiple(self, method_list, binsize=None, dB=True, **kwargs):
+        """
+        Apply the method name
+        """
+        if binsize is None :
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+
+        df = pd.DataFrame(columns=['datetime'] + method_list)
+        df = df.set_index('datetime')
+
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
+            # Read the signal and prepare it for analysis
+            signal = self.wav2uPa(wav=block)
+            
+            # If it is the last bit, fill or crop to get same size
+            if signal.size != blocksize:
+                signal = self.fill_or_crop(n_samples=blocksize, signal=signal)
+            _, signal = self._filter_and_downsample(signal)
+
+            time = self.date + datetime.timedelta(seconds=(blocksize * i)/self.fs)
+            for method_name in method_list:
+                f = operator.methodcaller(method_name, signal=signal, **kwargs)
+                output = f(self)
+                # Convert it to dB if applicatble
+                if dB:
+                    output = 10 * np.log10(output**2)
+                df.loc[time][method_name] = output
+            
+        return df
+    
+
+    def _apply(self, method_name, binsize=None, dB=True, **kwargs):
+        """
+        Apply one single method
+        """
+        return self._apply_multiple(self, method_list=[method_name], binsize=binsize, dB=dB, **kwargs)
+    
 
     def rms(self, binsize=None, dB=True):
         """
@@ -346,36 +475,38 @@ class AcuFile:
             
         return rms_df
 
-    
-    def get_timestamps_bins(self, binsize=None, nfft=None, dB=None):
+
+    def aci(self, binsize=None, nfft=1024):
         """
-        Return a df with the timestamps of each bin.
-        DataFrame with 'datetime' and 'instrument' as columns. 
-        Instrument will be the name of the hydrophone
+        Calculation of root mean squared value (rms) of the signal in uPa for each bin
+        Returns Dataframe with 'datetime' as index and 'rms' value as a column
 
         Parameters
         ----------
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
-        dB : None
-            Does not apply. It is ignored
-        nfft : None
-            Does not apply. It is ignored
+        dB : bool
+            If set to True the result will be given in dB, otherwise in uPa
         """
         if binsize is None :
             blocksize = self.file.frames
         else:
             blocksize = int(binsize * self.fs)
-        df = pd.DataFrame(columns=['datetime', 'instrument'])
-        time_list = []
+        window = sig.get_window('hann', nfft)
+        aci_df = pd.DataFrame(columns=['datetime', 'aci'])
+        aci_df = aci_df.set_index('datetime')
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
+            signal = self.wav2uPa(wav=block)
+            if signal.size != blocksize:
+                signal = self.fill_or_crop(n_samples=blocksize, signal=signal)
+            new_fs, signal = self._filter_and_downsample(signal)
             time = self.date + datetime.timedelta(seconds=(blocksize * i)/self.fs)
-            time_list.append(time)
-        df['datetime'] = time_list
-        df['instrument'] = self.hydrophone.name
+            _, _, Sxx = sig.spectrogram(signal, fs=new_fs, nfft=nfft, window=window, scaling='spectrum')
+            aci = calculate_aci(Sxx)
+            aci_df.loc[time] = aci
             
-        return df
-
+        return aci_df
+              
 
     def spectrogram(self, binsize=None, nfft=512, scaling='density', dB=True):
         """
@@ -415,19 +546,7 @@ class AcuFile:
             signal = self.wav2uPa(wav=block)
             if signal.size != blocksize:
                 signal = self.fill_or_crop(n_samples=blocksize, signal=signal)
-            if self.band is not None: 
-                # Filter the signal
-                sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
-                signal = sig.sosfilt(sosfilt, signal)
-                # If the max frequency is lower than the nyquist freq, downsample the signal 
-                # This will give better frequency resolution without loosing time resolution
-                if self.band[1] < self.fs / 2: 
-                    new_fs = self.band[1] * 2
-                    signal = self.downsample(signal, new_fs)
-                else:
-                    new_fs = self.fs
-            else:
-                new_fs = self.fs
+            new_fs, signal = self._filter_and_downsample(signal)
             
             freq, t, Sxx = sig.spectrogram(signal, fs=new_fs, nfft=nfft, window=window, scaling=scaling)
             if dB:
@@ -467,24 +586,13 @@ class AcuFile:
         else:
             blocksize = int(binsize * self.fs)
         
-        columns_df = pd.DataFrame({'variable' : 'percentiles', 'value' : percentiles})
+        if len(percentiles) != 0:
+            columns_df = pd.DataFrame({'variable' : 'percentiles', 'value' : percentiles})
+        else:
+            columns_df = pd.DataFrame()
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
             signal = self.wav2uPa(wav=block)
-            if self.band is not None: 
-                # If the max frequency is lower than the nyquist freq, downsample the signal 
-                # This will give better frequency resolution without loosing time resolution
-                if self.band[1] < self.fs / 2: 
-                    new_fs = self.band[1] * 2
-                    signal = self.downsample(signal, new_fs)
-                else:
-                    new_fs = self.fs
-                
-                if self.band[0] != 0 :
-                    # Filter the signal
-                    sosfilt = sig.butter(N=2, btype='highpass', Wn=self.band[0], analog=False, output='sos', fs=new_fs)
-                    signal = sig.sosfilt(sosfilt, signal)
-            else:
-                new_fs = self.fs
+            new_fs, signal = self._filter_and_downsample(signal)
             if bands == 'third_octaves':
                 # Return the power for each third octave band (log output)
                 fbands, spectra = acoustics.signal.third_octaves(signal, new_fs)
@@ -498,7 +606,8 @@ class AcuFile:
                     continue
                 fbands, spectra = sig.periodogram(signal, fs=new_fs, window=window, nfft=nfft, scaling=scaling)
                 # fbands, spectra = sig.welch(signal, fs=new_fs, window=window, nperseg=nfft, nfft=nfft, noverlap=noverlap, scaling=scaling)
-            
+            else:
+                raise Exception('%s is not accepted as bands!' % (bands))
             if dB:
                 spectra = 10 * np.log10(spectra)
             
@@ -507,17 +616,17 @@ class AcuFile:
             if self.band is not None :
                 low_freq = np.argmax(fbands >= self.band[0])
             else:
-                low_freq = 1
-            try :
-                spectra_df.loc[time, ('band_'+scaling, fbands[low_freq :])] = spectra[low_freq :]
-            except : 
+                low_freq = 1 
+            if i == 0: 
                 columns_df = pd.concat([columns_df, pd.DataFrame({'variable' :'band_'+scaling, 'value' :fbands[low_freq :]})])
                 columns = pd.MultiIndex.from_frame(columns_df)
                 spectra_df = pd.DataFrame(columns=columns)
                 spectra_df.loc[time, ('band_'+scaling, fbands[low_freq :])] = spectra[low_freq :]
-
+            else: 
+                spectra_df.loc[time, ('band_'+scaling, fbands[low_freq :])] = spectra[low_freq :]
             # Calculate the percentiles
-            spectra_df.loc[time, ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
+            if len(percentiles) != 0:
+                spectra_df.loc[time, ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
 
         return spectra_df
 
@@ -572,7 +681,7 @@ class AcuFile:
 
     def spd(self, binsize=None, h=0.1, nfft=512, dB=True, percentiles=[]):
         """
-        Return the empirical power density. 
+        Return the spectral probability density. 
 
         Parameters
         ----------
@@ -659,38 +768,6 @@ class AcuFile:
             events_df = events_df.append(events)
         
         return events_df
-    
-
-    # def level_vs_time(self, binsize=None, cal=0, ref=0):
-    #     """
-    #     Calculation of sound pressure level over time for whole file, with timestep dt (in seconds)
-    #     Assumes first channel in wavfile is sound pressure
-    #     """
-    #     if binsize is None :
-    #         blocksize = self.file.frames
-    #     else:
-    #         blocksize = int(binsize * self.fs)
-
-    #     y = []
-    #     N = int(self.file.frames / blocksize)
-    #     for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
-    #         signal = self.wav2uPa(wav=block)
-    #         if self.band is not None : 
-    #             # Filter the signal
-    #             sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
-    #             signal = sig.sosfilt(sosfilt, signal)
-    #             # If the max frequency is lower than the nyquist freq, downsample the signal 
-    #             # This will give better frequency resolution without loosing time resolution
-    #             if self.band[1] < self.fs / 2 : 
-    #                 new_fs = self.band[1] * 2
-    #                 signal = self.downsample(signal, new_fs)
-    #             else:
-    #                 new_fs = self.fs
-    #             # calculate level of first channel
-    #             z = z[ :,1]
-    #             y[i] = 10*np.log10((signal**2).sum()/N) - ref[0] + cal[0]
-
-    #     return y
 
 
     def find_calibration_tone(self, max_duration, freq, min_duration=10.0):
@@ -733,14 +810,14 @@ class AcuFile:
         if (end - start)/self.fs < min_duration : 
             return None, None
 
-        plt.figure()
-        plt.plot(filtered_signal, label='filtered_signal')
-        plt.plot(amplitude_envelope, label='envelope')
-        plt.axvline(x=start, color='red')
-        plt.axvline(x=end, color='blue')
-        plt.tight_layout()
-        plt.show()
-        plt.close()
+        # plt.figure()
+        # plt.plot(filtered_signal, label='filtered_signal')
+        # plt.plot(amplitude_envelope, label='envelope')
+        # plt.axvline(x=start, color='red')
+        # plt.axvline(x=end, color='blue')
+        # plt.tight_layout()
+        # plt.show()
+        # plt.close()
 
         return start, end
 
@@ -764,11 +841,26 @@ class AcuFile:
         """
         start, stop = self.find_calibration_tone(max_duration=max_duration, freq=freq, min_duration=min_duration)
         if start is not None : 
+            new_datetime = self.date + datetime.timedelta(seconds=self.samples2time(stop))
             calibration_signal, _ = sf.read(self.file_path, start=start, stop=stop)
             signal, _ = sf.read(self.file_path, start=stop+1, stop=-1)
             if save_path is not None : 
+                if save_path == 'auto':
+                    new_folder = self.file_path.parent.joinpath('formatted')
+                    ref_folder = new_folder.joinpath('ref')
+                    if not os.path.exists(new_folder):
+                        os.makedirs(new_folder)
+                    if not os.path.exists(ref_folder):
+                        os.makedirs(ref_folder)
+                    ref_name = self.file_path.name.replace('.wav', '_ref.wav')
+                    save_path = ref_folder.joinpath(ref_name)
+                    new_file_name = self.hydrophone.get_new_name(filename=self.file_path.name, new_date=new_datetime)
+                    new_file_path = new_folder.joinpath(new_file_name)
+                else:
+                    new_file_path = self.file_path._str.replace('.wav', '_cut.wav')
                 sf.write(file=save_path, data=calibration_signal, samplerate=self.fs)
-                sf.write(file=str(self.file_path), data=signal, samplerate=self.fs)
+                # Update datetime
+                sf.write(file=new_file_path, data=signal, samplerate=self.fs)
             return calibration_signal, signal
         
         else:
@@ -816,7 +908,7 @@ class AcuFile:
             units = 'dB %s uPa^2' % (self.ref)
         else:
             units = 'uPa^2' 
-        self._plot_spectrum(df=power, col_name='spectrum', output_name='SPL', units=units, dB=dB, log=log, save_path=save_path)
+        self._plot_spectrum(df=power, col_name='spectrum', output_name='SPLrms', units=units, dB=dB, log=log, save_path=save_path)
 
 
     def _plot_spectrum(self, df, col_name, output_name, units, dB=True, log=True, save_path=None):
@@ -828,7 +920,7 @@ class AcuFile:
         df : pandas DataFrame
             Dataframe resultant from psd or power spectrum calculation 
         col_name : string
-            Name of the column where the data is (scaling type)
+            Name of the column where the data is (scaling type) 'spectrum' or 'density'
         units : string
             Units of the data
         dB : boolean
@@ -840,7 +932,7 @@ class AcuFile:
         for i in df.index :
             fig = plt.figure()
             plt.plot(fbands, df.loc[i, 'band_'+col_name][fbands])
-            plt.title(col_name.capitalize())
+            plt.title('%s of bin %s' %(col_name.capitalize(), i.strftime("%Y-%m-%d %H:%M")))
             plt.xlabel('Frequency [Hz')
             plt.ylabel('%s [%s]' % (output_name, units))
 
@@ -873,7 +965,7 @@ class AcuFile:
             # Plot the patterns
             plt.figure()
             im = plt.pcolormesh(t, fbands, Sxx)
-            plt.title('Spectrogram of bin %s' % (time[i])) 
+            plt.title('Spectrogram of bin %s' % (time[i].strftime("%Y-%m-%d %H:%M"))) 
             plt.xlabel('Time [s]')
             plt.ylabel('Frequency [Hz]')
             if log: 
@@ -883,11 +975,11 @@ class AcuFile:
             else:
                 units = 'uPa'
             cbar = plt.colorbar(im)
-            cbar.set_label('SPL [%s]' % (units), rotation=90)
+            cbar.set_label('SPLrms [%s]' % (units), rotation=90)
             plt.tight_layout()
             plt.show()
             if save_path is not None : 
-                plt.savefig(save_path + str(time[i]))
+                plt.savefig(save_path + time[i].strftime("%Y-%m-%d %H:%M"))
             plt.close()   
         
 
@@ -916,7 +1008,7 @@ class AcuFile:
             im = plt.pcolormesh(fbands, edges_list[i], spd.T, cmap='BuPu')
             if log: 
                 plt.xscale('log')
-            plt.title('Spectral probability density at bin %s' % time[i])
+            plt.title('Spectral probability density at bin %s' % time[i].strftime("%Y-%m-%d %H:%M"))
             plt.xlabel('Frequency [Hz]')
             plt.ylabel('PSD [%s]' % (units))
             cbar = fig.colorbar(im)
@@ -926,10 +1018,12 @@ class AcuFile:
             plt.plot(fbands, p_list[i], label=percentiles)
 
             plt.tight_layout()
-            plt.show()
             if save_path is not None : 
                 plt.savefig(save_path)
+            else:
+                plt.show()
             plt.close()  
+
 
 
 @nb.jit
@@ -957,6 +1051,24 @@ def Sxx2spd(Sxx, h, percentiles, bin_edges):
             p[i,j] = bin_edges[np.argmax(cumsum > percentiles[j]*cumsum[-1])]
 
     return spd, p
+
+
+@nb.jit
+def calculate_aci(Sxx):
+    """
+    Return the aci of the signal
+    """
+    ACI = 0
+    for i in np.arange(Sxx.shape[1]):
+        D = 0
+        I = 0
+        for k in np.arange(1, Sxx.shape[0]): 
+            dk = np.abs(Sxx[k][i] - Sxx[k-1][i])
+            D += dk
+            I += Sxx[k][i]
+        ACI += D/I
+    
+    return ACI
 
 
 
