@@ -49,7 +49,7 @@ class AcuFile:
             raise Exception('The filename has to be either a Path object or a string')
             
         try:
-            self.date = hydrophone.get_name_datetime(file_name, utc=False)
+            self.date = hydrophone.get_name_datetime(file_name, utc=True)
         except:
             print('Filename %s does not match the %s file structure. Setting time to now...' % (file_name, self.hydrophone.name))
             self.date = datetime.datetime.now()

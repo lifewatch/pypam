@@ -19,23 +19,28 @@ from shapely.geometry import geo
 
 
 class SurveyLocation:
-    def __init__(self, geofile, **kwargs):
+    def __init__(self, geofile=None, **kwargs):
         """
         Location of all the survey points
         """
-        if type(geofile) == str:
-            geofile = pathlib.Path(geofile)
-        extension = geofile.suffix
-        if extension == '.gpx':
-            geotrackpoints = self.read_gpx(geofile)
-        elif extension == '.pkl':
-            geotrackpoints = self.read_pickle(geofile, **kwargs)
-        elif extension == '.csv':
-            geotrackpoints = self.read_csv(geofile, **kwargs)
+        if geofile is None:
+            self.geotrackpoints = None
         else:
-            raise Exception('Extension %s is not implemented!' % (extension))
+            if type(geofile) == str:
+                geofile = pathlib.Path(geofile)
+            extension = geofile.suffix
+            if extension == '.gpx':
+                geotrackpoints = self.read_gpx(geofile)
+            elif extension == '.pkl':
+                geotrackpoints = self.read_pickle(geofile, **kwargs)
+            elif extension == '.csv':
+                geotrackpoints = self.read_csv(geofile, **kwargs)
+            else:
+                raise Exception('Extension %s is not implemented!' % (extension))
+            
+            self.geotrackpoints = geotrackpoints
+            self.geofile = geofile
         
-        self.geotrackpoints = geotrackpoints
 
 
     def read_gpx(self, geofile):
@@ -46,26 +51,30 @@ class SurveyLocation:
         geotrackpoints.drop_duplicates(subset='time', inplace=True)
         geotrackpoints = geotrackpoints.set_index(pd.to_datetime(geotrackpoints['time']))
         geotrackpoints = geotrackpoints.sort_index()
+        geotrackpoints.dropna(subset=['geometry'], inplace=True)
 
         return geotrackpoints
 
     
-    def read_pickle(self, geofile, datetime_col='datetime'):
+    def read_pickle(self, geofile, datetime_col='datetime', crs='EPSG:4326'):
         df = pd.read_pickle(geofile)
-        geotrackpoints = geopandas.GeoDataFrame(df)
+        geotrackpoints = geopandas.GeoDataFrame(df, crs=crs)
         geotrackpoints[datetime_col] = pd.to_datetime(df[datetime_col])
         geotrackpoints = geotrackpoints.set_index(datetime_col)
         geotrackpoints = geotrackpoints.sort_index()
+        geotrackpoints.dropna(subset=['geometry'], inplace=True)
 
         return geotrackpoints
 
 
     def read_csv(self, geofile, datetime_col='datetime', lat_col='Lat', lon_col='Lon'):
         df = pd.read_csv(geofile)
-        geotrackpoints = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df[lat_col], df[lon_col]))
+        geotrackpoints = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df[lon_col], df[lat_col]))
         geotrackpoints[datetime_col] = pd.to_datetime(df[datetime_col])
         geotrackpoints = geotrackpoints.set_index(datetime_col)
         geotrackpoints = geotrackpoints.sort_index()
+        geotrackpoints.dropna(subset=[lat_col], inplace=True)
+        geotrackpoints.dropna(subset=[lon_col], inplace=True)
 
         return geotrackpoints
        
@@ -80,7 +89,6 @@ class SurveyLocation:
         df : DataFrame
             DataFrame from an ASA output
         """
-        # df['geo_time'] = 0
         for i in df.index:
             if 'datetime' in df.columns:
                 t = df.iloc[i].datetime
@@ -89,6 +97,9 @@ class SurveyLocation:
             idx = self.geotrackpoints.index.get_loc(t, method='nearest')
             df.loc[i, 'geo_time'] = self.geotrackpoints.index[idx]
         
+        good_points_mask = abs(df.geo_time - df.datetime) < datetime.timedelta(seconds=600)
+        if good_points_mask.sum() < len(df):
+            print('This file %s is not corresponding with the timestamps!' % (self.geofile))
         geo_df = self.geotrackpoints.reindex(df.geo_time)
         # geo_df['geo_time'] = df.geo_time.values
         geo_df = geo_df.merge(df, on='geo_time')
@@ -117,9 +128,9 @@ class SurveyLocation:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
         if df[column].dtype != float:
-            im = df.plot(column=column, ax=ax, legend=True, legend_kwds={'label': units}, alpha=0.5, categorical=True, cax=cax) 
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax) 
         else: 
-            im = df.plot(column=column, ax=ax, legend=True, legend_kwds={'label': units}, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax) 
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax) 
         if map_file is None:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite, reset_extent=False)
         else:

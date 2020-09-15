@@ -61,9 +61,12 @@ class ASA:
         self.band = band
 
         if period is not None:
-            start = datetime.datetime.strptime(period[0], '%Y-%m-%d %H:%M:%S')
-            end = datetime.datetime.strptime(period[1], '%Y-%m-%d %H:%M:%S')
-            self.period = [start, end]
+            if not isinstance(period[0], datetime.datetime):
+                start = datetime.datetime.strptime(period[0], '%Y-%m-%d %H:%M:%S')
+                end = datetime.datetime.strptime(period[1], '%Y-%m-%d %H:%M:%S')
+                self.period = [start, end]
+            else:
+                self.period = period
         else:
             self.period = None
         
@@ -126,11 +129,30 @@ class ASA:
             if sound_file.is_in_period(self.period):
                 try:
                     df_output = f(sound_file)
-                    df = df.append(df_output)
+                    df = df.append(df_output, ignore_index=True)
                 except:
                     print('%s had some problems and was not added to the evolution' % (wav_file))
         
         return df
+    
+
+    def start_end_timestamp(self):
+        """
+        Return the start and the end timestamps
+        """
+        file_list = self.acu_files[0]
+        wav_file = file_list[0]
+        print(wav_file)
+        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+        start_datetime = sound_file.date
+
+        file_list = self.acu_files[-1]
+        wav_file = file_list[0]
+        print(wav_file)
+        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+        end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
+        
+        return start_datetime, end_datetime
 
 
     def apply_to_all(self, method_name, **kwargs):
@@ -628,6 +650,15 @@ class ASA:
             self.extensions = extensions
 
 
+        def __getitem__(self, n):
+            """
+            Get n wav file
+            """
+            self.__iter__()
+            self.n = n
+            return self.__next__()
+
+
         def __iter__(self):
             """
             Iteration
@@ -681,6 +712,21 @@ class ASA:
                     return files_list
             else:
                 raise StopIteration
+        
+
+        def __len__(self):
+            if not self.zipped:
+                if self.recursive:
+                    n_files = len(list(self.folder_path.glob('**/*.wav')))
+                else:
+                    n_files = len(list(self.folder_path.glob('*.wav')))
+            else:
+                if self.recursive:
+                    n_files = len(list(self.folder.iterdir()))
+                else:
+                    zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
+                    n_files = len(zipped_folder.namelist())
+            return n_files            
 
 
 
@@ -699,10 +745,9 @@ def move_file(file_path, new_folder_path):
         file_path = pathlib.Path(file_path)
     if not isinstance(new_folder_path, pathlib.Path):
         new_folder_path = pathlib.Path(new_folder_path)
-    file_name = file_path.name
     if not os.path.exists(new_folder_path):
         os.makedirs(new_folder_path)
-    new_path = new_folder_path.joinpath(file_name)
+    new_path = new_folder_path.joinpath(file_path.name)
     os.rename(file_path, new_path)
 
 
