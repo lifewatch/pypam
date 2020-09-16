@@ -9,8 +9,8 @@ from pypam import acoustic_survey, geolocation
 
 
 # Sound Data
-st_folder27 = pathlib.Path('//archive/other_platforms/soundtrap/2020/COVID-19/200427 Zeekat/67416073.200427')
-st_folder29 = pathlib.Path('//archive/other_platforms/soundtrap/2020/COVID-19/200429 Zeekat/67416073.200429')
+st_folder27 = pathlib.Path('//archive/other_platforms/soundtrap/2020/COVID-19/200427 Zeekat_2/67416073.200427_2')
+st_folder29 = pathlib.Path('//archive/other_platforms/soundtrap/2020/COVID-19/200429 Zeekat_2/67416073.200429')
 
 zipped = False
 include_dirs = False
@@ -27,7 +27,7 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 
 def cut_and_separate_files(folder_path, hydrophone):
     hydrophone = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
-    asa = acoustic_survey.ASA(hydrophone=hydrophone, folder_path=folder_path, zipped=zipped, include_dirs=include_dirs)
+    asa = acoustic_survey.ASA(hydrophone=hydrophone, folder_path=folder_path, zipped=zipped, include_dirs=include_dirs, utc=False)
     metadata = pd.read_csv(folder_path.joinpath('metadata.csv'))
     for index in metadata.index:
         row = metadata.iloc[index]
@@ -41,6 +41,6 @@ if __name__ == "__main__":
     """
     Order the SoundTrap files in different folders
     """
-    cut_and_separate_files(st_folder27, soundtrap)
-    # cut_and_separate_files(st_folder29, soundtrap)
+    # cut_and_separate_files(st_folder27, soundtrap)
+    cut_and_separate_files(st_folder29, soundtrap)
 

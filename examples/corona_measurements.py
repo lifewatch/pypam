@@ -153,6 +153,6 @@ if __name__ == "__main__":
         start, end, duration = get_location_metadata(hydrophone=hydrophone, folder_path=row['data_folder'])
         metadata.at[index, ['start_datetime', 'end_datetime', 'duration']] = [start, end, duration]
     # overview.to_pickle(save_data_path)
-    metadata.to_csv('C:/Users/cleap/Documents/PhD/Projects/COVID-19/summary_recordings2.csv', index=False)
+    metadata.to_csv('C:/Users/cleap/Documents/PhD/Projects/COVID-19/summary_recordings.csv', index=False)
 
     # plot_data_location_overview(save_data_path)

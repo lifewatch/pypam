@@ -25,7 +25,7 @@ from pypam import _event
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None):
+    def __init__(self, sfile, hydrophone, ref, band=None, utc=True):
         """
         Data recorded in a wav file.
 
@@ -36,6 +36,10 @@ class AcuFile:
         hydrophone : Object for the class hydrophone
         ref : Float
             Reference pressure or acceleration in uPa or um/s
+        band : list
+            Band to filter 
+        utc : boolean
+            Set to True if working on UTC and not localtime
         """
         # Save hydrophone model 
         self.hydrophone = hydrophone 
@@ -49,7 +53,7 @@ class AcuFile:
             raise Exception('The filename has to be either a Path object or a string')
             
         try:
-            self.date = hydrophone.get_name_datetime(file_name, utc=True)
+            self.date = hydrophone.get_name_datetime(file_name, utc=utc)
         except:
             print('Filename %s does not match the %s file structure. Setting time to now...' % (file_name, self.hydrophone.name))
             self.date = datetime.datetime.now()
@@ -64,6 +68,9 @@ class AcuFile:
 
         # Band selected to study
         self.band = band
+
+        # Work on local time or UTC time
+        self.utc = utc
     
 
     def __getattr__(self, name):
@@ -113,7 +120,7 @@ class AcuFile:
         samples : Int
             Number of samples to convert to seconds
         """
-        return samples / self.fs
+        return float(samples) / self.fs
 
     
     def is_in_period(self, period):
@@ -506,7 +513,62 @@ class AcuFile:
             aci_df.loc[time] = aci
             
         return aci_df
-              
+
+
+    def dynamic_range(self, binsize=None, dB=True):
+        """
+        Compute the dynamic range of each bin
+        Returns a dataframe with datetime as index and dr as column
+
+        Parameters
+        ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
+        dB : bool
+            If set to True the result will be given in dB, otherwise in uPa
+        """
+        if binsize is None :
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+        dr_df = pd.DataFrame(columns=['datetime', 'dr'])
+        dr_df = dr_df.set_index('datetime')
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)): 
+            signal = self.wav2uPa(wav=block)
+            if self.band is not None : 
+                # Filter the signal
+                sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
+                signal = sig.sosfilt(sosfilt, signal)
+            time = self.date + datetime.timedelta(seconds=(blocksize * i)/self.fs)
+            dr = signal.max() - signal.min()
+            # Convert it to dB if applicatble
+            if dB:
+                dr = 10 * np.log10(dr**2)
+            dr_df.loc[time] = dr
+            
+        return dr_df
+
+
+    def cumulative_dynamic_range(self, binsize=None, dB=True):
+        """
+        Compute the cumulative dynamic range for each bin
+        
+        Parameters
+        ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
+        dB : bool
+            If set to True the result will be given in dB, otherwise in uPa^2
+
+        Returns
+        -------
+        cumsum : 
+            Cumulative sum of dynamic range of each bin
+        """
+        cumdr = self.dynamic_range(binsize=binsize, dB=dB)
+        dynamic_range['cumsum_dr'] = dynamic_range.dr.cumsum()
+        return dynamic_range
+
 
     def spectrogram(self, binsize=None, nfft=512, scaling='density', dB=True):
         """
@@ -1073,7 +1135,7 @@ def calculate_aci(Sxx):
 
 
 class HydroFile(AcuFile):
-    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None):
+    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True):
         """
         Sound data recorded in a wav file with a hydrophone.
 
@@ -1087,12 +1149,12 @@ class HydroFile(AcuFile):
         band: tuple or list
             Lowcut, Highcut. Frequency band to analyze
         """
-        super().__init__(sfile, hydrophone, p_ref, band)
+        super().__init__(sfile, hydrophone, p_ref, band, utc)
 
 
 
 class MEMSFile(AcuFile):
-    def __init__(self, sfile, hydrophone, acc_ref=1.0, band=None):
+    def __init__(self, sfile, hydrophone, acc_ref=1.0, band=None, utc=True):
         """
         Acceleration data recorded in a wav file.
 
@@ -1106,7 +1168,7 @@ class MEMSFile(AcuFile):
         band: tuple or list
             Lowcut, Highcut. Frequency band to analyze        
         """
-        super().__init__(sfile, hydrophone, acc_ref, band)
+        super().__init__(sfile, hydrophone, acc_ref, band, utc)
     
     
     def integrate_acceleration(self):

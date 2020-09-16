@@ -15,8 +15,6 @@ include_dirs = False
 
 # GPS Location data
 gps = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-18 092212.gpx"
-gps_sailing = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/garmin/GPX/Current/sailing_trip.gpx"
-map_file = 'C:/Users/cleap/Documents/Data/Maps/BPNS_wrecks.tif'
 
 
 # Hydrophone Setup
@@ -50,25 +48,4 @@ save_folder = 'C:/Users/cleap/Documents/PhD/Projects/COVID-19/SPD/'
 
 
 if __name__ == "__main__":
-    """
-    Cut all the files according to the periods
-    """
-    for campaign in os.listdir(bk_folder):
-      campaign_path = os.path.join(bk_folder, campaign)
-      if os.path.isdir(campaign_path):
-        for station in os.listdir(campaign_path):
-          station_path = os.path.join(campaign_path, station)
-          if os.path.isdir(station_path):
-            asa = acoustic_survey.ASA(hydrophone=bk, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
-                                      binsize=binsize, nfft=nfft, period=period, band=band)
-            asa.plot_spd(log=log, h=h, percentiles=percentiles, save_path=os.path.join(save_folder, station+'.png'))
-
-    for campaign in os.listdir(st_folder):
-      campaign_path = os.path.join(st_folder, campaign)
-      if os.path.isdir(campaign_path):  
-        for station in os.listdir(campaign_path):
-          station_path = os.path.join(campaign_path, station)
-          if os.path.isdir(station_path):
-            asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=station_path, zipped=zipped, include_dirs=include_dirs, \
-                                      binsize=binsize, nfft=nfft, period=period, band=band)
-            asa.plot_spd(log=log, h=h, percentiles=percentiles, save_path=os.path.join(save_folder, station+'.png'))
+  

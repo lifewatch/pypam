@@ -29,7 +29,7 @@ from pypam.acoustic_file import HydroFile, MEMSFile, MEMS3axFile, Sxx2spd
 
 
 class ASA:
-    def __init__(self, hydrophone, folder_path, zipped=False, include_dirs=False, p_ref=1.0, binsize=None, nfft=1.0, period=None, band=None):
+    def __init__(self, hydrophone, folder_path, zipped=False, include_dirs=False, p_ref=1.0, binsize=None, nfft=1.0, period=None, band=None, utc=True):
         """ 
         Init a AcousticSurveyAnalysis (ASA)
 
@@ -70,6 +70,8 @@ class ASA:
         else:
             self.period = None
         
+        self.utc = utc
+        
 
 
     def evolution_multiple(self, method_list, **kwargs):
@@ -89,7 +91,7 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
                 try:
                     df_output = f(sound_file)
@@ -125,7 +127,7 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
                 try:
                     df_output = f(sound_file)
@@ -143,13 +145,13 @@ class ASA:
         file_list = self.acu_files[0]
         wav_file = file_list[0]
         print(wav_file)
-        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
         print(wav_file)
-        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
         
         return start_datetime, end_datetime
@@ -171,7 +173,7 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
                 try:
                     f(sound_file)
@@ -187,14 +189,14 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
                 try:
                     total_time += sound_file.total_time()
                 except:
                     print('%s had some problems and was not added to the analysis' % (wav_file))  
 
-            return total_time      
+        return total_time      
 
 
     def mean_rms(self, **kwargs):
@@ -265,7 +267,7 @@ class ASA:
         self.acu_files.extensions = extensions
         for file_list in self.acu_files:
             wav_file = file_list[0]
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.contains_date(start_date):
                 print('start!', wav_file)
                 # Split the sound file in two files
@@ -279,7 +281,7 @@ class ASA:
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
-                        new_metadata_path = second.replace('.wav', extensions[i])
+                        new_metadata_path = pathlib.Path(second._str.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
                         # Move the file 
                         move_file(new_metadata_path, folder_path)                         
@@ -296,7 +298,7 @@ class ASA:
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
-                        new_metadata_path = second.replace('.wav', extensions[i])
+                        new_metadata_path = pathlib.Path(second._str.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
                     # Move the file (also if log)
                     move_file(metadata_file, folder_path)    
@@ -488,7 +490,7 @@ class ASA:
         return fbands, mean_spec, percentiles
 
 
-    def plot_power_spectrum_evolution(self, dB=True, save_path=None, **kwargs):
+    def plot_power_ltsa(self, dB=True, save_path=None, **kwargs):
         """
         Plot the evolution of the power frequency distribution
 
@@ -505,12 +507,12 @@ class ASA:
             units = 'dB re 1V %s uPa^2' % (self.p_ref)
         else:
             units = 'uPa^2' 
-        self._plot_spectrum_evolution(df=power_evolution, col_name='spectrum', output_name='SPLrms', units=units, dB=dB, save_path=save_path)
+        self._plot_ltsa(df=power_evolution, col_name='spectrum', output_name='SPLrms', units=units, dB=dB, save_path=save_path)
 
         return power_evolution
     
 
-    def plot_psd_evolution(self, dB=True, save_path=None, **kwargs):
+    def plot_psd_ltsa(self, dB=True, save_path=None, **kwargs):
         """
         Plot the evolution of the psd 
 
@@ -527,12 +529,12 @@ class ASA:
             units = 'dB re 1V %s uPa^2/Hz' % (self.p_ref)
         else:
             units = 'uPa^2/Hz' 
-        self._plot_spectrum_evolution(df=psd_evolution, col_name='density', output_name='PSD', units=units, dB=dB, save_path=save_path)
+        self._plot_ltsa(df=psd_evolution, col_name='density', output_name='PSD', units=units, dB=dB, save_path=save_path)
 
         return psd_evolution
     
 
-    def _plot_spectrum_evolution(self, df, col_name, output_name, units, dB=True, save_path=None):
+    def _plot_ltsa(self, df, col_name, output_name, units, dB=True, save_path=None):
         """
         Plot the evolution of the df containing percentiles and band values
 
