@@ -1,6 +1,8 @@
 import os
+import pathlib
 import pandas as pd
 import pyhydrophone as pyhy
+import matplotlib.pyplot as plt
 
 
 from pypam import acoustic_survey, geolocation
@@ -8,10 +10,9 @@ from pypam import acoustic_survey, geolocation
 
 
 # Sound Analysis
-st_folder = 'C:/Users/cleap/Documents/Data/Sound Data/SoundTrap/COVID-19/'
-bk_folder = 'C:/Users/cleap/Documents/Data/Sound Data/B&K/COVID-19/'
+st_folder = pathlib.Path('//archive/other_platforms/soundtrap/2020/COVID-19/200505 Tripode/Westhinder')
 zipped = False
-include_dirs = False
+include_dirs = True
 
 # GPS Location data
 gps = "C:/Users/cleap/Documents/Data/Tracks/COVID-19/Track_2020-05-18 092212.gpx"
@@ -34,18 +35,33 @@ bk = pyhy.BruelKjaer(name=bk_name, model=bk_model, amplif=amplif0, serial_number
 REF_PRESSURE = 1e-6 
 
 # SURVEY PARAMETERS
-nfft = 1024
-binsize = 120.0
+nfft = 512
+binsize = 10.0
 h = 1.0
-percentiles = []
-period = None
-band = [10, 48000]
-log = False
-
-
-save_folder = 'C:/Users/cleap/Documents/PhD/Projects/COVID-19/SPD/'
-
+band_lf = [100, 500]
+band_mf = [500, 2000]
+band_hf = [2000, 20000]
 
 
 if __name__ == "__main__":
-  
+  # asa_lf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_lf, include_dirs=include_dirs)
+  # evo_lf = asa_lf.evolution_multiple(method_list=['rms', 'dynamic_range'])
+
+  # evo_lf['cumsum'] = evo_lf.dynamic_range.cumsum()
+  # evo_lf.plot(subplots=True)
+  # plt.show()
+
+  asa_mf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_mf, include_dirs=include_dirs)
+  evo_mf = asa_mf.evolution_multiple(method_list=['rms', 'dynamic_range'])
+
+  evo_mf['cumsum'] = evo_mf.dynamic_range.cumsum()
+  evo_mf.plot(subplots=True)
+  plt.show()
+
+  asa_hf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_hf, include_dirs=include_dirs)
+  evo_hf = asa_hf.evolution_multiple(method_list=['rms', 'dynamic_range'])
+
+  evo_hf['cumsum'] = evo_hf.dynamic_range.cumsum()
+  evo_hf.plot(subplots=True)
+  plt.show()
+

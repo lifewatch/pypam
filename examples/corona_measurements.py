@@ -1,13 +1,7 @@
-import os
-import glob
 import pathlib
-import datetime
 import geopandas
 import pandas as pd
-import pandas as pd
-from pandas.io.pickle import read_pickle
 import pyhydrophone as pyhy
-import matplotlib.pyplot as plt
 
 
 from pypam import acoustic_survey, geolocation
@@ -53,7 +47,7 @@ binsize = 120.0
 band = None
 
 
-def get_data_locations(hydrophone, folder_path, gps_path, datetime_col, lat_col, lon_col, method):
+def get_data_locations(hydrophone, location, folder_path, gps_path, datetime_col, lat_col, lon_col, method):
     """
     Return a db with a data overview of the folder 
     """
@@ -69,9 +63,10 @@ def get_data_locations(hydrophone, folder_path, gps_path, datetime_col, lat_col,
     asa_points = geoloc.add_survey_location(asa_evo)
 
     asa_points['instrument'] = hydrophone.name
+    asa_points['location'] = location
     asa_points['method'] = method
 
-    return asa_points[['datetime', 'instrument', 'method', 'geometry']]
+    return asa_points[['datetime', 'instrument', 'location', 'method', 'geometry']]
 
 
 def get_data_overview(hydrophone, folder_path, gps_path, datetime_col, lat_col, lon_col, method):
@@ -141,18 +136,18 @@ if __name__ == "__main__":
             hydrophone = upam
         else:
             raise Exception('Hydrophone %s is not defined!' % (row['instrument']))
-        # overview_location = get_data_locations(hydrophone=hydrophone, 
-        #                                     location=row['location'],
-        #                                     folder_path=row['data_folder'], 
-        #                                     gps_path=row['gps_folder'],
-        #                                     datetime_col=row['datetime_col'],
-        #                                     lat_col=row['lat_col'],
-        #                                     lon_col=row['lon_col'],
-        #                                     method=row['method'])
-        # overview = overview.append(overview_location)
+        overview_location = get_data_locations(hydrophone=hydrophone, 
+                                            location=row['location'],
+                                            folder_path=row['data_folder'], 
+                                            gps_path=row['gps_folder'],
+                                            datetime_col=row['datetime_col'],
+                                            lat_col=row['lat_col'],
+                                            lon_col=row['lon_col'],
+                                            method=row['method'])
+        overview = overview.append(overview_location)
         start, end, duration = get_location_metadata(hydrophone=hydrophone, folder_path=row['data_folder'])
         metadata.at[index, ['start_datetime', 'end_datetime', 'duration']] = [start, end, duration]
-    # overview.to_pickle(save_data_path)
+    overview.to_pickle(save_data_path)
     metadata.to_csv('C:/Users/cleap/Documents/PhD/Projects/COVID-19/summary_recordings.csv', index=False)
 
-    # plot_data_location_overview(save_data_path)
+    plot_data_location_overview(save_data_path)

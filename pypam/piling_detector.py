@@ -29,7 +29,7 @@ class PilingDetector:
         ref : float
             Noise reference value, in db 
         threshold : float
-            Threshold above ref value which one it is considered piling, in dB
+            Threshold above ref value which one it is considered piling, in db
         dt : float
             Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
         continuous : boolean
@@ -90,7 +90,7 @@ class PilingDetector:
         Parameters
         ----------
         levels : numpy array 
-            Signal level in dB for each dt
+            Signal level in db for each dt
         """
         indices = np.where(np.array(levels) >= self.threshold)[0]
         times = indices * self.dt
@@ -145,14 +145,14 @@ class PilingDetector:
         fig, ax = plt.subplots(2,1)
         ax[0].plot(np.arange(len(levels))*self.dt, levels)
         ax[0].set_xlabel('Time [s]')
-        ax[0].set_ylabel('Sound pressure level [dB]')
+        ax[0].set_ylabel('Sound pressure level [db]')
         
         numbers = np.zeros(thresholds.size)
         for i, th in enumerate(thresholds):
             numbers[i] = len(self.find_time_events(levels, self.dt, th, self.min_duration))
             
         ax[1].plot(thresholds, numbers)
-        ax[1].set_xlabel('Threshold [dB]')
+        ax[1].set_xlabel('Threshold [db]')
         ax[1].set_ylabel('Number of events')
 
 
@@ -163,7 +163,7 @@ class PilingDetector:
         Parameters
         ----------
         iref : number or file path
-            Either a number (e.g. -6 dB rms), or the filename of a single-channel wavfile containing
+            Either a number (e.g. -6 db rms), or the filename of a single-channel wavfile containing
             a calibration tone (mono, assumed to be clean, i.e. not too much background noise)
         """
         if os.path.exists(iref):
