@@ -4,15 +4,14 @@ Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
+from pypam._event import Event
+
 import os
 import datetime
 import numpy as np
 import pandas as pd
 import soundfile as sf
-import scipy.signal as sig
 import matplotlib.pyplot as plt
-
-from pypam._event import Event
 
 plt.style.use('ggplot')
 
@@ -34,6 +33,8 @@ class PilingDetector:
             Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
         continuous : boolean
             Weather the file is continuous or not (TO BE IMPLEMENTED)
+        p_ref : float
+            Reference pressure in uPa
         """
         self.min_duration = min_duration 
         self.reference_level(ref)
@@ -43,10 +44,10 @@ class PilingDetector:
         self.p_ref = 1.0
         self.before = 0.0
         self.after = dt
+        self.p_ref = p_ref
         # self.bands = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250',
         #              '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500',
         #              '3150', '4000', '5000', '6300', '8000', '10000', '12500']
-
 
     def detect_events(self, x=None, fs=None, datetime_start=None):
         """
@@ -81,7 +82,6 @@ class PilingDetector:
 
         return events
 
-
     def find_time_events(self, levels):
         """
         Estimation of events that exceed the threshold,
@@ -96,7 +96,6 @@ class PilingDetector:
         times = indices * self.dt
 
         return times
-
 
     def load_event(self, x, fs, t, before, after):
         """
@@ -127,7 +126,6 @@ class PilingDetector:
         
         return event
 
-
     def plot_events(self, levels, thresholds):
         """
         Function that plots the number of events for a range of thresholds
@@ -155,7 +153,6 @@ class PilingDetector:
         ax[1].set_xlabel('Threshold [db]')
         ax[1].set_ylabel('Number of events')
 
-
     def reference_level(self, iref):
         """
         Calculation of reference level
@@ -181,7 +178,6 @@ class PilingDetector:
         
         return oref
 
-
     class Blocks:
         def __init__(self, x, fs, dt):
             """
@@ -200,7 +196,6 @@ class PilingDetector:
             self.x = x
             self.nsamples = x.shape[0]
 
-
         def __iter__(self):
             """
             Iteration
@@ -208,7 +203,6 @@ class PilingDetector:
             self.n = 0
 
             return self
-            
 
         def __next__(self):
             """
@@ -220,4 +214,3 @@ class PilingDetector:
                 return block
             else:
                 raise StopIteration
-
