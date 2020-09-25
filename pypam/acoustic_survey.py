@@ -31,6 +31,7 @@ class ASA:
                  nfft=1.0,
                  period=None,
                  band=None,
+                 freq_resolution='all',
                  utc=True):
         """ 
         Init a AcousticSurveyAnalysis (ASA)
@@ -61,6 +62,7 @@ class ASA:
         self.binsize = binsize
         self.nfft = nfft
         self.band = band
+        self.freq_resolution = freq_resolution
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
@@ -87,18 +89,16 @@ class ASA:
             Any accepted parameter for the method_name
         """
         df = pd.DataFrame()
-        f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize, **kwargs)
+        f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
+                                  nfft=self.nfft, **kwargs)
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
-                try:
-                    df_output = f(sound_file)
-                    df = df.append(df_output)
-                except FileNotFoundError:
-                    raise Warning('%s had some problems and was not added to the evolution' % wav_file)
+                df_output = f(sound_file)
+                df = df.append(df_output)
         
         return df
 
@@ -120,11 +120,8 @@ class ASA:
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
-                try:
-                    df_output = f(sound_file)
-                    df = df.append(df_output, ignore_index=True)
-                except FileNotFoundError:
-                    print('%s had some problems and was not added to the evolution' % wav_file)
+                df_output = f(sound_file)
+                df = df.append(df_output, ignore_index=True)
         
         return df
 
@@ -160,17 +157,14 @@ class ASA:
             Any accepted parameter for the method_name
 
         """
-        f = operator.methodcaller(method_name, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
-                try:
-                    f(sound_file)
-                except FileNotFoundError:
-                    print('%s had some problems and was not added to the analysis' % wav_file)
+                f(sound_file)
 
     def duration(self):
         """
@@ -183,10 +177,7 @@ class ASA:
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period):
-                try:
-                    total_time += sound_file.total_time()
-                except FileNotFoundError:
-                    raise Warning('%s had some problems and was not added to the analysis' % wav_file)
+                total_time += sound_file.total_time()
 
         return total_time
 
@@ -413,7 +404,7 @@ class ASA:
             units = 'uPa^2' 
         
         return self._plot_spectrum_mean(df=power, units=units, col_name='spectrum',
-                                        output_name='SPLrms', db=db, save_path=save_path, log=log)
+                                        output_name='SPLrms', save_path=save_path, log=log)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -436,9 +427,9 @@ class ASA:
             units = 'uPa^2' 
         
         return self._plot_spectrum_mean(df=psd, units=units, col_name='density',
-                                        output_name='PSD', db=db, save_path=save_path, log=log)
+                                        output_name='PSD', save_path=save_path, log=log)
 
-    def _plot_spectrum_mean(self, df, units, col_name, output_name, db=True, save_path=None, log=True):
+    def _plot_spectrum_mean(self, df, units, col_name, output_name, save_path=None, log=True):
         """
         Plot the mean spectrum
 
@@ -452,8 +443,6 @@ class ASA:
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
             Name of the label. 'PSD' or 'SPLrms'
-        db : boolean 
-            If set to True, output in db 
         log : boolean 
             If set to True, y axis in logarithmic scale
         save_path : string or Path 
@@ -466,6 +455,9 @@ class ASA:
         plt.title(col_name.capitalize())
         plt.xlabel('Frequency [Hz')
         plt.ylabel('%s [%s]' % (output_name, units))
+
+        if log:
+            plt.xscale('log')
 
         # Plot the percentile lines
         percentiles = df['percentiles'].mean(axis=0).values
@@ -498,7 +490,7 @@ class ASA:
         else:
             units = 'uPa^2' 
         self._plot_ltsa(df=power_evolution, col_name='spectrum',
-                        output_name='SPLrms', units=units, db=db, save_path=save_path)
+                        output_name='SPLrms', units=units, save_path=save_path)
 
         return power_evolution
 
@@ -520,11 +512,11 @@ class ASA:
         else:
             units = 'uPa^2/Hz' 
         self._plot_ltsa(df=psd_evolution, col_name='density',
-                        output_name='PSD', units=units, db=db, save_path=save_path)
+                        output_name='PSD', units=units, save_path=save_path)
 
         return psd_evolution
 
-    def _plot_ltsa(self, df, col_name, output_name, units, db=True, save_path=None):
+    def _plot_ltsa(self, df, col_name, output_name, units, save_path=None):
         """
         Plot the evolution of the df containing percentiles and band values
 
@@ -538,8 +530,6 @@ class ASA:
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
             Name of the label. 'PSD' or 'SPLrms'
-        db : boolean 
-            If set to True, output in db 
         save_path : string or Path 
             Where to save the output graph. If None, it is not saved
         """

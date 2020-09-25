@@ -1,11 +1,8 @@
-import os
 import pathlib
 import pandas as pd
 import pyhydrophone as pyhy
 
-
-from pypam import acoustic_survey, geolocation
-
+from pypam import acoustic_survey
 
 
 # Sound Data
@@ -24,17 +21,16 @@ serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
 
 
-
 def cut_and_separate_files(folder_path, hydrophone):
-    hydrophone = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
-    asa = acoustic_survey.ASA(hydrophone=hydrophone, folder_path=folder_path, zipped=zipped, include_dirs=include_dirs, utc=False)
+    asa = acoustic_survey.ASA(hydrophone=hydrophone, folder_path=folder_path, zipped=zipped,
+                              include_dirs=include_dirs, utc=False)
     metadata = pd.read_csv(folder_path.joinpath('metadata.csv'))
     for index in metadata.index:
         row = metadata.iloc[index]
         folder_name = row['Location']
         period = (row['start'], row['stop'])
-        asa.cut_and_place_files_period(period=period, folder_name=folder_name, extensions=['.accel.csv', '.temp.csv', '.log.xml'])
-
+        asa.cut_and_place_files_period(period=period, folder_name=folder_name,
+                                       extensions=['.accel.csv', '.temp.csv', '.log.xml'])
 
 
 if __name__ == "__main__":
@@ -43,4 +39,3 @@ if __name__ == "__main__":
     """
     # cut_and_separate_files(st_folder27, soundtrap)
     cut_and_separate_files(st_folder29, soundtrap)
-
