@@ -36,32 +36,25 @@ REF_PRESSURE = 1e-6
 
 # SURVEY PARAMETERS
 nfft = 512
-binsize = 10.0
+binsize = 20
 h = 1.0
 band_lf = [100, 500]
 band_mf = [500, 2000]
 band_hf = [2000, 20000]
+bands_list = [band_lf, band_mf, band_hf]
 
 
 if __name__ == "__main__":
-  # asa_lf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_lf, include_dirs=include_dirs)
-  # evo_lf = asa_lf.evolution_multiple(method_list=['rms', 'dynamic_range'])
+  # asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize,
+  #                           nfft=nfft, include_dirs=include_dirs)
+  # evo = asa.evolution_multiple(method_list=['rms', 'dynamic_range', 'aci', 'sel', 'peak'], band_list=bands_list)
 
-  # evo_lf['cumsum'] = evo_lf.dynamic_range.cumsum()
-  # evo_lf.plot(subplots=True)
-  # plt.show()
+  evo = pd.read_pickle('df_test.pkl', compression='gzip')
+  for method in evo.columns.get_level_values('method'):
+    evo[method].plot(linewidth=1.0)
+    plt.title(method)
+    plt.show()
+    plt.close()
+  print('hello')
 
-  asa_mf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_mf, include_dirs=include_dirs)
-  evo_mf = asa_mf.evolution_multiple(method_list=['rms', 'dynamic_range'])
-
-  evo_mf['cumsum'] = evo_mf.dynamic_range.cumsum()
-  evo_mf.plot(subplots=True)
-  plt.show()
-
-  asa_hf = acoustic_survey.ASA(hydrophone=soundtrap, folder_path=st_folder, binsize=binsize, nfft=nfft, band=band_hf, include_dirs=include_dirs)
-  evo_hf = asa_hf.evolution_multiple(method_list=['rms', 'dynamic_range'])
-
-  evo_hf['cumsum'] = evo_hf.dynamic_range.cumsum()
-  evo_hf.plot(subplots=True)
-  plt.show()
 

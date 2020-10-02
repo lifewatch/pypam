@@ -4,77 +4,19 @@ Authors : Clea Parcerisas
 Institution : VLIZ (Vlaams Institute voor de Zee)
 """
 
+__author__ = "Clea Parcerisas"
+__version__ = "0.1"
+__credits__ = "Clea Parcerisas"
+__email__ = "clea.parcerisas@vliz.be"
+__status__ = "Development"
+
 import numpy as np
 import numba as nb
 import scipy.signal as sig
-# import skcuda.fft as cu_fft
 
-
-# def compute_spectrogram(signal,
-#                         fs,
-#                         window,
-#                         nfft=512,
-#                         noverlap=256,
-#                         scaling=False,
-#                         centered=False,
-#                         normalized=False):
-#     """
-#     Compute a spectrogram of an audio signal.
-#     Return a list of list of values as the spectrogram, and a list of frequencies.
-#     Parameters
-#     ---------
-#     signal: np.array
-#         Signal to be processed
-#     fs : int
-#         Sampling frequency
-#     nfft: int
-#         Length of the fft window (in samples)
-#     noverlap: int
-#         hop size of the fft window (in samples)
-#     window: np.array
-#         Window to be used
-#     scaling: boolean
-#         If set to True, the spectrogram is computed as the square of the magnitude of the fft.
-#         If set to False, it is the magnitude of the fft.
-#     centered: boolean
-#         If set as true, each resulting fft is centered on the corresponding sliding window
-#     normalized: boolean
-#         If set as true, divide all values by the maximum value
-#     """
-#     half_nfft = int(nfft/2)
-#
-#     if centered:
-#         time_shift = int(nfft/2)
-#         # centered
-#         times = np.arange(time_shift, len(signal)+1-time_shift, noverlap)
-#         # centered frames
-#         frames = np.zeros((times.size, nfft))
-#         for i, t in enumerate(times):
-#             frames[i, :] = signal[t-time_shift: t+time_shift]*window
-#     else:
-#         times = np.arange(0, len(signal)-nfft+1, noverlap)
-#         frames = np.zeros((times.size, nfft))
-#         for i, t in enumerate(times):
-#             frames[i, :] = signal[t: t+nfft]*window
-#
-#     spectro = np.zeros((half_nfft, len(frames)))
-#     for i, frame in enumerate(frames):
-#         spectro[:, i] = abs(np.fft.rfft(frame, nfft))[0:half_nfft]**2
-#
-#     if scaling:
-#         spectro = spectro**2
-#
-#     spectro = np.transpose(spectro)
-#
-#     if normalized:
-#         spectro = spectro/np.max(spectro)
-#
-#     # Vector of frequency: bins in the spectrogram
-#     frequencies = np.zeros(half_nfft)
-#     for e in range(half_nfft):
-#         frequencies[e] = e * fs/2.0 / float(nfft / 2)
-#
-#     return frequencies, spectro
+BANDS = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250',
+         '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500',
+         '3150', '4000', '5000', '6300', '8000', '10000', '12500']
 
 
 @nb.jit
@@ -104,7 +46,61 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
     return spd, p
 
 
+@nb.njit
+def rms(signal):
+    """
+    Return the rms value of the signal
+
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the rms value
+    """
+    return np.sqrt(np.mean(signal ** 2))
+
+
+@nb.njit
+def dynamic_range(signal):
+    """
+    Return the dynamic range of the signal
+
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the dynamic range
+    """
+    return np.max(signal) - np.min(signal)
+
+
+@nb.njit
+def sel(signal, fs):
+    """
+    Return the Sound Exposure Level
+
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the dynamic range
+    fs : int
+        Sampling frequency
+    """
+    return np.sum(signal ** 2) / fs
+
+
 @nb.jit
+def peak(signal):
+    """
+    Return the peak value
+
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the dynamic range
+    """
+    return np.max(np.abs(signal))
+
+
+@nb.njit
 def calculate_aci(sxx):
     """
     Return the aci of the signal
@@ -115,14 +111,14 @@ def calculate_aci(sxx):
         i = 0
         for k in np.arange(1, sxx.shape[0]):
             dk = np.abs(sxx[k][j] - sxx[k-1][j])
-            d += dk
-            i += sxx[k][j]
-        aci_val += d/i
+            d = d + dk
+            i = i + sxx[k][j]
+        aci_val = aci_val + d/i
     
     return aci_val
 
 
-@nb.jit
+@nb.njit
 def set_gain(wave, gain):
     """
     Apply the gain in the same magnitude
@@ -137,7 +133,7 @@ def set_gain(wave, gain):
     return wave * gain
 
 
-@nb.jit
+@nb.njit
 def set_gain_db(wave, gain):
     """
     Apply the gain in db
@@ -152,7 +148,7 @@ def set_gain_db(wave, gain):
     return wave + gain
 
 
-@nb.jit
+@nb.njit
 def set_gain_upa_db(wave, gain):
     """
     Apply the gain in db to the signal in upa
@@ -161,7 +157,7 @@ def set_gain_upa_db(wave, gain):
     return gain(wave, gain)
 
 
-@nb.jit
+@nb.njit
 def to_mag(wave, ref):
     """
     Compute the upa from the db signals
@@ -176,8 +172,8 @@ def to_mag(wave, ref):
     return np.power(10, wave / 20.0 - np.log10(ref))
 
 
-@nb.jit
-def to_db(wave, ref, square=False):
+@nb.njit
+def to_db(wave, ref=1.0, square=False):
     """
     Compute the db from the upa signal
 

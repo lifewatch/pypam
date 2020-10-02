@@ -6,3 +6,4 @@ csv
 *.pkl
 pypam.egg-info/
 docs/build/
+examples/
