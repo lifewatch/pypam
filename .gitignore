@@ -8,3 +8,4 @@ pypam.egg-info/
 docs/build/
 venv/
 .idea/
+examples/

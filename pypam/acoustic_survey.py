@@ -4,8 +4,15 @@ Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
+__author__ = "Clea Parcerisas"
+__version__ = "0.1"
+__credits__ = "Clea Parcerisas"
+__email__ = "clea.parcerisas@vliz.be"
+__status__ = "Development"
+
 from pypam import utils
 from pypam.acoustic_file import HydroFile
+from pypam import loud_event_detector
 
 import os
 import pathlib
@@ -96,10 +103,10 @@ class ASA:
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
-            if sound_file.is_in_period(self.period):
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output)
-        
+                df.to_pickle('df_test.pkl', compression='gzip')
         return df
 
     def evolution(self, method_name, **kwargs):
@@ -119,7 +126,7 @@ class ASA:
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
-            if sound_file.is_in_period(self.period):
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
         
@@ -163,7 +170,7 @@ class ASA:
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
-            if sound_file.is_in_period(self.period):
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 f(sound_file)
 
     def duration(self):
@@ -176,7 +183,7 @@ class ASA:
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
-            if sound_file.is_in_period(self.period):
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 total_time += sound_file.total_time()
 
         return total_time
@@ -255,7 +262,7 @@ class ASA:
             wav_file = file_list[0]
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
-            if sound_file.contains_date(start_date):
+            if sound_file.contains_date(start_date) and sound_file.file.frames > 0:
                 print('start!', wav_file)
                 # Split the sound file in two files
                 first, second = sound_file.split(start_date)
@@ -300,6 +307,62 @@ class ASA:
                 else:
                     pass
         return 0
+
+    def detect_piling_events(self, min_separation, threshold, dt):
+        """
+        Return a DataFrame with all the piling events and their rms, sel and peak values
+
+        Parameters
+        ----------
+        min_separation : float
+            Minimum separation of the event, in seconds
+        threshold : float
+            Threshold above ref value which one it is considered piling, in db
+        dt : float
+            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+        """
+        df = pd.DataFrame()
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
+                df_output = sound_file.detect_piling_events(min_separation=min_separation, threshold=threshold,
+                                                            dt=dt, binsize=self.binsize)
+                df = df.append(df_output)
+        return df
+
+    def detect_ship_events(self, min_duration, threshold):
+        """
+        Return a DataFrame with all the piling events and their rms, sel and peak values
+
+        Parameters
+        ----------
+        min_duration : float
+            Minimum separation of the event, in seconds
+        threshold : float
+            Threshold above ref value which one it is considered piling, in db
+        """
+        df = pd.DataFrame()
+        last_end = None
+        detector = loud_event_detector.ShipDetector(min_duration=min_duration, threshold=threshold)
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+            start_datetime = sound_file.date
+            end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
+            if last_end is not None:
+                if (last_end - start_datetime).total_seconds() < min_duration:
+                   detector.reset()
+            last_end = end_datetime
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
+                df_output = sound_file.detect_ship_events(min_duration=min_duration, threshold=threshold,
+                                                          binsize=self.binsize, detector=detector, verbose=False)
+                df = df.append(df_output)
+        return df
 
     def plot_all_files(self, method_name, **kwargs):
         """
@@ -360,7 +423,7 @@ class ASA:
         daily_patterns = pd.DataFrame()
         for date in dates: 
             for hour in hours:
-                rms = rms_evolution[(rms_evolution['date'] == date) & (rms_evolution['hour'] == hour)]['rms']
+                rms = rms_evolution[(rms_evolution['date'] == date) and (rms_evolution['hour'] == hour)]['rms']
                 daily_patterns.loc[date, hour] = rms
         
         # Plot the patterns

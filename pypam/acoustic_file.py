@@ -3,8 +3,17 @@ Module : acoustic_file.py
 Authors : Clea Parcerisas
 Institution : VLIZ (Vlaams Institute voor de Zee)
 """
+
+__author__ = "Clea Parcerisas"
+__version__ = "0.1"
+__credits__ = "Clea Parcerisas"
+__email__ = "clea.parcerisas@vliz.be"
+__status__ = "Development"
+
 from pypam import utils
 from pypam.signal import Signal
+from pypam import impulse_detector
+from pypam import loud_event_detector
 
 import os
 import pathlib
@@ -13,7 +22,6 @@ import operator
 import numpy as np
 import pandas as pd
 import soundfile as sf
-import scipy.signal as sig
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 
@@ -200,6 +208,7 @@ class AcuFile:
         # First time, read the file and store it to not read it over and over
         if self.wav is None:
             self.wav = self.file.read()
+            self.file.seek(0)
         if units == 'wav':
             signal = self.wav
         elif units == 'db':
@@ -354,6 +363,7 @@ class AcuFile:
                     output = f(signal)
                     df.at[time_bin, (method_name, signal.band_n)] = output
 
+        self.file.seek(0)
         return df
 
     def _apply(self, method_name, binsize=None, db=True, band_list=None, **kwargs):
@@ -453,6 +463,8 @@ class AcuFile:
             Lenght of the fft window in samples. Power of 2. 
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
         
         Returns
         -------
@@ -483,7 +495,7 @@ class AcuFile:
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             sxx_list.append(sxx)
             time.append(time_bin)
-
+        self.file.seek(0)
         return time, freq, t, sxx_list
 
     def _spectrum(self, scaling='density', binsize=None, nfft=512, db=True, percentiles=None):
@@ -535,7 +547,7 @@ class AcuFile:
             # Calculate the percentiles
             if len(percentiles) != 0:
                 spectra_df.at[time_bin, ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
-
+        self.file.seek(0)
         return spectra_df
 
     def psd(self, binsize=None, nfft=512, db=True, percentiles=None):
@@ -633,6 +645,8 @@ class AcuFile:
 
         Parameters
         ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
         signal : numpy array 
             Signal to be correlated with 
         fs_signal : int
@@ -642,31 +656,91 @@ class AcuFile:
         fs = 1
         return fs
 
-    def detect_events(self, detector, binsize=None, **kwargs):
+    def detect_piling_events(self, min_separation, threshold, dt, binsize=None, **kwargs):
         """
-        Detect events. Returns a DataFrame with all the events and their information
+        Detect piling events
 
         Parameters
         ----------
-        detector : object 
-            The detector must have a detect_events() function that returns a DataFrame with events information
         binsize : float, in sec
-            Time window considered for detections. If set to None, all the file will be processed in one
+            Time window considered. If set to None, only one value is returned
+        min_separation : float
+            Minimum separation of the event, in seconds
+        threshold : float
+            Threshold above ref value which one it is considered piling, in db
+        dt : float
+            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
         """
         if binsize is None:
             blocksize = self.file.frames
         else:
             blocksize = int(binsize * self.fs)
 
-        events_df = pd.DataFrame()
+        detector = impulse_detector.PilingDetector(min_separation=min_separation, threshold=threshold, dt=dt)
+        total_events = pd.DataFrame()
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
-            signal = self.wav2upa(wav=block)
-            # TBI : Process the signal 
-            start_time = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
-            events = detector.detect_events(signal, self.fs, datetime_start=start_time, **kwargs)
-            events_df = events_df.append(events)
+            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            print('bin %s' % time_bin)
+            signal_upa = self.wav2upa(wav=block)
+            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal.set_band(band=self.band)
+            events_df = detector.detect_events(signal)
+            events_df['datetime'] = pd.to_timedelta(events_df.index, unit='seconds') + self.date
+            events_df = events_df.set_index('datetime')
+            total_events = total_events.append(events_df)
+        self.file.seek(0)
+        return total_events
 
-        return events_df
+    def detect_ship_events(self, binsize=None, threshold=160.0, min_duration=10.0, detector=None, verbose=False):
+        """
+        Find the loud events of the file
+        Parameters
+        ----------
+        threshold : float
+            Threshold above which it is considered loud
+        min_duration : float
+            Minimum duration of the event, in seconds
+        """
+        if binsize is None:
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+
+        if detector is None:
+            detector = loud_event_detector.ShipDetector(min_duration=min_duration, threshold=threshold)
+        total_events = pd.DataFrame()
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            print('bin %s' % time_bin)
+            signal_upa = self.wav2upa(wav=block)
+            signal = Signal(signal=signal_upa, fs=self.fs)
+            events_df = detector.detect_events(signal)
+            events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
+            events_df = events_df.set_index('start_datetime')
+            total_events = total_events.append(events_df)
+
+        self.file.seek(0)
+        if verbose:
+            _, fbands, t, sxx_list = self.spectrogram(nfft=1024, scaling='spectrum', db=True, mode='fast')
+            sxx = sxx_list[0]
+            plt.figure()
+            im = plt.pcolormesh(t, fbands, sxx)
+            cbar = plt.colorbar(im)
+            cbar.set_label('SPLrms [dB re 1 uPa]', rotation=90)
+            plt.title('Spectrogram')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Frequency [Hz]')
+            plt.yscale('log')
+            for index in events_df.index:
+                row = events_df.loc[index]
+                start_x = (row['start_datetime'] - self.date).total_seconds()
+                end_x = start_x + row['duration']
+                plt.axvline(x=start_x, color='red', label='detected start')
+                plt.axvline(x=end_x, color='blue', label='detected stop')
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+        return total_events
 
     def find_calibration_tone(self, max_duration, freq, min_duration=10.0):
         """
@@ -687,10 +761,9 @@ class AcuFile:
         tone_samples = self.samples(max_duration)
         self.file.seek(0)
         first_part = self.file.read(frames=tone_samples)
-        sosfilt = sig.butter(N=1, btype='bandpass', Wn=[low_freq, high_freq], analog=False, output='sos', fs=self.fs)
-        filtered_signal = sig.sosfilt(sosfilt, first_part)
-        analytic_signal = sig.hilbert(filtered_signal)
-        amplitude_envelope = np.abs(analytic_signal)
+        signal = Signal(first_part, self.fs)
+        signal.set_band(band=[low_freq, high_freq])
+        amplitude_envelope = signal.envelope()
         possible_points = np.zeros(amplitude_envelope.shape)
         possible_points[np.where(amplitude_envelope >= 0.05)] = 1
         start_points = np.where(np.diff(possible_points) == 1)[0]
@@ -716,7 +789,7 @@ class AcuFile:
         # plt.tight_layout()
         # plt.show()
         # plt.close()
-
+        self.file.seek(0)
         return start, end
 
     def cut_calibration_tone(self, max_duration, freq, min_duration=10.0, save_path=None):
@@ -758,6 +831,7 @@ class AcuFile:
                 sf.write(file=save_path, data=calibration_signal, samplerate=self.fs)
                 # Update datetime
                 sf.write(file=new_file_path, data=signal, samplerate=self.fs)
+            self.file.seek(0)
             return calibration_signal, signal
 
         else:
