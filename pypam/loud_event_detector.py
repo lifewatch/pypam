@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 plt.style.use('ggplot')
 
+
 class LoudEventDetector:
     def __init__(self, min_duration, band, threshold=150):
         """
@@ -42,7 +43,7 @@ class LoudEventDetector:
         """
         self._last_start = 0
 
-    def detect_events(self, signal):
+    def detect_events(self, signal, verbose=False):
         """
         Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
         The time resolution is dt
@@ -51,13 +52,16 @@ class LoudEventDetector:
         ----------
         signal : Signal object
             Signal to analyze
+        verbose : bool
+            Set to True to plot the detection signals
         """
         signal.set_band(band=self.band)
         window = int(self.min_duration * signal.fs / 20.0)
         times_envelope, envelope = signal.average_envelope(window=window)
         envelope = utils.to_db(envelope, ref=1.0, square=True)
-        possible_points = np.zeros(envelope.shape)
-        possible_points[np.where(envelope >= self.threshold)] = 1
+        envelope_diff = np.diff(envelope)
+        possible_points = np.zeros(envelope_diff.shape)
+        possible_points[np.where(np.abs(envelope_diff) >= self.threshold)] = 1
         start_points = times_envelope[np.where(np.diff(possible_points) == 1)[0]]
         end_points = times_envelope[np.where(np.diff(possible_points) == -1)[0]]
 
@@ -74,40 +78,44 @@ class LoudEventDetector:
         events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
         for i, start_i in enumerate(start_points):
             duration = (end_points[i] - start_i)
-            if duration > self.min_duration:
+            if duration >= self.min_duration:
                 event = self.load_event(s=signal, n_start=int(start_i*signal.fs),
                                         duration_samples=int(duration*signal.fs))
                 rms, sel, peak = event.analyze()
                 events_df.at[i] = {'start_seconds': start_i, 'end_seconds': end_points[i],
                                    'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
 
-        # fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-        # fig, ax = plt.subplots(3, 1, sharex=True)
-        # im = ax[0].pcolormesh(t, fbands, sxx)
-        # ax[0].set_title('Spectrogram')
-        # ax[0].set_ylabel('Frequency [Hz]')
-        # ax[0].set_yscale('log')
-        # ax[1].plot(np.arange(len(signal.signal)) / signal.fs, utils.to_db(signal.signal, ref=1.0,
-        #                                                                   square=True), label='signal')
-        # ax[1].plot(times_envelope, envelope, label='Average envelope window %s' % window)
-        # ax[1].set_title('Signal')
-        # ax[1].set_ylabel('Lrms [dB]')
-        # ax[1].legend(loc='right')
-        # ax[2].plot(times_envelope, possible_points, color='green', label='loud events')
-        # for index in events_df.index:
-        #     row = events_df.loc[index]
-        #     ax[2].axvline(x=row['start_seconds'], color='red', label='detected start')
-        #     ax[2].axvline(x=row['end_seconds'], color='blue', label='detected stop')
-        # ax[2].set_title('Detections')
-        # ax[2].legend(loc='right')
-        # ax[2].set_xlabel('Time [s]')
-        # plt.tight_layout()
-        # plt.show()
-        # plt.close()
+        if verbose:
+            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
+            fig, ax = plt.subplots(4, 1, sharex=True)
+            ax[0].pcolormesh(t, fbands, sxx)
+            ax[0].set_title('Spectrogram')
+            ax[0].set_ylabel('Frequency [Hz]')
+            ax[0].set_yscale('log')
+            ax[1].plot(np.arange(len(signal.signal)) / signal.fs, utils.to_db(signal.signal, ref=1.0,
+                                                                              square=True), label='signal')
+            ax[1].plot(times_envelope, envelope, label='Average envelope window %s' % window)
+            ax[1].set_title('Signal')
+            ax[1].set_ylabel('Lrms [dB]')
+            ax[1].legend(loc='right')
+            ax[2].plot(times_envelope[1:], possible_points, color='green', label='loud events')
+            for index in events_df.index:
+                row = events_df.loc[index]
+                ax[2].axvline(x=row['start_seconds'], color='red')
+                ax[2].axvline(x=row['end_seconds'], color='blue')
+            ax[2].set_title('Detections')
+            ax[2].legend(loc='right')
+            ax[2].set_xlabel('Time [s]')
+            if len(events_df) > 0:
+                events_df[['rms', 'peak', 'sel']].plot(ax=ax[3])
+            plt.tight_layout()
+            plt.show()
+            plt.close()
 
         return events_df
 
-    def load_event(self, s, n_start, duration_samples):
+    @staticmethod
+    def load_event(s, n_start, duration_samples):
         """
         Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
         return an object event
@@ -130,5 +138,6 @@ class LoudEventDetector:
 
 
 class ShipDetector(LoudEventDetector):
-    def __init__(self, min_duration=100, threshold=160.0):
+    def __init__(self, min_duration=100, threshold=10.0):
         super().__init__(min_duration=min_duration, band=[50, 500], threshold=threshold)
+

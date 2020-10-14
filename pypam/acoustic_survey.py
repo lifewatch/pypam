@@ -308,7 +308,7 @@ class ASA:
                     pass
         return 0
 
-    def detect_piling_events(self, min_separation, threshold, dt):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None):
         """
         Return a DataFrame with all the piling events and their rms, sel and peak values
 
@@ -316,6 +316,8 @@ class ASA:
         ----------
         min_separation : float
             Minimum separation of the event, in seconds
+        max_duration : float
+            Maximum duration of the event, in seconds
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         dt : float
@@ -329,7 +331,7 @@ class ASA:
                                    p_ref=self.p_ref, band=self.band, utc=self.utc)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = sound_file.detect_piling_events(min_separation=min_separation, threshold=threshold,
-                                                            dt=dt, binsize=self.binsize)
+                                                            max_duration=max_duration, dt=dt, binsize=self.binsize)
                 df = df.append(df_output)
         return df
 
@@ -346,7 +348,7 @@ class ASA:
         """
         df = pd.DataFrame()
         last_end = None
-        detector = loud_event_detector.ShipDetector(min_duration=min_duration, threshold=threshold)
+        detector = loud_event_detector.LoudPilingDetector(min_duration=min_duration, threshold=threshold)
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
@@ -360,7 +362,7 @@ class ASA:
             last_end = end_datetime
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = sound_file.detect_ship_events(min_duration=min_duration, threshold=threshold,
-                                                          binsize=self.binsize, detector=detector, verbose=False)
+                                                          binsize=self.binsize, detector=detector, verbose=True)
                 df = df.append(df_output)
         return df
 
