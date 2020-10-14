@@ -1,3 +1,4 @@
+import pathlib
 import sqlite3
 import datetime
 import pandas as pd
@@ -10,7 +11,7 @@ from pypam import acoustic_file
 
 
 # Recordings information 
-upam_folder = '//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/20200608-PR-E02-AMUC-M002/Data/uPAM/20200608'
+upam_folder = pathlib.Path('//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/20200608-PR-E02-AMUC-M002/Data/uPAM/20200610')
 zipped = False
 include_dirs = False
 
@@ -70,6 +71,7 @@ binsize = None
 nfft = 2048
 band = [20, 10000]
 percentiles = [10, 50, 90]
+period = ['2020-06-10 09:45:00', '2020-06-10 11:00:00']
 
 
 if __name__ == "__main__":
@@ -79,10 +81,20 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------------------------
     # Event detection and analysis
     # -------------------------------------------------------------------------------------------
-
-    asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs)
-    df = asa.detect_piling_events(min_separation=0.1, threshold=150, dt=0.001)
+    asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs,
+                              binsize=60.0, period=period)
+    df = asa.detect_piling_events(max_duration=0.3, min_separation=1.0, threshold=20, dt=0.5)
     df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
+    plt.show()
+    print('hello!')
+
+    # for folder in upam_folder.glob('**/*/'):
+    #     asa = acoustic_survey.ASA(hydrophone=upam, folder_path=folder, zipped=zipped, include_dirs=include_dirs,
+    #                               binsize=60.0)
+    #     df = asa.detect_ship_events(min_duration=0.1, threshold=160)
+    #     df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
+    #     plt.show()
+    #     print('hello!')
 
     # -------------------------------------------------------------------------------------------
     # Blast vs No blast sound analysis

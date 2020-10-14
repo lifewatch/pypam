@@ -656,7 +656,7 @@ class AcuFile:
         fs = 1
         return fs
 
-    def detect_piling_events(self, min_separation, threshold, dt, binsize=None, **kwargs):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None, **kwargs):
         """
         Detect piling events
 
@@ -666,6 +666,8 @@ class AcuFile:
             Time window considered. If set to None, only one value is returned
         min_separation : float
             Minimum separation of the event, in seconds
+        max_duration : float
+            Maximum duration of the event, in seconds
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         dt : float
@@ -676,7 +678,8 @@ class AcuFile:
         else:
             blocksize = int(binsize * self.fs)
 
-        detector = impulse_detector.PilingDetector(min_separation=min_separation, threshold=threshold, dt=dt)
+        detector = impulse_detector.PilingDetector(min_separation=min_separation, max_duration=max_duration,
+                                                   threshold=threshold, dt=dt)
         total_events = pd.DataFrame()
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
@@ -684,7 +687,7 @@ class AcuFile:
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs)
             signal.set_band(band=self.band)
-            events_df = detector.detect_events(signal)
+            events_df = detector.detect_events(signal, method='snr', verbose=True)
             events_df['datetime'] = pd.to_timedelta(events_df.index, unit='seconds') + self.date
             events_df = events_df.set_index('datetime')
             total_events = total_events.append(events_df)
@@ -714,29 +717,31 @@ class AcuFile:
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs)
-            events_df = detector.detect_events(signal)
+            events_df = detector.detect_events(signal, verbose=True)
             events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
             events_df = events_df.set_index('start_datetime')
             total_events = total_events.append(events_df)
 
         self.file.seek(0)
         if verbose:
-            _, fbands, t, sxx_list = self.spectrogram(nfft=1024, scaling='spectrum', db=True, mode='fast')
-            sxx = sxx_list[0]
-            plt.figure()
-            im = plt.pcolormesh(t, fbands, sxx)
-            cbar = plt.colorbar(im)
-            cbar.set_label('SPLrms [dB re 1 uPa]', rotation=90)
-            plt.title('Spectrogram')
-            plt.xlabel('Time [s]')
-            plt.ylabel('Frequency [Hz]')
-            plt.yscale('log')
+            # _, fbands, t, sxx_list = self.spectrogram(nfft=4096*4, scaling='spectrum', db=True, mode='fast')
+            # sxx = sxx_list[0]
+            fig, ax = plt.subplots(2, 1, sharex=True)
+            # im = ax[0].pcolormesh(t, fbands, sxx)
+            # cbar = plt.colorbar(im)
+            # cbar.set_label('SPLrms [dB re 1 uPa]', rotation=90)
+            ax[0].set_title('Spectrogram')
+            ax[0].set_xlabel('Time [s]')
+            ax[0].set_ylabel('Frequency [Hz]')
+            ax[0].set_yscale('log')
             for index in events_df.index:
                 row = events_df.loc[index]
                 start_x = (row['start_datetime'] - self.date).total_seconds()
                 end_x = start_x + row['duration']
-                plt.axvline(x=start_x, color='red', label='detected start')
-                plt.axvline(x=end_x, color='blue', label='detected stop')
+                ax[0].axvline(x=start_x, color='red', label='detected start')
+                ax[0].axvline(x=end_x, color='blue', label='detected stop')
+            if len(events_df) > 0:
+                events_df[['rms', 'sel', 'peak']].plot(ax=ax[2])
             plt.tight_layout()
             plt.show()
             plt.close()

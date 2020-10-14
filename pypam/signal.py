@@ -15,6 +15,7 @@ from pypam import acoustic_indices
 
 import operator
 import numpy as np
+import noisereduce as nr
 import scipy.signal as sig
 import sklearn.linear_model as linear_model
 import sklearn.metrics as metrics
