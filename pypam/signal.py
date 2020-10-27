@@ -17,8 +17,11 @@ import operator
 import numpy as np
 import noisereduce as nr
 import scipy.signal as sig
-import sklearn.linear_model as linear_model
+import matplotlib.pyplot as plt
 import sklearn.metrics as metrics
+import sklearn.linear_model as linear_model
+
+plt.style.use('ggplot')
 
 
 class Signal:
@@ -37,6 +40,8 @@ class Signal:
         self._processed = {}
         self._reset_spectro()
 
+        self.set_band(None)
+
     def __getattr__(self, item):
         """
         Return the current band
@@ -45,6 +50,8 @@ class Signal:
             return self.bands_list[self.band_n]
         elif item == 'duration':
             return len(self.signal) / self.fs
+        elif item == 'times':
+            return np.arange(self.signal.shape[0]) / self.fs
         else:
             return self.__dict__[item]
 
@@ -75,6 +82,13 @@ class Signal:
         self._reset_spectro()
         self._filter_and_downsample()
 
+    def reset_original(self):
+        """
+        Reset the signal to the original band and process
+        """
+        original_band = self.bands_list[0]
+        self.set_band(original_band)
+
     def _fill_or_crop(self, n_samples):
         """
         Crop the signal to the number specified or fill it with Nan values in case it is too short
@@ -85,13 +99,14 @@ class Signal:
             Number of desired samples
         """
         if self.signal.size >= n_samples:
-            self.signal = self.signal[0:n_samples]
-            self._processed[self.band_n].append('crop')
+            s = self.signal[0:n_samples]
+            # self._processed[self.band_n].append('crop')
         else:
             nan_array = np.full((n_samples,), np.nan)
             nan_array[0:self.signal.size] = self.signal
-            self.signal = nan_array
-            self._processed[self.band_n].append('fill')
+            s = nan_array
+            # self._processed[self.band_n].append('fill')
+        return s
 
     def _downsample(self, new_fs):
         """
@@ -163,7 +178,7 @@ class Signal:
         """
         f = operator.methodcaller(method_name, **kwargs)
         result = []
-        for block in self.Blocks(blocksize=window):
+        for block in self.blocks(blocksize=window):
             val = f(block)
             result.append(val)
         result = np.array(result)
@@ -241,16 +256,18 @@ class Signal:
         """
         real_size = self.signal.size
         if self.signal.size < nfft:
-            self._fill_or_crop(n_samples=nfft)
+            s = self._fill_or_crop(n_samples=nfft)
         else:
             if mode == 'fast':
                 # Choose the closest power of 2 to clocksize for faster computing
                 optim_len = int(2 ** np.ceil(np.log2(real_size)))
                 # Fill the missing values with 0
-                self._fill_or_crop(n_samples=optim_len)
+                s = self._fill_or_crop(n_samples=optim_len)
+            else:
+                s = self.signal
         window = sig.get_window('hann', nfft)
-        freq, t, sxx = sig.spectrogram(self.signal, fs=self.fs, nfft=nfft,
-                                            window=window, scaling=scaling)
+        freq, t, sxx = sig.spectrogram(s, fs=self.fs, nfft=nfft,
+                                       window=window, scaling=scaling)
         if self.band is not None:
             low_freq = np.argmax(freq >= self.band[0])
         else:
@@ -262,7 +279,7 @@ class Signal:
         if db:
             self.sxx = utils.to_db(self.sxx, ref=1.0, square=False)
 
-    def spectrogram(self, nfft=512, scaling='density', db=True, mode='fast'):
+    def spectrogram(self, nfft=512, scaling='density', db=True, mode='fast', force_calc=False):
         """
         Return the spectrogram of the signal (entire file)
 
@@ -276,12 +293,14 @@ class Signal:
             Can be set to 'spectrum' or 'density' depending on the desired output
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
+        force_calc : bool
+            Set to True if the computation has to be forced
 
         Returns
         -------
         freq, t, sxx
         """
-        if self.sxx is None:
+        if self.sxx is None or force_calc:
             self._spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
 
         return self.freq, self.t, self.sxx
@@ -308,9 +327,11 @@ class Signal:
             real_size = self.signal.size
             optim_len = int(2 ** np.ceil(np.log2(real_size)))
             # Fill the missing values with 0
-            self._fill_or_crop(n_samples=optim_len)
+            s = self._fill_or_crop(n_samples=optim_len)
+        else:
+            s = self.signal
         window = sig.get_window('boxcar', nfft)
-        freq, psd = sig.periodogram(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
+        freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
         if self.band is not None:
             low_freq = np.argmax(self.freq >= self.band[0])
         else:
@@ -321,7 +342,7 @@ class Signal:
         if db:
             self.psd = utils.to_db(self.psd, ref=1.0, square=False)
 
-    def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast', **kwargs):
+    def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast', force_calc=False, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and each percentile,
@@ -339,12 +360,13 @@ class Signal:
             List of all the percentiles that have to be returned. If set to empty list, no percentiles is returned
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
-
+        force_calc : bool
+            Set to True if the computation has to be forced
         Returns
         -------
         Frequency array, psd values, percentiles values
         """
-        if self.psd is None:
+        if self.psd is None or force_calc:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, mode=mode)
 
         if percentiles is not None:
@@ -429,7 +451,7 @@ class Signal:
             Signal to be correlated with
         """
         coeff_evo = []
-        for block in self.Blocks(blocksize=signal.size):
+        for block in self.blocks(blocksize=signal.size):
             coeff_evo.append(np.corrcoef(block.signal, signal))
         return coeff_evo
 
@@ -527,10 +549,55 @@ class Signal:
         return t, f, spg
 
     def acoustic_index(self, name, **kwargs):
+        """
+        Return the acoustic index
+
+        Parameters
+        ----------
+        name : string
+            Name of the Acoustic Index to compute
+        """
         f = getattr(acoustic_indices, 'compute_' + name)
         return f(**kwargs)
+
+    def reduce_noise(self, noise_clip, prop_decrease=1.0, nfft=512):
+        """
+        Remove the noise of the signal using the noise clip
+
+        Parameters
+        ----------
+        noise_clip : np.array
+            Signal representing the noise to be removed
+        prop_decrease : float
+            0 to 1 amout of noise to be removed (0 None, 1 All)
+        nfft : int
+            Window size to compute the spectrum
+        """
+        self.signal = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip, prop_decrease=prop_decrease,
+                                      n_fft=nfft, win_length=nfft, verbose=False, n_grad_freq=1, n_grad_time=1,
+                                      hop_length=int(nfft*0.2))
+        self._processed[self.band_n].append('noisereduction')
+
+    def plot(self, nfft=512, scaling='density', db=True, force_calc=False):
+        """
+        Plot the signal and its spectrogram
+        """
+        self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
+
+        fig, ax = plt.subplots(2, 1, sharex=True)
+        ax[0].plot(self.times, self.signal)
+        ax[0].set_title('Signal')
+        ax[0].set_xlabel('Time [s]')
+        ax[0].set_ylabel('Amplitude [dB]')
+        im = ax[1].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150)
+        fig.colorbar(im, ax=ax[1])
+        ax[1].set_title('Spectrogram')
+        ax[1].set_xlabel('Time [s]')
+        ax[1].set_ylabel('Frequency [Hz]')
+        plt.show()
+        plt.close()
     
-    def Blocks(self, blocksize):
+    def blocks(self, blocksize):
         """
         Wrappper for the Blocks class
 

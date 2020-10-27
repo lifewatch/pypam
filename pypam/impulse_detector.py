@@ -82,36 +82,11 @@ class ImpulseDetector:
         for block in signal.Blocks(blocksize=blocksize):
             level = block.rms(db=True)
             levels.append(level)
-        times = events_times(np.array(levels), self.dt, self.threshold, self.min_separation)
-
-        events_df = pd.DataFrame(columns=['seconds', 'rms', 'sel', 'peak'])
-        events_df = events_df.set_index('seconds')
-        for t in times:
-            event = self.load_event(s=signal, t=t, duration=self.dt)
-            rms, sel, peak = event.analyze()
-            events_df.at[t] = [rms, sel, peak]
+        times_events = events_times(np.array(levels), self.dt, self.threshold, self.min_separation)
+        events_df = self.load_event(times_events, signal)
 
         if verbose:
-            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-            fig, ax = plt.subplots(3, 1, sharex=True)
-            im = ax[0].pcolormesh(t, fbands, sxx)
-            ax[0].set_title('Spectrogram')
-            ax[0].set_ylabel('Frequency [Hz]')
-            ax[0].set_yscale('log')
-
-            ax[1].scatter(x=events_df.index, y=events_df.rms, label='rms')
-            ax[1].scatter(x=events_df.index, y=events_df.sel, label='sel')
-            ax[1].scatter(x=events_df.index, y=events_df.peak, label='peak')
-            ax[1].set_title('Piling Detections')
-            ax[1].legend(loc='right')
-            ax[1].set_xlabel('Time [s]')
-
-            ax[2].plot(np.arange(len(levels))*self.dt, levels)
-            ax[2].axhline(self.threshold)
-            ax[2].set_title('Computed levels')
-            plt.tight_layout()
-            plt.show()
-            plt.close()
+            self.plot_all_events(signal, events_df)
 
         return events_df
 
@@ -130,44 +105,12 @@ class ImpulseDetector:
         envelope = signal.envelope()
         envelope = utils.to_db(envelope, ref=1.0, square=True)
 
-        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
         times_events = events_times_diff(signal=envelope, fs=signal.fs, threshold=self.threshold,
                                          max_duration=self.max_duration, min_separation=self.min_separation)
-        for e in times_events:
-            start, duration, end = e
-            event = self.load_event(s=signal, t=start,
-                                    duration=duration)
-            rms, sel, peak = event.analyze()
-            events_df.at[len(events_df)] = {'start_seconds': start,
-                                            'end_seconds': end,
-                                            'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
+        events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
-            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-            fig, ax = plt.subplots(4, 1, sharex=True)
-            ax[0].pcolormesh(t, fbands, sxx)
-            ax[0].set_title('Spectrogram')
-            ax[0].set_ylabel('Frequency [Hz]')
-            ax[0].set_yscale('log')
-            ax[1].plot(np.arange(len(signal.signal)) / signal.fs, utils.to_db(signal.signal, ref=1.0,
-                                                                              square=True), label='signal')
-            ax[1].plot(np.arange(envelope.size)/signal.fs, envelope, label='Envelope')
-            for index in events_df.index:
-                row = events_df.loc[index]
-                ax[1].axvline(x=row['start_seconds'], color='red')
-                ax[1].axvline(x=row['end_seconds'], color='blue')
-            ax[1].set_title('Detections')
-            ax[1].legend(loc='right')
-            ax[1].set_xlabel('Time [s]')
-            if len(events_df) > 0:
-                ax[2].scatter(events_df.start_seconds, events_df.rms, label='rms')
-                ax[2].scatter(events_df.start_seconds, events_df.peak, label='peak')
-                ax[2].scatter(events_df.start_seconds, events_df.sel, label='sel')
-
-            ax[3].plot(np.arange(envelope.size-1)/signal.fs, np.diff(envelope))
-            plt.tight_layout()
-            plt.show()
-            plt.close()
+            self.plot_all_events(signal, events_df)
 
         return events_df
 
@@ -186,74 +129,101 @@ class ImpulseDetector:
         signal.set_band(band=self.band)
         envelope = signal.envelope()
         envelope = utils.to_db(envelope, ref=1.0, square=True)
-
-        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
         times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs, threshold=self.threshold,
-                                         max_duration=self.max_duration, min_separation=self.min_separation)
-        for e in times_events:
-            start, duration, end = e
-            event = self.load_event(s=signal, t=start,
-                                    duration=duration)
-            rms, sel, peak = event.analyze()
-            events_df.at[len(events_df)] = {'start_seconds': start,
-                                            'end_seconds': end,
-                                            'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
+                                        max_duration=self.max_duration, min_separation=self.min_separation)
+        events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
-            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-            fig, ax = plt.subplots(3, 1, sharex=True)
-            ax[0].pcolormesh(t, fbands, sxx)
-            ax[0].set_title('Spectrogram')
-            ax[0].set_ylabel('Frequency [Hz]')
-            ax[0].set_yscale('log')
-            ax[1].plot(np.arange(len(signal.signal)) / signal.fs, utils.to_db(signal.signal, ref=1.0,
-                                                                              square=True), label='signal')
-            ax[1].plot(np.arange(envelope.size)/signal.fs, envelope, label='Envelope')
-            for index in events_df.index:
-                row = events_df.loc[index]
-                ax[1].axvline(x=row['start_seconds'], color='red')
-                ax[1].axvline(x=row['end_seconds'], color='blue')
-            ax[1].set_title('Detections')
-            ax[1].legend(loc='right')
-            ax[1].set_xlabel('Time [s]')
-            if len(events_df) > 0:
-                ax[2].scatter(events_df.start_seconds, events_df.rms, label='rms')
-                ax[2].scatter(events_df.start_seconds, events_df.peak, label='peak')
-                ax[2].scatter(events_df.start_seconds, events_df.sel, label='sel')
-            ax[2].legend()
-            plt.tight_layout()
-            plt.show()
-            plt.close()
+            self.plot_all_events(events_df)
 
         return events_df
 
-    @staticmethod
-    def load_event(s, t, duration, after=0, before=0):
+    def load_event(self, s, t, duration, removenoise=True):
         """
         Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
         return an object event
         Parameters
         ----------
-        s : numpy array
-            Signal
+        s : Signal object
+            Signal where the event is
         t : float
             Starting time of the event (in seconds)
         duration : float
             Duration of the event, in seconds
-        before : float
-            Time before the event to save, in seconds
-        after : float
-            Time after the event to save, in seconds
+        removenoise : bool
+            Set to True if noise calculated before and after the event can be removed from the event
         """
-        n1 = int((t - before) * s.fs)
-        if n1 < 0:
-            n1 = 0
-        n2 = int((t + duration + after) * s.fs) + 1
-        if n2 > s.signal.shape[0]:
-            n2 = s.signal.shape[0]
-        event = Event(s.signal[n1:n2], s.fs)
-        # event.set_band(self.band)
+        start_n = int(t * s.fs)
+        end_n = int((t + duration) * s.fs)
+        if removenoise:
+            n1 = max(int((t - self.min_separation) * s.fs), 0)
+            n2 = min(int((t + duration + self.min_separation) * s.fs), s.signal.shape[0])
+            event = Event(s.signal[n1:n2], s.fs)
+            noise_clip = np.concatenate((s.signal[n1:start_n], s.signal[end_n:n2]))
+            # event.plot()
+            event.reduce_noise(noise_clip=noise_clip, nfft=4096*8)
+            # event.plot(force_calc=True)
+            event.signal = event.signal[start_n - n1:end_n - n1]
+        else:
+            event = Event(s.signal[start_n:end_n], s.fs)
         return event
+
+    def load_all_times_events(self, times_events, signal):
+        """
+        Load in a dataframe all the events and their parameters
+
+        Parameters
+        ----------
+        times_events : list of tuples
+            Each tuple is (start, duration, end) of the event
+        signal : Signal object
+            Signal where the events were detected
+        """
+        signal.set_band([10, 20000])
+        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
+        for e in times_events:
+            start, duration, end = e
+            event = self.load_event(s=signal, t=start, duration=duration)
+            rms, sel, peak = event.analyze()
+            events_df.at[len(events_df)] = {'start_seconds': start, 'end_seconds': end,
+                                            'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
+            return events_df
+
+    def plot_all_events(self, signal, events_df):
+        """
+        Plot all the events in the dataframe
+
+        Parameters
+        ----------
+        signal : Signal object
+            Signal where the events were detected
+        events_df : DataFrame
+            DataFrame output of load_all_times_events
+        """
+        signal.set_band(band=self.band)
+        fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
+        fig, ax = plt.subplots(3, 1, sharex=True)
+        ax[0].pcolormesh(t, fbands, sxx)
+        ax[0].set_title('Spectrogram')
+        ax[0].set_ylabel('Frequency [Hz]')
+        ax[0].set_yscale('log')
+        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='signal')
+        # ax[1].plot(signal.times, envelope, label='Envelope')
+        for index in events_df.index:
+            row = events_df.loc[index]
+            ax[1].axvline(x=row['start_seconds'], color='red')
+            ax[1].axvline(x=row['end_seconds'], color='blue')
+        ax[1].set_title('Detections')
+        ax[1].legend(loc='right')
+        ax[1].set_xlabel('Time [s]')
+        if len(events_df) > 0:
+            ax[2].scatter(events_df.start_seconds, events_df.rms, label='rms')
+            ax[2].scatter(events_df.start_seconds, events_df.peak, label='peak')
+            ax[2].scatter(events_df.start_seconds, events_df.sel, label='sel')
+        ax[2].legend()
+        plt.tight_layout()
+        plt.show()
+        plt.close()
 
 
 class PilingDetector(ImpulseDetector):
@@ -262,7 +232,7 @@ class PilingDetector(ImpulseDetector):
                          threshold=threshold, dt=dt)
 
 
-# @nb.jit
+@nb.jit
 def events_times(levels, dt, threshold, min_separation):
     # diff_levels = np.diff(levels)
     indices = np.where(levels >= threshold)[0]
@@ -277,7 +247,7 @@ def events_times(levels, dt, threshold, min_separation):
     return times
 
 
-# @nb.jit
+@nb.jit
 def events_times_diff(signal, fs, threshold, max_duration, min_separation):
     times_events = []
     min_separation_samples = int(min_separation * fs - 1)
