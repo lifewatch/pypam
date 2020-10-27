@@ -8,10 +8,11 @@ import pyhydrophone as pyhy
 
 
 # Sound Analysis
-summary_path = pathlib.Path('C:/Users/cleap/Documents/PhD/Projects/COVID-19/summary_recordings.csv')
-save_data_path = pathlib.Path('C:/Users/cleap/Documents/PhD/Projects/COVID-19/locations.pkl')
+summary_path = pathlib.Path('S:/onderzoek/6. Marine Observation Center/Projects/PhD_Clea/Topics/'
+                            'SoundscapesMapping/dataset/data_summary.csv')
+# save_data_path = pathlib.Path('C:/Users/cleap/Documents/PhD/Projects/COVID-19/locations.pkl')
 zipped = False
-include_dirs = True
+include_dirs = False
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V              
@@ -76,26 +77,20 @@ def get_data_overview(hydrophone, folder_path, gps_path, datetime_col, lat_col, 
     overview_df = pd.DataFrame(columns=['start_datetime', 'end_datetime', 'location', 'instrument',
                                         'method', 'data_folder', 'gps_folder', 'datetime_col',
                                         'lat_col', 'lon_col', 'duration'])
-    for shipwreck_dir in pathlib.Path(folder_path).glob('**/*/'):
-        if shipwreck_dir.is_dir():
-            shipwreck_name = shipwreck_dir.parts[-1]
-            asa = acoustic_survey.ASA(hydrophone=hydrophone, folder_path=shipwreck_dir, binsize=binsize,
-                                      nfft=nfft, include_dirs=include_dirs)
-            duration = asa.duration()
-            start, end = asa.start_end_timestamp()
-
-            overview_df.loc[len(overview)] = {'start_datetime': start,
-                                              'end_datetime': end,
-                                              'location': shipwreck_name,
-                                              'instrument': hydrophone.name,
-                                              'method': method,
-                                              'data_folder': shipwreck_dir,
-                                              'gps_folder': gps_path,
-                                              'datetime_col': datetime_col,
-                                              'lat_col': lat_col,
-                                              'lon_col': lon_col,
-                                              'duration': duration
-                                              }
+    start, end, duration = get_location_metadata(hydrophone, folder_path)
+    shipwreck_name = folder_path.parts[-1]
+    shipwreck_row = pd.DataFrame({'start_datetime': start,
+                                  'end_datetime': end,
+                                  'location': shipwreck_name,
+                                  'instrument': hydrophone.name,
+                                  'method': method,
+                                  'data_folder': folder_path,
+                                  'gps_folder': gps_path,
+                                  'datetime_col': datetime_col,
+                                  'lat_col': lat_col,
+                                  'lon_col': lon_col,
+                                  'duration': duration})
+    overview_df = overview_df.append(shipwreck_row)
     return overview_df
 
 
@@ -135,19 +130,21 @@ if __name__ == "__main__":
             inst = upam
         else:
             raise Exception('Hydrophone %s is not defined!' % (row['instrument']))
-        # overview_location = get_data_locations(hydrophone=inst,
-        #                                        location=row['location'],
-        #                                        folder_path=row['data_folder'],
-        #                                        gps_path=row['gps_folder'],
-        #                                        datetime_col=row['datetime_col'],
-        #                                        lat_col=row['lat_col'],
-        #                                        lon_col=row['lon_col'],
-        #                                        method=row['method'])
-        # overview = overview.append(overview_location)
-        start_datetime, end_datetime, duration_s = get_location_metadata(hydrophone=inst,
-                                                                         folder_path=row['data_folder'])
-        metadata.at[index, ['start_datetime', 'end_datetime', 'duration']] = [start_datetime, end_datetime, duration_s]
+        overview_location = get_data_locations(hydrophone=inst,
+                                               location=row['location'],
+                                               folder_path=row['data_folder'],
+                                               gps_path=row['gps_folder'],
+                                               datetime_col=row['datetime_col'],
+                                               lat_col=row['lat_col'],
+                                               lon_col=row['lon_col'],
+                                               method=row['method'])
+        overview = overview.append(overview_location)
+        # start_datetime, end_datetime, duration_s = get_location_metadata(hydrophone=inst,
+        #                                                                  folder_path=row['data_folder'])
+        # metadata.at[index, ['start_datetime', 'end_datetime', 'duration']] = [start_datetime, end_datetime, duration_s]
     # overview.to_pickle(save_data_path)
-    metadata.to_csv('C:/Users/cleap/Documents/PhD/Projects/COVID-19/summary_recordings.csv', index=False)
+    # metadata.to_csv('summary_recordings.csv', index=False)
 
-    # plot_data_location_overview(save_data_path)
+    geoloc = geolocation.SurveyLocation()
+    # geodf = geopandas.GeoDataFrame(overview, crs='EPSG:4326', geometry='geometry')
+    geoloc.plot_survey_color(column='method', df=overview, units='Method')

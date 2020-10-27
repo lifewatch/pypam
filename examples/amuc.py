@@ -11,9 +11,11 @@ from pypam import acoustic_file
 
 
 # Recordings information 
-upam_folder = pathlib.Path('//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/20200608-PR-E02-AMUC-M002/Data/uPAM/20200610')
+upam_folder = pathlib.Path('//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/'
+                           '20200608-PR-E02-AMUC-M002/Data/uPam')
+
 zipped = False
-include_dirs = False
+include_dirs = True
 
 
 # # Autonaut information
@@ -71,7 +73,8 @@ binsize = None
 nfft = 2048
 band = [20, 10000]
 percentiles = [10, 50, 90]
-period = ['2020-06-10 09:45:00', '2020-06-10 11:00:00']
+# period = ['2020-06-10 09:45:00', '2020-06-10 11:00:00']
+period = None
 
 
 if __name__ == "__main__":
@@ -83,7 +86,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------------------------
     asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs,
                               binsize=60.0, period=period)
-    df = asa.detect_piling_events(max_duration=0.3, min_separation=1.0, threshold=20, dt=0.5)
+    df = asa.detect_piling_events(max_duration=0.3, min_separation=1.0, threshold=20.0, dt=1.0)
     df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
     plt.show()
     print('hello!')
