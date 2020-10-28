@@ -1,6 +1,7 @@
 import pathlib
 import sqlite3
 import datetime
+import numpy as np
 import pandas as pd
 import pyhydrophone as pyhy
 import matplotlib.pyplot as plt
@@ -9,24 +10,58 @@ import matplotlib.pyplot as plt
 from pypam import acoustic_survey
 from pypam import acoustic_file
 
-
-# Recordings information 
+# -------------------------------------------------------------------------------------------
+# Recordings information
+# -------------------------------------------------------------------------------------------
 upam_folder = pathlib.Path('//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/'
                            '20200608-PR-E02-AMUC-M002/Data/uPam')
-
 zipped = False
 include_dirs = True
 
+# Piling source LOG
+# 08/06/2020: 2000 J interval 1 seconds (unsure),
+# 09/06/2020: 2000 J interval 5 seconds (unsure)
+# 10/06/2020: 2000 J
+# Period	            Shot interval (s)
+# [08:18:08 08:22:04]	        2
+# [08:22:22	08:55:04]	        2
+# [09:46:00	09:50:52]	        4
+# [09:51:04	10:58:08]         	4
+# [10:58:40	13:10:32]       	4
+# [13:21:29	13:22:29]       	4
+# [13:23:02	13:23:12]       	2
+# [13:23:24	13:48:18]       	2
 
-# # Autonaut information
-# db_path = '//fs/SHARED/transfert/MRC-MOC/uPAM/AMUC002.sqlite3'
-# conn = sqlite3.connect(db_path).cursor()
-# query = conn.execute('SELECT * FROM gpsData')
-# cols = [column[0] for column in query.description]
-# gps_df = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
-# gps_df['UTC'] = pd.to_datetime(gps_df.UTC)
 
-# Specific files
+# -------------------------------------------------------------------------------------------
+# Autonaut data
+# -------------------------------------------------------------------------------------------
+db_path = pathlib.Path('//fs/shared/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/20200608-PR-E02-AMUC-M002/'
+                       'Data/uPAM/AMUC002.sqlite3')
+conn = sqlite3.connect(db_path).cursor()
+query = conn.execute('SELECT * FROM gpsData')
+cols = [column[0] for column in query.description]
+gps_df = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
+gps_df['UTC'] = pd.to_datetime(gps_df.UTC)
+conn.close()
+
+# Pamguard detections
+pamguard_output = pathlib.Path("//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/"
+                               "Acoustic Measurements/PAMGuard/PAMdb/amuc_piling_detection_20201027_2.sqlite3")
+conn = sqlite3.connect(pamguard_output).cursor()
+query = conn.execute('SELECT * FROM Filtered_Noise_measurement_pulses')
+cols = [column[0] for column in query.description]
+df_pamguard_pulses = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
+df_pamguard_pulses.UTC = pd.to_datetime(df_pamguard_pulses.UTC)
+query = conn.execute('SELECT * FROM Seismic_Veto')
+cols = [column[0] for column in query.description]
+df_pamguard_veto = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
+df_pamguard_veto.UTC = pd.to_datetime(df_pamguard_veto.UTC)
+
+
+# -------------------------------------------------------------------------------------------
+# Manual selected files
+# -------------------------------------------------------------------------------------------
 blast1_file = 'C:/Users/cleap/Documents/Data/Sound Data/uPam/AMUC/Selected sounds/blastAMUC002_20200608_122933_792.wav'
 noblast1_file = 'C:/Users/cleap/Documents/Data/Sound Data/uPam/AMUC/Selected sounds/' \
                 'noblastAMUC002_20200608_122933_792.wav'
@@ -43,7 +78,16 @@ usv_examples = [usv_example1, usv_example2, usv_example3]
 usv_air = '//fs/SHARED/transfert/MRC-MOC/AMUC/Auxiliar engine in air MRC 20200708.wav'
 
 
+# -------------------------------------------------------------------------------------------
+# Output files
+# -------------------------------------------------------------------------------------------
+output_folder = pathlib.Path("//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/"
+                             "Acoustic Measurements/pypam")
+
+# -------------------------------------------------------------------------------------------
 # Hydrophone Settings
+# -------------------------------------------------------------------------------------------
+# uPam
 model = 'uPam'
 name = 'Seiche'
 serial_number = 'SM7213'
@@ -60,20 +104,22 @@ serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
 
 
+# -------------------------------------------------------------------------------------------
 # Detector information
-min_duration = 0.1
-ref = -6
-threshold = 140
-dt = 0.05
-continuous = False
+# -------------------------------------------------------------------------------------------
+min_separation = 1
+max_duration = 0.2
+threshold = 15
+dt = 0.5
 
 
-# ANALYSIS PARAMETERS
+# -------------------------------------------------------------------------------------------
+# Acoustic ANALYSIS PARAMETERS
+# -------------------------------------------------------------------------------------------
 binsize = None
 nfft = 2048
 band = [20, 10000]
 percentiles = [10, 50, 90]
-# period = ['2020-06-10 09:45:00', '2020-06-10 11:00:00']
 period = None
 
 
@@ -86,19 +132,42 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------------------------
     asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs,
                               binsize=60.0, period=period)
-    df = asa.detect_piling_events(max_duration=0.3, min_separation=1.0, threshold=20.0, dt=1.0)
+    df = asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation, threshold=threshold, dt=dt)
     df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
     plt.show()
+    detection_output = output_folder.joinpath('piling_detection_th%s_sep%s_dt%s_dur%s.csv' %
+                                              (threshold, min_separation, dt, max_duration))
+    df.to_csv(detection_output)
+    print('Piling detected!')
+
+    # -------------------------------------------------------------------------------------------
+    # Detection analysis
+    # -------------------------------------------------------------------------------------------
+    df_pypam = pd.read_csv(detection_output)
+    df_pypam.datetime = pd.to_datetime(df_pypam.datetime)
+    df_pypam_days = [group[1] for group in df_pypam.groupby(df_pypam.datetime.dt.date)]
+    df_pamguard_pulses_days = [group[1] for group in df_pamguard_pulses.groupby(df_pamguard_pulses.UTC.dt.date)]
+    df_pamguard_veto_days = [group[1] for group in df_pamguard_veto.groupby(df_pamguard_veto.UTC.dt.date)]
+
+    for i in np.arange(len(df_pypam_days)):
+        day = df_pypam_days[i].head(1).datetime.dt.date.values[0]
+        df_pypam_day = df_pypam_days[i].assign(label=1)
+        df_pg_pulses = df_pamguard_pulses_days[i].assign(label=2)
+        df_pg_veto = df_pamguard_veto_days[i].assign(label=3)
+        print('Number of sparks detected in day %s' % day)
+        print('pypam: %s' % len(df_pypam_day))
+        print('PAMGuard Pulses: %s' % len(df_pg_pulses))
+        print('PAMGuard Veto: %s' % len(df_pg_veto))
+        ax = df_pypam_day.plot(x='datetime', y='label', marker='.', linestyle='', label='pypam')
+        df_pg_pulses.plot(x='UTC', y='label', marker='.', linestyle='', ax=ax, label='PAMGuard pulses')
+        df_pg_veto.plot(x='UTC', y='label', marker='.', linestyle='', ax=ax, label='PAMGuard veto')
+        plt.title('Detections of %s' % day)
+        plt.gcf().autofmt_xdate()
+        plt.xlabel('Time')
+        plt.legend()
+        plt.show()
+
     print('hello!')
-
-    # for folder in upam_folder.glob('**/*/'):
-    #     asa = acoustic_survey.ASA(hydrophone=upam, folder_path=folder, zipped=zipped, include_dirs=include_dirs,
-    #                               binsize=60.0)
-    #     df = asa.detect_ship_events(min_duration=0.1, threshold=160)
-    #     df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
-    #     plt.show()
-    #     print('hello!')
-
     # -------------------------------------------------------------------------------------------
     # Blast vs No blast sound analysis
     # -------------------------------------------------------------------------------------------
