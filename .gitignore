@@ -5,3 +5,5 @@ csv
 *.pkl
 pypam.egg-info/
 docs/build/
+venv/
+.idea/
