@@ -43,7 +43,7 @@ class ImpulseDetector:
         self.dt = dt
         self.band = band
 
-    def detect_events(self, signal, method='dt', verbose=False):
+    def detect_events(self, signal, method='dt', verbose=False, save_path=None):
         """
         Detect the events
 
@@ -55,16 +55,18 @@ class ImpulseDetector:
             Can be dt or envelope
         verbose : bool
             Set to True to see the detection signals
+        save_path : string or Path
+            Where to save the image. Set to None if it should not be saved
         """
         if method == 'dt':
-            df = self.detect_events_dt(signal, verbose)
+            df = self.detect_events_dt(signal, verbose, save_path)
         elif method == 'envelope':
-            df = self.detect_events_envelope(signal, verbose)
+            df = self.detect_events_envelope(signal, verbose, save_path)
         elif method == 'snr':
-            df = self.detect_events_snr(signal, verbose)
+            df = self.detect_events_snr(signal, verbose, save_path)
         return df
 
-    def detect_events_dt(self, signal, verbose=False):
+    def detect_events_dt(self, signal, verbose=False, save_path=None):
         """
         Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
         The time resolution is dt
@@ -75,6 +77,8 @@ class ImpulseDetector:
             Signal to analyze
         verbose : bool
             Set to True to see the detection signals
+        save_path : string or Path
+            Where to save the image. Set to None if it should not be saved
         """
         signal.set_band(self.band)
         levels = []
@@ -86,11 +90,11 @@ class ImpulseDetector:
         events_df = self.load_event(times_events, signal)
 
         if verbose:
-            self.plot_all_events(signal, events_df)
+            self.plot_all_events(signal, events_df, save_path)
 
         return events_df
 
-    def detect_events_envelope(self, signal, verbose=False):
+    def detect_events_envelope(self, signal, verbose=False, save_path=None):
         """
         Detect events using the envelope approach
 
@@ -100,6 +104,8 @@ class ImpulseDetector:
             Signal to analyze
         verbose : bool
             Set to True to see the detection signals
+        save_path : string or Path
+            Where to save the image. Set to None if it should not be saved
         """
         signal.set_band(band=self.band)
         envelope = signal.envelope()
@@ -110,11 +116,11 @@ class ImpulseDetector:
         events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
-            self.plot_all_events(signal, events_df)
+            self.plot_all_events(signal, events_df, save_path)
 
         return events_df
 
-    def detect_events_snr(self, signal, verbose=False):
+    def detect_events_snr(self, signal, verbose=False, save_path=None):
         """
         Detect events using the Signal To Noise approach
 
@@ -124,6 +130,8 @@ class ImpulseDetector:
             Signal to analyze
         verbose : bool
             Set to True to see the detection signals
+        save_path : string or Path
+            Where to save the image. Set to None if it should not be saved
         """
         blocksize = int(self.dt*signal.fs)
         signal.set_band(band=self.band)
@@ -134,7 +142,7 @@ class ImpulseDetector:
         events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
-            self.plot_all_events(events_df)
+            self.plot_all_events(signal, events_df, save_path)
 
         return events_df
 
@@ -187,9 +195,9 @@ class ImpulseDetector:
             rms, sel, peak = event.analyze()
             events_df.at[len(events_df)] = {'start_seconds': start, 'end_seconds': end,
                                             'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
-            return events_df
+        return events_df
 
-    def plot_all_events(self, signal, events_df):
+    def plot_all_events(self, signal, events_df, save_path=None):
         """
         Plot all the events in the dataframe
 
@@ -199,6 +207,8 @@ class ImpulseDetector:
             Signal where the events were detected
         events_df : DataFrame
             DataFrame output of load_all_times_events
+        save_path : string or Path
+            Where to save the image. Set to None if it should not be saved
         """
         signal.set_band(band=self.band)
         fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
@@ -222,6 +232,7 @@ class ImpulseDetector:
             ax[2].scatter(events_df.start_seconds, events_df.sel, label='sel')
         ax[2].legend()
         plt.tight_layout()
+        plt.savefig(save_path)
         plt.show()
         plt.close()
 
