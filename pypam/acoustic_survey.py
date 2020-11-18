@@ -15,6 +15,7 @@ import os
 import pathlib
 import zipfile
 
+import dateutil.parser as parser
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -73,8 +74,8 @@ class ASA:
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
-                start = datetime.datetime.strptime(period[0], '%Y-%m-%d %H:%M:%S')
-                end = datetime.datetime.strptime(period[1], '%Y-%m-%d %H:%M:%S')
+                start = parser.parse(period[0])
+                end = parser.parse(period[1])
                 self.period = [start, end]
             else:
                 self.period = period
@@ -129,6 +130,10 @@ class ASA:
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4e362a5... Changed period to dateutil parser
         return df
 
     def start_end_timestamp(self):
@@ -253,8 +258,8 @@ class ASA:
         """
         if extensions is None:
             extensions = []
-        start_date = datetime.datetime.strptime(period[0], '%d/%m/%Y %H:%M:%S')
-        end_date = datetime.datetime.strptime(period[1], '%d/%m/%Y %H:%M:%S')
+        start_date = parser.parse(period[0])
+        end_date = parser.parse(period[1])
         print(start_date, end_date)
         folder_path = self.acu_files.folder_path.joinpath(folder_name)
         self.acu_files.extensions = extensions
@@ -271,7 +276,11 @@ class ASA:
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
+<<<<<<< HEAD
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
+=======
+                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
+>>>>>>> 4e362a5... Changed period to dateutil parser
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
@@ -288,7 +297,11 @@ class ASA:
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
+<<<<<<< HEAD
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
+=======
+                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
+>>>>>>> 4e362a5... Changed period to dateutil parser
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)

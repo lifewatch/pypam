@@ -3,6 +3,8 @@ import sqlite3
 import datetime
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
 import pyhydrophone as pyhy
 import matplotlib.pyplot as plt
 
@@ -45,9 +47,15 @@ gps_df = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
 gps_df['UTC'] = pd.to_datetime(gps_df.UTC)
 conn.close()
 
+# Distance to sound source
+source_dist_path = pathlib.Path('//fs/SHARED/mrc/E-Equipment/E02-AutonautAdhemar/08 - Missions/'
+                                '20200608-PR-E02-AMUC-M002/Processed/Tracks/distance_usv_sist.csv')
+source_dist_df = pd.read_csv(source_dist_path, parse_dates={'datetime': ['PCLocalTime']}, index_col='datetime')
+
 # Pamguard detections
 pamguard_output = pathlib.Path("//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/"
                                "Acoustic Measurements/PAMGuard/PAMdb/amuc_piling_detection_20201027_2.sqlite3")
+
 conn = sqlite3.connect(pamguard_output).cursor()
 query = conn.execute('SELECT * FROM Filtered_Noise_measurement_pulses')
 cols = [column[0] for column in query.description]
@@ -79,10 +87,17 @@ usv_air = '//fs/SHARED/transfert/MRC-MOC/AMUC/Auxiliar engine in air MRC 2020070
 
 
 # -------------------------------------------------------------------------------------------
-# Output files
+# Output & validated files
 # -------------------------------------------------------------------------------------------
-output_folder = pathlib.Path("//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/"
-                             "Acoustic Measurements/pypam")
+output_folder = pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/'
+                             'Acoustic Measurements/pypam')
+validation_file = pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/AMUC M002/'
+                               'Acoustic Measurements/label_10_seconds.csv')
+validation_df = pd.read_csv(validation_file, parse_dates=['datetime'])
+validation_df.dropna(inplace=True, subset=['tp', 'fn', 'fp', 'engine_ss', 'engine_usv', 'n'])
+validation_df[['engine_ss', 'engine_usv']] = validation_df[['engine_ss', 'engine_usv']].astype(np.int)
+validation_df['engine'] = validation_df.engine_ss | validation_df.engine_usv
+
 
 # -------------------------------------------------------------------------------------------
 # Hydrophone Settings
@@ -120,54 +135,143 @@ binsize = None
 nfft = 2048
 band = [20, 10000]
 percentiles = [10, 50, 90]
-period = None
 
 
 if __name__ == "__main__":
     """
     Perform the AMUC acoustic survey
     """
+    detection_output = output_folder.joinpath('piling_detection_th%s_sep%s_dt%s_dur%s.csv' %
+                                              (threshold, min_separation, dt, max_duration))
     # -------------------------------------------------------------------------------------------
     # Event detection and analysis
     # -------------------------------------------------------------------------------------------
-    asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs,
-                              binsize=60.0, period=period)
-    df = asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation, threshold=threshold, dt=dt)
-    df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
-    plt.show()
-    detection_output = output_folder.joinpath('piling_detection_th%s_sep%s_dt%s_dur%s.csv' %
-                                              (threshold, min_separation, dt, max_duration))
-    df.to_csv(detection_output)
-    print('Piling detected!')
+    # asa = acoustic_survey.ASA(hydrophone=upam, folder_path=upam_folder, zipped=zipped, include_dirs=include_dirs,
+    #                           binsize=60.0, period=period, utc=False)
+    # df = asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation, 
+    # threshold=threshold, dt=dt)
+    # df[['rms', 'sel', 'peak']].plot(subplots=True, marker='.', linestyle='')
+    # plt.show()
+    # df.to_csv(detection_output)
+    # print('Piling detected!')
 
     # -------------------------------------------------------------------------------------------
     # Detection analysis
     # -------------------------------------------------------------------------------------------
-    df_pypam = pd.read_csv(detection_output)
-    df_pypam.datetime = pd.to_datetime(df_pypam.datetime)
-    df_pypam_days = [group[1] for group in df_pypam.groupby(df_pypam.datetime.dt.date)]
-    df_pamguard_pulses_days = [group[1] for group in df_pamguard_pulses.groupby(df_pamguard_pulses.UTC.dt.date)]
-    df_pamguard_veto_days = [group[1] for group in df_pamguard_veto.groupby(df_pamguard_veto.UTC.dt.date)]
+    # df_pypam = pd.read_csv(detection_output, parse_dates=['datetime'])
+    # df_pypam_days = [group[1] for group in df_pypam.groupby(df_pypam.datetime.dt.date)]
+    # df_pamguard_pulses_days = [group[1] for group in df_pamguard_pulses.groupby(df_pamguard_pulses.UTC.dt.date)]
+    # df_pamguard_veto_days = [group[1] for group in df_pamguard_veto.groupby(df_pamguard_veto.UTC.dt.date)]
+    #
+    # for i in np.arange(len(df_pypam_days)):
+    #     day = df_pypam_days[i].head(1).datetime.dt.date.values[0]
+    #     df_pypam_day = df_pypam_days[i].assign(label=1)
+    #     df_pg_pulses = df_pamguard_pulses_days[i].assign(label=2)
+    #     df_pg_veto = df_pamguard_veto_days[i].assign(label=3)
+    #     print('Number of sparks detected in day %s' % day)
+    #     print('pypam: %s' % len(df_pypam_day))
+    #     print('PAMGuard Pulses: %s' % len(df_pg_pulses))
+    #     print('PAMGuard Veto: %s' % len(df_pg_veto))
+    #
+    #     if i == 0:
+    #         plt.plot(df_pypam_day.datetime, df_pypam_day.label, marker='.', linestyle='')
+    #         plt.plot(df_pg_pulses.UTC, df_pg_pulses.label, marker='.', linestyle='')
+    #         plt.plot(df_pg_veto.UTC, df_pg_veto.label, marker='.', linestyle='')
+    #         plt.title('Detections of %s' % day)
+    #         plt.xlabel('Time')
+    #         plt.yticks([1, 2, 3], ['pypam', 'PAMGuard pulses', 'PAMGuard veto'])
+    #         plt.show()
+    #     else:
+    #         fig, ax = plt.subplots(2, 1, sharex=True)
+    #         ax[0].plot(df_pypam_day.datetime, df_pypam_day.label, marker='.', linestyle='')
+    #         ax[0].plot(df_pg_pulses.UTC, df_pg_pulses.label, marker='.', linestyle='')
+    #         ax[0].plot(df_pg_veto.UTC, df_pg_veto.label, marker='.', linestyle='')
+    #         ax[0].set_title('Detections of %s' % day)
+    #         ax[0].set_yticks([1, 2, 3])
+    #         ax[0].set_yticklabels(['pypam', 'PAMGuard pulses', 'PAMGuard veto'])
+    #
+    #         ax[0].set_title('Detections')
+    #         dist_df = source_dist_df.loc[df_pypam_day.datetime.min():df_pypam_day.datetime.max()]
+    #         ax[1].plot(dist_df.index.values, dist_df.Distance)
+    #         ax[1].set_ylabel('Distance [m]')
+    #         ax[1].set_title('Distance to the source')
+    #         plt.show()
 
-    for i in np.arange(len(df_pypam_days)):
-        day = df_pypam_days[i].head(1).datetime.dt.date.values[0]
-        df_pypam_day = df_pypam_days[i].assign(label=1)
-        df_pg_pulses = df_pamguard_pulses_days[i].assign(label=2)
-        df_pg_veto = df_pamguard_veto_days[i].assign(label=3)
-        print('Number of sparks detected in day %s' % day)
-        print('pypam: %s' % len(df_pypam_day))
-        print('PAMGuard Pulses: %s' % len(df_pg_pulses))
-        print('PAMGuard Veto: %s' % len(df_pg_veto))
-        ax = df_pypam_day.plot(x='datetime', y='label', marker='.', linestyle='', label='pypam')
-        df_pg_pulses.plot(x='UTC', y='label', marker='.', linestyle='', ax=ax, label='PAMGuard pulses')
-        df_pg_veto.plot(x='UTC', y='label', marker='.', linestyle='', ax=ax, label='PAMGuard veto')
-        plt.title('Detections of %s' % day)
-        plt.gcf().autofmt_xdate()
-        plt.xlabel('Time')
-        plt.legend()
-        plt.show()
+    label_df = pd.DataFrame(columns=['datetime', 'engine_ss', 'engine_usv', 'fp', 'fn', 'tp', 'n', 'comments'])
+    for f in pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/'
+                          'AMUC M002/Acoustic Measurements/pypam/').glob('*.png'):
+        new_dt = datetime.datetime.strptime(f.name, "%y%m%d_%H%M%S.png")
 
-    print('hello!')
+        for i in np.arange(6):
+            if i == 0:
+                label_df.at[len(label_df)] = [new_dt, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, '']
+            else:
+                label_df.at[len(label_df)] = [new_dt + datetime.timedelta(seconds=i * 10.0), np.nan, np.nan, np.nan,
+                                              np.nan, np.nan, np.nan, '']
+
+    label_df.to_csv(f.parent.joinpath('label_df.csv'))
+
+    # Analyze the performancs according to the validation
+    validation_df['recall'] = validation_df.tp / (validation_df.tp + validation_df.fn)
+    validation_df['precision'] = validation_df.tp / (validation_df.tp + validation_df.fp)
+    validation_df['f1'] = 2 * validation_df.precision * validation_df.recall / \
+                          (validation_df.precision + validation_df.recall)
+    validation_df['er'] = (validation_df.fp + validation_df.fn) / validation_df.n
+    validation_df.boxplot(column=['recall', 'precision', 'f1', 'er'], by=['engine_ss', 'engine_usv'], layout=(4, 1))
+    # ticks, labels = plt.xticks()
+    # labels[0:4] = [('SS off', 'USV off'), ('SS on', 'USV off'), ('SS off', 'USV on'), ('SS on', 'USV on')]
+    # plt.xticks(ticks, labels)
+    plt.xlabel('Engine Status')
+    # plt.suptitle('TP, FP and FN depending on engine status', y=.995)
+    plt.suptitle('')
+    plt.tight_layout()
+    plt.show()
+
+    # Check if it has statistically significant influence
+    metric_list = ['recall', 'precision', 'f1']
+
+    for m in metric_list:
+        print(m)
+        model = ols('%s ~ C(engine_ss)' % m, data=validation_df).fit()
+        aov_table = sm.stats.anova_lm(model, typ=2)
+        print(aov_table)
+        model = ols('%s ~ C(engine_usv)' % m, data=validation_df).fit()
+        aov_table = sm.stats.anova_lm(model, typ=2)
+        print(aov_table)
+        model = ols('%s ~ C(engine)' % m, data=validation_df).fit()
+        aov_table = sm.stats.anova_lm(model, typ=2)
+        print(aov_table)
+
+    # Compute the total recall and precision
+    engine_index = pd.MultiIndex.from_product([['Engine USV', 'Engine SS', 'Engine'], ['on', 'off']])
+    perf = pd.DataFrame(index=engine_index, columns=['precision', 'recall', 'f', 'er'])
+    clean_ss = validation_df[validation_df.engine_ss == 0]
+    ss = validation_df[validation_df.engine_ss == 1]
+    clean_usv = validation_df[validation_df.engine_usv == 0]
+    usv = validation_df[validation_df.engine_usv == 1]
+    clean = validation_df[validation_df.engine == 0]
+    engine = validation_df[validation_df.engine == 1]
+    perf.loc[('Engine SS', 'off'), 'recall'] = clean_ss.tp.sum() / (clean_ss.tp.sum() + clean_ss.fn.sum())
+    perf.loc[('Engine SS', 'on'), 'recall'] = ss.tp.sum() / (ss.tp.sum() + ss.fn.sum())
+    perf.loc[('Engine SS', 'off'), 'precision'] = clean_ss.tp.sum() / (clean_ss.tp.sum() + clean_ss.fp.sum())
+    perf.loc[('Engine SS', 'on'), 'precision'] = ss.tp.sum() / (ss.tp.sum() + ss.fp.sum())
+    perf.loc[('Engine SS', 'on'), 'er'] = (ss.fp.sum() + ss.fn.sum()) / ss.n.sum()
+    perf.loc[('Engine SS', 'off'), 'er'] = (clean_ss.fp.sum() + clean_ss.fn.sum()) / clean_ss.n.sum()
+    perf.loc[('Engine USV', 'off'), 'recall'] = clean_usv.tp.sum() / (clean_usv.tp.sum() + clean_usv.fn.sum())
+    perf.loc[('Engine USV', 'on'), 'recall'] = usv.tp.sum() / (usv.tp.sum() + usv.fn.sum())
+    perf.loc[('Engine USV', 'off'), 'precision'] = clean_usv.tp.sum() / (clean_usv.tp.sum() + clean_usv.fp.sum())
+    perf.loc[('Engine USV', 'on'), 'precision'] = usv.tp.sum() / (usv.tp.sum() + usv.fp.sum())
+    perf.loc[('Engine USV', 'off'), 'er'] = (clean_usv.fp.sum() + clean_usv.fn.sum()) / clean_usv.n.sum()
+    perf.loc[('Engine USV', 'on'), 'er'] = (usv.fp.sum() + usv.fn.sum()) / usv.n.sum()
+    perf.loc[('Engine', 'off'), 'recall'] = clean.tp.sum() / (clean.tp.sum() + clean.fn.sum())
+    perf.loc[('Engine', 'on'), 'recall'] = engine.tp.sum() / (engine.tp.sum() + engine.fn.sum())
+    perf.loc[('Engine', 'off'), 'precision'] = clean.tp.sum() / (clean.tp.sum() + clean.fp.sum())
+    perf.loc[('Engine', 'on'), 'precision'] = engine.tp.sum() / (engine.tp.sum() + engine.fp.sum())
+    perf.loc[('Engine', 'off'), 'er'] = (clean.fp.sum() + clean.fn.sum()) / clean.n.sum()
+    perf.loc[('Engine', 'on'), 'er'] = (engine.fp.sum() / engine.fn.sum()) / engine.n.sum()
+    perf.f = 2 * perf.precision * perf.recall / (perf.precision + perf.recall)
+   
+    print(perf)
     # -------------------------------------------------------------------------------------------
     # Blast vs No blast sound analysis
     # -------------------------------------------------------------------------------------------
