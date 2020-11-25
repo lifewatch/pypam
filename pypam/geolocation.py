@@ -169,7 +169,7 @@ class SurveyLocation:
         """
         for i in df.index:
             if 'datetime' in df.columns:
-                t = df.iloc[i].datetime
+                t = df.loc[i].datetime
             else:
                 t = i
             idx = self.geotrackpoints.index.get_loc(t, method='nearest')
@@ -177,7 +177,7 @@ class SurveyLocation:
 
         good_points_mask = abs(df.geo_time - df.datetime) < datetime.timedelta(seconds=600)
         if good_points_mask.sum() < len(df):
-            print('This file %s is not corresponding with the timestamps!' % (self.geofile))
+            print('This file %s is not corresponding with the timestamps!' % self.geofile)
         geo_df = self.geotrackpoints.reindex(df.geo_time)
         # geo_df['geo_time'] = df.geo_time.values
         geo_df = geo_df.merge(df, on='geo_time')
