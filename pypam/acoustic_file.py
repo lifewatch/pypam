@@ -10,20 +10,21 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-from pypam import utils
-from pypam.signal import Signal
-from pypam import impulse_detector
-from pypam import loud_event_detector
-
-import os
-import pathlib
 import datetime
 import operator
+import os
+import pathlib
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import soundfile as sf
-import matplotlib.pyplot as plt
 import scipy.integrate as integrate
+import soundfile as sf
+
+from pypam import impulse_detector
+from pypam import loud_event_detector
+from pypam import utils
+from pypam.signal import Signal
 
 pd.plotting.register_matplotlib_converters()
 plt.style.use('ggplot')
@@ -688,7 +689,8 @@ class AcuFile:
             signal = Signal(signal=signal_upa, fs=self.fs)
             signal.set_band(band=self.band)
             save_path = pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/'
-                                     'AMUC M002/Acoustic Measurements/pypam/%s.png' % time_bin.strftime("%y%m%d_%H%M%S"))
+                                     'AMUC M002/Acoustic Measurements/pypam/%s.png' % time_bin.strftime(
+                "%y%m%d_%H%M%S"))
             events_df = detector.detect_events(signal, method='snr', verbose=True, save_path=save_path)
             events_df['datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')

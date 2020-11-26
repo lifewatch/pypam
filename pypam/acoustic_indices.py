@@ -15,13 +15,10 @@ __credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
 __email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
 __status__ = "Development"
 
-
-import numpy as np
-import numba as nb
 import matplotlib.pyplot as plt
+import numba as nb
+import numpy as np
 from scipy import signal, fftpack, stats
-
-from pypam import utils
 
 
 def compute_aci(sxx, j_bin):
@@ -41,10 +38,10 @@ def compute_aci(sxx, j_bin):
     # relevant time indices
     # times = range(0, sxx.shape[1], j_bin)
     # alternative time indices to follow the R code
-    times = range(0, sxx.shape[1]-10, j_bin)
+    times = range(0, sxx.shape[1] - 10, j_bin)
 
     # sub-spectros of temporal size j
-    jspecs = [np.array(sxx[:, i:i+j_bin]) for i in times]
+    jspecs = [np.array(sxx[:, i:i + j_bin]) for i in times]
     aci = [sum((np.sum(abs(np.diff(jspec)), axis=1) / np.sum(jspec, axis=1))) for jspec in jspecs]
     # list of ACI values on each jspecs
     main_value = sum(aci)
@@ -66,7 +63,7 @@ def calculate_aci(sxx: np.ndarray):
             dk = np.abs(sxx[k][j] - sxx[k - 1][j])
             d = d + dk
             i = i + sxx[k][j]
-        aci_evo[j] = d/i
+        aci_evo[j] = d / i
 
     aci_val = np.sum(aci_evo)
     return aci_val
@@ -169,7 +166,7 @@ def compute_ndsi(file, window_length=1024, anthrophony=[1000, 2000], biophony=[2
     # TODO change of detrend for apollo
     # Estimate power spectral density using Welch's method
     frequencies, pxx = signal.welch(file.sig_float, fs=file.sr, window='hamming', nperseg=window_length,
-                                    noverlap=window_length/2, nfft=window_length, detrend='constant',
+                                    noverlap=window_length / 2, nfft=window_length, detrend='constant',
                                     return_onesided=True, scaling='density', axis=-1)
 
     avgpow = pxx * frequencies[1]
@@ -204,9 +201,9 @@ def gini(values):
     """
     y = sorted(values)
     n = len(y)
-    g = np.sum([i*j for i, j in zip(y, range(1, n+1))])
-    g = 2 * g / np.sum(y) - (n+1)
-    return g/n
+    g = np.sum([i * j for i, j in zip(y, range(1, n + 1))])
+    g = 2 * g / np.sum(y) - (n + 1)
+    return g / n
 
 
 def compute_aei(sxx, freq_band_hz, max_freq=10000, db_threshold=-50, freq_step=1000):
@@ -224,15 +221,15 @@ def compute_aei(sxx, freq_band_hz, max_freq=10000, db_threshold=-50, freq_step=1
     bands_hz = range(0, max_freq, freq_step)
     bands_bin = [f / freq_band_hz for f in bands_hz]
 
-    spec_aei = 20*np.log10(sxx/np.max(sxx))
-    spec_aei_bands = [spec_aei[int(bands_bin[k]):int(bands_bin[k]+bands_bin[1]), ] for k in range(len(bands_bin))]
+    spec_aei = 20 * np.log10(sxx / np.max(sxx))
+    spec_aei_bands = [spec_aei[int(bands_bin[k]):int(bands_bin[k] + bands_bin[1]), ] for k in range(len(bands_bin))]
 
-    values = [np.sum(spec_aei_bands[k] > db_threshold)/float(spec_aei_bands[k].size) for k in range(len(bands_bin))]
+    values = [np.sum(spec_aei_bands[k] > db_threshold) / float(spec_aei_bands[k].size) for k in range(len(bands_bin))]
 
     return gini(values)
 
 
-def compute_adi(sxx, freq_band_hz,  max_freq=10000, db_threshold=-50, freq_step=1000):
+def compute_adi(sxx, freq_band_hz, max_freq=10000, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Diversity Index.
     Reference: Villanueva-Rivera, L. J., B. C. Pijanowski, J. Doucette, and B. Pekin. 2011.
@@ -247,10 +244,10 @@ def compute_adi(sxx, freq_band_hz,  max_freq=10000, db_threshold=-50, freq_step=
     bands_hz = range(0, max_freq, freq_step)
     bands_bin = [f / freq_band_hz for f in bands_hz]
 
-    spec_adi = 20*np.log10(sxx/np.max(sxx))
-    spec_adi_bands = [spec_adi[int(bands_bin[k]):int(bands_bin[k]+bands_bin[1]), ] for k in range(len(bands_bin))]
+    spec_adi = 20 * np.log10(sxx / np.max(sxx))
+    spec_adi_bands = [spec_adi[int(bands_bin[k]):int(bands_bin[k] + bands_bin[1]), ] for k in range(len(bands_bin))]
 
-    values = [np.sum(spec_adi_bands[k] > db_threshold)/float(spec_adi_bands[k].size) for k in range(len(bands_bin))]
+    values = [np.sum(spec_adi_bands[k] > db_threshold) / float(spec_adi_bands[k].size) for k in range(len(bands_bin))]
 
     # Shannon Entropy of the values
     # shannon = - sum([y * np.log(y) for y in values]) / len(values)  # Follows the R code.
@@ -283,8 +280,8 @@ def compute_zcr(file, window_length=512, window_hop=256):
     sig = file.sig_int
 
     times = range(0, len(sig) - window_length + window_hop)
-    frames = [sig[i: i+window_length] for i in times]
-    return [len(np.where(np.diff(np.signbit(x)))[0])/float(window_length) for x in frames]
+    frames = [sig[i: i + window_length] for i in times]
+    return [len(np.where(np.diff(np.signbit(x)))[0]) / float(window_length) for x in frames]
 
 
 def compute_rms_energy(file, window_length=512, window_hop=256, integer=False):
@@ -302,9 +299,9 @@ def compute_rms_energy(file, window_length=512, window_hop=256, integer=False):
     else:
         sig = file.sig_float
 
-    times = range(0, len(sig) - window_length+1, window_hop)
+    times = range(0, len(sig) - window_length + 1, window_hop)
     frames = [sig[i:i + window_length] for i in times]
-    return [np.sqrt(sum([x**2 for x in frame]) / window_length) for frame in frames]
+    return [np.sqrt(sum([x ** 2 for x in frame]) / window_length) for frame in frames]
 
 
 def compute_spectral_centroid(sxx, frequencies):
@@ -313,7 +310,7 @@ def compute_spectral_centroid(sxx, frequencies):
     spectro: spectrogram of the audio signal
     frequencies: list of the frequencies of the spectrogram
     """
-    centroid = [np.sum(magnitudes*frequencies) / np.sum(magnitudes) for magnitudes in sxx.T]
+    centroid = [np.sum(magnitudes * frequencies) / np.sum(magnitudes) for magnitudes in sxx.T]
     return centroid
 
 
@@ -340,17 +337,17 @@ def compute_wave_snr(file, frame_length_e=512, min_db=-60, window_smoothing_e=5,
     Towsey, Michael (2013), Noise Removal from Waveforms and Spectrograms
     Derived from Natural Recordings of the Environment. Queensland University of Technology, Brisbane.
     """
-    half_window_smoothing = int(window_smoothing_e/2)
+    half_window_smoothing = int(window_smoothing_e / 2)
 
-    times = range(0, len(file.sig_int)-frame_length_e+1, frame_length_e)
-    wave_env = 20*np.log10([np.max(abs(file.sig_float[i: i + frame_length_e])) for i in times])
+    times = range(0, len(file.sig_int) - frame_length_e + 1, frame_length_e)
+    wave_env = 20 * np.log10([np.max(abs(file.sig_float[i: i + frame_length_e])) for i in times])
 
     # If the minimum value is less than -60db, the minimum is set to -60db
     minimum = np.max((np.min(wave_env), min_db))
 
     hist, bin_edges = np.histogram(wave_env, range=(minimum, minimum + db_range), bins=hist_number_bins, density=False)
 
-    hist_smooth = ([np.mean(hist[i - half_window_smoothing: i + half_window_smoothing]) 
+    hist_smooth = ([np.mean(hist[i - half_window_smoothing: i + half_window_smoothing])
                     for i in range(half_window_smoothing, len(hist) - half_window_smoothing)])
     hist_smooth = np.concatenate((np.zeros(half_window_smoothing), hist_smooth, np.zeros(half_window_smoothing)))
     modal_intensity = np.argmax(hist_smooth)
@@ -371,8 +368,8 @@ def compute_wave_snr(file, frame_length_e=512, min_db=-60, window_smoothing_e=5,
         background_noise = bin_edges[modal_intensity]
 
     snr = np.max(wave_env) - background_noise
-    sn = np.array([frame-background_noise-activity_threshold_db for frame in wave_env])
-    acoustic_activity = np.sum([i > 0 for i in sn])/float(len(sn))
+    sn = np.array([frame - background_noise - activity_threshold_db for frame in wave_env])
+    acoustic_activity = np.sum([i > 0 for i in sn]) / float(len(sn))
 
     # Compute acoustic events
     start_event = [n[0] for n in np.argwhere((sn[:-1] < 0) & (sn[1:] > 0))]
@@ -418,7 +415,7 @@ def remove_noise_spectro(sxx, histo_relative_size=8, window_smoothing=5, n=0.1, 
         sxx = 20 * np.log10(sxx)
 
     len_spectro_e = len(sxx[0])
-    histo_size = int(len_spectro_e/histo_relative_size)
+    histo_size = int(len_spectro_e / histo_relative_size)
 
     background_noise = []
     for row in sxx:
@@ -463,12 +460,12 @@ def remove_noise_spectro(sxx, histo_relative_size=8, window_smoothing=5, n=0.1, 
         if db:
             plt.imshow(new_spec, origin="lower", aspect="auto", cmap=colormap, interpolation="none")
         else:
-            plt.imshow(20*np.log10(new_spec), origin="lower", aspect="auto", cmap=colormap, interpolation="none")
+            plt.imshow(20 * np.log10(new_spec), origin="lower", aspect="auto", cmap=colormap, interpolation="none")
         a = fig.add_subplot(1, 2, 2)
         if db:
             plt.imshow(new_spec, origin="lower", aspect="auto", cmap=colormap, interpolation="none")
         else:
-            plt.imshow(20*np.log10(sxx), origin="lower", aspect="auto", cmap=colormap, interpolation="none")
+            plt.imshow(20 * np.log10(sxx), origin="lower", aspect="auto", cmap=colormap, interpolation="none")
         plt.show()
     return new_spec
 
@@ -490,10 +487,11 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
     meanspec = np.array([np.mean(row) for row in sxx])
 
     if normalization:
-        meanspec = meanspec/np.max(meanspec)
+        meanspec = meanspec / np.max(meanspec)
 
     # Find peaks (with slopes)
-    peaks_indices = np.r_[False, meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
+    peaks_indices = np.r_[False, meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
+        meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
     peaks_indices = peaks_indices.nonzero()[0].tolist()
 
     # peaks_indices = signal.argrelextrema(np.array(meanspec), np.greater)[0].tolist() # scipy method (without slope)
@@ -501,10 +499,11 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
     # Remove peaks with difference of frequency < freqband
     # number of consecutive index
     nb_bin = next(i for i, v in enumerate(frequencies) if v > freqband)
-    for consecutiveIndices in [np.arange(i, i+nb_bin) for i in peaks_indices]:
+    for consecutiveIndices in [np.arange(i, i + nb_bin) for i in peaks_indices]:
         if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
             # close values has been found
-            maxi = np.intersect1d(consecutiveIndices, peaks_indices)[np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
+            maxi = np.intersect1d(consecutiveIndices, peaks_indices)[
+                np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
             peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
             # remove all indices that are in consecutiveIndices
             # append the max

@@ -10,13 +10,13 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-from pypam._event import Event
-from pypam import utils
-
-import numpy as np
-import numba as nb
-import pandas as pd
 import matplotlib.pyplot as plt
+import numba as nb
+import numpy as np
+import pandas as pd
+
+from pypam import utils
+from pypam._event import Event
 
 plt.style.use('ggplot')
 
@@ -82,7 +82,7 @@ class ImpulseDetector:
         """
         signal.set_band(self.band)
         levels = []
-        blocksize = int(self.dt*signal.fs)
+        blocksize = int(self.dt * signal.fs)
         for block in signal.Blocks(blocksize=blocksize):
             level = block.rms(db=True)
             levels.append(level)
@@ -133,7 +133,7 @@ class ImpulseDetector:
         save_path : string or Path
             Where to save the image. Set to None if it should not be saved
         """
-        blocksize = int(self.dt*signal.fs)
+        blocksize = int(self.dt * signal.fs)
         signal.set_band(band=self.band)
         envelope = signal.envelope()
         envelope = utils.to_db(envelope, ref=1.0, square=True)
@@ -169,7 +169,7 @@ class ImpulseDetector:
             event = Event(s.signal[n1:n2], s.fs)
             noise_clip = np.concatenate((s.signal[n1:start_n], s.signal[end_n:n2]))
             # event.plot()
-            event.reduce_noise(noise_clip=noise_clip, nfft=4096*8)
+            event.reduce_noise(noise_clip=noise_clip, nfft=4096 * 8)
             # event.plot(force_calc=True)
             event.signal = event.signal[start_n - n1:end_n - n1]
         else:
@@ -275,7 +275,7 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
                 # Event finished, too long! Or event detected!
                 event_on = False
                 event_end = i
-                times_events.append([event_start/fs, duration, event_end/fs])
+                times_events.append([event_start / fs, duration, event_end / fs])
                 i += min_separation_samples
                 event_max_val = 0
             elif xi > event_max_val:
@@ -300,7 +300,7 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
     while j < len(signal):
         if j + blocksize > len(signal):
             blocksize = len(signal) - j
-        noise = np.mean(signal[j:j+blocksize])
+        noise = np.mean(signal[j:j + blocksize])
         for i in np.arange(blocksize - 1) + j:
             xi = signal[i]
             snr = xi - noise
@@ -310,7 +310,7 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
                     # Event finished, too long! Or event detected!
                     event_on = False
                     event_end = i
-                    times_events.append([event_start/fs, duration, event_end/fs])
+                    times_events.append([event_start / fs, duration, event_end / fs])
             else:
                 if snr >= threshold:
                     if len(times_events) == 0 or (i - event_end) >= min_separation_samples:

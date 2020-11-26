@@ -10,16 +10,17 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-from pypam import utils
-from pypam import acoustic_indices
-
 import operator
-import numpy as np
-import noisereduce as nr
-import scipy.signal as sig
+
 import matplotlib.pyplot as plt
-import sklearn.metrics as metrics
+import noisereduce as nr
+import numpy as np
+import scipy.signal as sig
 import sklearn.linear_model as linear_model
+import sklearn.metrics as metrics
+
+from pypam import acoustic_indices
+from pypam import utils
 
 plt.style.use('ggplot')
 
@@ -575,7 +576,7 @@ class Signal:
         """
         self.signal = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip, prop_decrease=prop_decrease,
                                       n_fft=nfft, win_length=nfft, verbose=False, n_grad_freq=1, n_grad_time=1,
-                                      hop_length=int(nfft*0.2))
+                                      hop_length=int(nfft * 0.2))
         self._processed[self.band_n].append('noisereduction')
 
     def plot(self, nfft=512, scaling='density', db=True, force_calc=False):
@@ -596,7 +597,7 @@ class Signal:
         ax[1].set_ylabel('Frequency [Hz]')
         plt.show()
         plt.close()
-    
+
     def blocks(self, blocksize):
         """
         Wrappper for the Blocks class
@@ -647,7 +648,7 @@ class Blocks:
         Return next block
         """
         if (self.n * self.blocksize) < self.nsamples:
-            block = self.signal[self.n*self.blocksize: self.n*self.blocksize + self.blocksize]
+            block = self.signal[self.n * self.blocksize: self.n * self.blocksize + self.blocksize]
             self.n += 1
             s = Signal(block, self.fs)
             return s

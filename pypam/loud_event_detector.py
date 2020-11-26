@@ -10,12 +10,12 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-from pypam._event import Event
-from pypam import utils
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+from pypam import utils
+from pypam._event import Event
 
 plt.style.use('ggplot')
 
@@ -79,8 +79,8 @@ class LoudEventDetector:
         for i, start_i in enumerate(start_points):
             duration = (end_points[i] - start_i)
             if duration >= self.min_duration:
-                event = self.load_event(s=signal, n_start=int(start_i*signal.fs),
-                                        duration_samples=int(duration*signal.fs))
+                event = self.load_event(s=signal, n_start=int(start_i * signal.fs),
+                                        duration_samples=int(duration * signal.fs))
                 rms, sel, peak = event.analyze()
                 events_df.at[i] = {'start_seconds': start_i, 'end_seconds': end_points[i],
                                    'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
@@ -140,4 +140,3 @@ class LoudEventDetector:
 class ShipDetector(LoudEventDetector):
     def __init__(self, min_duration=100, threshold=10.0):
         super().__init__(min_duration=min_duration, band=[50, 500], threshold=threshold)
-

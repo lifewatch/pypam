@@ -10,18 +10,19 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-from pypam import utils
-from pypam.acoustic_file import HydroFile
-from pypam import loud_event_detector
-
+import datetime
+import operator
 import os
 import pathlib
 import zipfile
-import datetime
-import operator
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+from pypam import loud_event_detector
+from pypam import utils
+from pypam.acoustic_file import HydroFile
 
 pd.plotting.register_matplotlib_converters()
 plt.style.use('ggplot')
@@ -80,7 +81,7 @@ class ASA:
                 self.period = period
         else:
             self.period = None
-        
+
         self.utc = utc
 
     def evolution_multiple(self, method_list: list, **kwargs):
@@ -129,7 +130,7 @@ class ASA:
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
-        
+
         return df
 
     def start_end_timestamp(self):
@@ -149,7 +150,7 @@ class ASA:
         sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
                                p_ref=self.p_ref, band=self.band, utc=self.utc)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
-        
+
         return start_datetime, end_datetime
 
     def apply_to_all(self, method_name, **kwargs):
@@ -200,7 +201,7 @@ class ASA:
             Any accepted arguments for the rms function of the AcuFile
         """
         rms_evolution = self.evolution('rms', **kwargs)
-            
+
         return rms_evolution['rms'].mean()
 
     def spd(self, db=True, h=0.1, percentiles=None):
@@ -234,8 +235,8 @@ class ASA:
         bin_edges = np.arange(start=pxx.min(), stop=pxx.max(), step=h)
         if percentiles is None:
             percentiles = []
-        spd, p = utils.sxx2spd(Sxx=pxx, h=h, percentiles=np.array(percentiles)/100.0, bin_edges=bin_edges)
-        
+        spd, p = utils.sxx2spd(Sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
+
         return fbands, bin_edges, spd, percentiles, p
 
     def cut_and_place_files_period(self, period, folder_name, extensions=None):
@@ -266,44 +267,44 @@ class ASA:
                 print('start!', wav_file)
                 # Split the sound file in two files
                 first, second = sound_file.split(start_date)
-                move_file(second, folder_path)   
+                move_file(second, folder_path)
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
-                        df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
+                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
                         new_metadata_path = second.parent.joinpath(second.name.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
                         # Move the file 
-                        move_file(new_metadata_path, folder_path)                         
-            elif sound_file.contains_date(end_date):  
-                print('end!', wav_file)          
+                        move_file(new_metadata_path, folder_path)
+            elif sound_file.contains_date(end_date):
+                print('end!', wav_file)
                 # Split the sound file in two files
                 first, second = sound_file.split(end_date)
-                move_file(first, folder_path)   
+                move_file(first, folder_path)
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
-                        df['datetime'] = pd.to_datetime(df['unix time']*1e9) + datetime.timedelta(hours=2)
+                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
                         new_metadata_path = second.parent.joinpath(second.name.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
                     # Move the file (also if log)
-                    move_file(metadata_file, folder_path)    
-                
-            else: 
+                    move_file(metadata_file, folder_path)
+
+            else:
                 if sound_file.is_in_period([start_date, end_date]):
                     print('moving', wav_file)
                     sound_file.file.close()
                     move_file(wav_file, folder_path)
                     for metadata_file in file_list[1:]:
-                        move_file(metadata_file, folder_path)       
+                        move_file(metadata_file, folder_path)
                 else:
                     pass
         return 0
@@ -358,7 +359,7 @@ class ASA:
             end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
             if last_end is not None:
                 if (last_end - start_datetime).total_seconds() < min_duration:
-                   detector.reset()
+                    detector.reset()
             last_end = end_datetime
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = sound_file.detect_ship_events(min_duration=min_duration, threshold=threshold,
@@ -393,14 +394,14 @@ class ASA:
         plt.figure()
         plt.plot(rms_evolution['rms'])
         plt.xlabel('Time')
-        if db: 
+        if db:
             units = 'db re 1V %s uPa' % self.p_ref
         else:
             units = 'uPa'
-        plt.title('Evolution of the broadband rms value')       # Careful when filter applied!
+        plt.title('Evolution of the broadband rms value')  # Careful when filter applied!
         plt.ylabel('rms [%s]' % units)
         plt.tight_layout()
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
@@ -423,30 +424,30 @@ class ASA:
         dates = rms_evolution['dates'].unique()
         hours = rms_evolution['hours'].unique()
         daily_patterns = pd.DataFrame()
-        for date in dates: 
+        for date in dates:
             for hour in hours:
                 rms = rms_evolution[(rms_evolution['date'] == date) and (rms_evolution['hour'] == hour)]['rms']
                 daily_patterns.loc[date, hour] = rms
-        
+
         # Plot the patterns
         plt.figure()
         im = plt.pcolormesh(daily_patterns.values)
-        plt.title('Daily patterns') 
+        plt.title('Daily patterns')
         plt.xlabel('Hours of the day')
         plt.ylabel('Days')
 
-        if db: 
+        if db:
             units = 'db re 1V %s uPa' % self.p_ref
         else:
             units = 'uPa'
         cbar = plt.colorbar(im)
         cbar.set_label('rms [%s]' % units, rotation=270)
         plt.tight_layout()
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-        plt.close()   
+        plt.close()
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -463,11 +464,11 @@ class ASA:
         **kwargs : Any accepted for the power_spectrum method
         """
         power = self.evolution(method_name='power_spectrum', db=db, **kwargs)
-        if db: 
+        if db:
             units = 'db re 1V %s uPa^2' % self.p_ref
         else:
-            units = 'uPa^2' 
-        
+            units = 'uPa^2'
+
         return self._plot_spectrum_mean(df=power, units=units, col_name='spectrum',
                                         output_name='SPLrms', save_path=save_path, log=log)
 
@@ -486,11 +487,11 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd = self.evolution(method_name='psd', db=db, **kwargs)
-        if db: 
+        if db:
             units = 'db re 1V %s uPa^2' % self.p_ref
         else:
-            units = 'uPa^2' 
-        
+            units = 'uPa^2'
+
         return self._plot_spectrum_mean(df=psd, units=units, col_name='density',
                                         output_name='PSD', save_path=save_path, log=log)
 
@@ -513,9 +514,9 @@ class ASA:
         save_path : string or Path 
             Where to save the output graph. If None, it is not saved
         """
-        fbands = df['band_'+col_name].columns
+        fbands = df['band_' + col_name].columns
         plt.figure()
-        mean_spec = df['band_'+col_name][fbands].mean(axis=0)
+        mean_spec = df['band_' + col_name][fbands].mean(axis=0)
         plt.plot(fbands, mean_spec)
         plt.title(col_name.capitalize())
         plt.xlabel('Frequency [Hz')
@@ -529,11 +530,11 @@ class ASA:
         plt.hlines(y=percentiles, xmin=fbands.min(), xmax=fbands.max(), label=df['percentiles'].columns)
 
         plt.tight_layout()
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-        plt.close()   
+        plt.close()
 
         return fbands, mean_spec, percentiles
 
@@ -550,10 +551,10 @@ class ASA:
         **kwargs : Any accepted for the power spectrum method
         """
         power_evolution = self.evolution('power_spectrum', db=db, **kwargs)
-        if db: 
+        if db:
             units = 'db re 1V %s uPa^2' % self.p_ref
         else:
-            units = 'uPa^2' 
+            units = 'uPa^2'
         self._plot_ltsa(df=power_evolution, col_name='spectrum',
                         output_name='SPLrms', units=units, save_path=save_path)
 
@@ -572,10 +573,10 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution('psd', db=db, **kwargs)
-        if db: 
+        if db:
             units = 'db re 1V %s uPa^2/Hz' % self.p_ref
         else:
-            units = 'uPa^2/Hz' 
+            units = 'uPa^2/Hz'
         self._plot_ltsa(df=psd_evolution, col_name='density',
                         output_name='PSD', units=units, save_path=save_path)
 
@@ -601,8 +602,8 @@ class ASA:
         # Plot the evolution  
         # Extra axes for the colorbar and delete the unused one
         fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
-        fbands = df['band_'+col_name].columns
-        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_'+col_name][fbands].T.to_numpy(dtype=np.float))
+        fbands = df['band_' + col_name].columns
+        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float))
         ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
         ax[0, 0].set_xlabel('Time')
         ax[0, 0].set_ylabel('Frequency [Hz]')
@@ -618,11 +619,11 @@ class ASA:
         ax[1, 0].legend(df['percentiles'].columns.values)
 
         plt.tight_layout()
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-        plt.close()   
+        plt.close()
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """
@@ -639,7 +640,7 @@ class ASA:
         **kwargs : Any accepted for the spd method
         """
         fbands, bin_edges, spd, percentiles, p = self.spd(db=db, **kwargs)
-        if db: 
+        if db:
             units = 'db re 1V %s uPa^2/Hz' % self.p_ref
         else:
             units = 'uPa^2/Hz'
@@ -647,24 +648,24 @@ class ASA:
         # Plot the EPD
         fig = plt.figure()
         im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu')
-        if log: 
+        if log:
             plt.xscale('log')
         plt.title('Spectral probability density')
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('PSD [%s]' % units)
         cbar = fig.colorbar(im)
         cbar.set_label('Empirical Probability Density', rotation=90)
-        
+
         # Plot the lines of the percentiles
         if len(percentiles) != 0:
             plt.plot(fbands, p, label=percentiles)
 
         plt.tight_layout()
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-        plt.close()  
+        plt.close()
 
         return fbands, bin_edges, spd, percentiles, p
 
@@ -673,6 +674,7 @@ class AcousticFolder:
     """
     Class to help through the iterations of the acoustic folder.
     """
+
     def __init__(self, folder_path, zipped=False, include_dirs=False, extensions=None):
         """
         Store the information about the folder.

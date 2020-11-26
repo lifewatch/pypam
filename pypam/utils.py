@@ -10,8 +10,8 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-import numpy as np
 import numba as nb
+import numpy as np
 import scipy.signal as sig
 
 BANDS = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250',
@@ -35,13 +35,13 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
     bin_edges : numpy array
         Limits of the histogram bins
     """
-    spd = np.zeros((sxx.shape[0], bin_edges.size-1), dtype=np.float64)
+    spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
     p = np.zeros((sxx.shape[0], percentiles.size), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
         spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((bin_edges.size - 1) * h)
         cumsum = np.cumsum(spd[i, :])
         for j in nb.prange(percentiles.size):
-            p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j]*cumsum[-1])]
+            p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j] * cumsum[-1])]
 
     return spd, p
 
@@ -110,11 +110,11 @@ def calculate_aci(sxx):
         d = 0
         i = 0
         for k in np.arange(1, sxx.shape[0]):
-            dk = np.abs(sxx[k][j] - sxx[k-1][j])
+            dk = np.abs(sxx[k][j] - sxx[k - 1][j])
             d = d + dk
             i = i + sxx[k][j]
-        aci_val = aci_val + d/i
-    
+        aci_val = aci_val + d / i
+
     return aci_val
 
 
@@ -153,7 +153,7 @@ def set_gain_upa_db(wave, gain):
     """
     Apply the gain in db to the signal in upa
     """
-    gain = np.pow(10, gain/20.0)
+    gain = np.pow(10, gain / 20.0)
     return gain(wave, gain)
 
 
