@@ -263,4 +263,3 @@ def oct3bankdsgn(fs, bands, n):
         filterbank.append(sos)
 
     return filterbank, fsnew
-
