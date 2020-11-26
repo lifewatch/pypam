@@ -4,18 +4,15 @@ import pyhydrophone as pyhy
 
 import argparse
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('folder_path', metavar='N', type=str, nargs='+',
-                    help='folder where the wav files are')
-parser.add_argument('hydrophone', metavar='N', type=str, nargs='+',
-                    help='Name of the hydrophone')
-parser.add_argument('--includedirs', metavar='N', type=int, nargs='+',
-                    help='Add if the subfloders have to be added')
+parser = argparse.ArgumentParser(description='Clean the calibration tones')
+parser.add_argument('folder_path', metavar='N', type=str, nargs='+', help='folder where the wav files are')
+parser.add_argument('hydrophone', metavar='N', type=str, nargs='+', help='Name of the hydrophone')
+parser.add_argument('--includedirs', metavar='N', type=int, nargs='+', help='Add if the subfloders have to be added')
 
 args = parser.parse_args()
 
-folder_path = args['folder_path']
-if args['includedirs']:
+folder_path = args.folder_path
+if args.includedirs:
     include_dirs = True
 else:
     include_dirs = False
