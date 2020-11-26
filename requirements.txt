@@ -1,7 +1,9 @@
-acoustics==0.2.3
+acoustics==0.2.4.post0
 affine==2.3.0
 alabaster==0.7.12
+appdirs==1.4.4
 attrs==19.3.0
+audioread==2.1.9
 Babel==2.8.0
 certifi==2020.4.5.1
 cffi==1.13.2
@@ -13,6 +15,7 @@ colorama==0.4.3
 configparser==4.0.2
 contextily==1.0.0
 cycler==0.10.0
+decorator==4.4.2
 Deprecated==1.2.9
 descartes==1.1.0
 docutils==0.16
@@ -27,29 +30,33 @@ imagesize==1.2.0
 Jinja2==2.11.2
 joblib==0.14.1
 kiwisolver==1.1.0
+librosa==0.8.0
 llvmlite==0.31.0
 mapclassify==2.2.0
 MarkupSafe==1.1.1
 matplotlib==3.1.2
 mercantile==1.1.4
 munch==2.5.0
+noisereduce==1.1.0
 numba==0.48.0
 numpy==1.18.1
 ordereddict==1.1
 packaging==20.4
 pandas==0.25.3
 Pillow==7.1.2
+pooch==1.2.0
 psycopg2==2.8.5
+pyarrow==1.0.1
 pycparser==2.19
 Pygments==2.6.1
 pyhydrophone @ file:///C:/Users/cleap/Documents/code/pyhydrophone
--e git+https://github.com/cparcerisas/sound-survey.git@fcd39e5cffd400c8c0b8246b7415952d15af1f4a#egg=pypam
 pyparsing==2.4.6
 pyproj==2.6.1.post1
 python-dateutil==2.8.1
 pytz==2019.3
 rasterio @ file:///C:/Users/cleap/Downloads/Installation%20programs/rasterio-1.1.4-cp37-cp37m-win_amd64.whl
 requests==2.23.0
+resampy==0.2.2
 rstcheck==3.3.1
 Rtree @ file:///C:/Users/cleap/Downloads/Installation%20programs/Rtree-0.9.4-cp37-cp37m-win_amd64.whl
 scikit-learn==0.23.0
@@ -68,5 +75,6 @@ sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
 tabulate==0.8.6
 threadpoolctl==2.0.0
+tqdm==4.50.2
 urllib3==1.25.9
 wrapt==1.12.1

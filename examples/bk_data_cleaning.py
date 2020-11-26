@@ -1,12 +1,8 @@
-import os
-import glob
 import pathlib
-import geopandas
 import pandas as pd
 import pyhydrophone as pyhy
-import matplotlib.pyplot as plt
 
-from pypam import acoustic_survey, geolocation
+from pypam import acoustic_survey
 
 
 # Data Information
@@ -47,10 +43,10 @@ def separate_ref_signals():
             shipwreck_metadata = metadata.loc[shipwreck_name]
             if shipwreck_metadata['Instrument'] != 'SoundTrap':
                 asa = acoustic_survey.ASA(bk, folder_path=shipwreck_path)
-                asa.apply_to_all('cut_calibration_tone', max_duration=120, freq=159.0, min_duration=10.0, save_path=data_folder.joinpath(shipwreck_name+'_ref.wav'))
+                asa.apply_to_all('cut_calibration_tone', max_duration=120, freq=159.0, min_duration=10.0,
+                                 save_path=data_folder.joinpath(shipwreck_name+'_ref.wav'))
     
 
-    
 if __name__ == "__main__":
     """
     Clean the B&K data

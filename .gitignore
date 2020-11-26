@@ -1,5 +1,6 @@
 __pycache__
 .vscode/
+.idea/
 csv
 *.m
 *.pkl
@@ -7,3 +8,4 @@ pypam.egg-info/
 docs/build/
 venv/
 .idea/
+examples/
