@@ -4,18 +4,17 @@ Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
-import math
-from geopy import distance
-import pathlib
-import shapely
 import datetime
-import geopandas
-import pandas as pd
+import pathlib
+
 import contextily as ctx
+import geopandas
 import matplotlib.pyplot as plt
+import pandas as pd
+import shapely
+from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import geo
-
 
 
 class SurveyLocation:
@@ -37,11 +36,9 @@ class SurveyLocation:
                 geotrackpoints = self.read_csv(geofile, **kwargs)
             else:
                 raise Exception('Extension %s is not implemented!' % (extension))
-            
+
             self.geotrackpoints = geotrackpoints
             self.geofile = geofile
-        
-
 
     def read_gpx(self, geofile):
         """
@@ -55,7 +52,6 @@ class SurveyLocation:
 
         return geotrackpoints
 
-    
     def read_pickle(self, geofile, datetime_col='datetime', crs='EPSG:4326'):
         df = pd.read_pickle(geofile)
         geotrackpoints = geopandas.GeoDataFrame(df, crs=crs)
@@ -65,7 +61,6 @@ class SurveyLocation:
         geotrackpoints.dropna(subset=['geometry'], inplace=True)
 
         return geotrackpoints
-
 
     def read_csv(self, geofile, datetime_col='datetime', lat_col='Lat', lon_col='Lon'):
         df = pd.read_csv(geofile)
@@ -77,7 +72,6 @@ class SurveyLocation:
         geotrackpoints.dropna(subset=[lon_col], inplace=True)
 
         return geotrackpoints
-       
 
     def add_survey_location(self, df):
         """
@@ -96,7 +90,7 @@ class SurveyLocation:
                 t = i
             idx = self.geotrackpoints.index.get_loc(t, method='nearest')
             df.loc[i, 'geo_time'] = self.geotrackpoints.index[idx]
-        
+
         good_points_mask = abs(df.geo_time - df.datetime) < datetime.timedelta(seconds=600)
         if good_points_mask.sum() < len(df):
             print('This file %s is not corresponding with the timestamps!' % (self.geofile))
@@ -105,7 +99,6 @@ class SurveyLocation:
         geo_df = geo_df.merge(df, on='geo_time')
 
         return geo_df
-    
 
     def plot_survey_color(self, column, df, units=None, map_file=None, save_path=None):
         """
@@ -122,27 +115,26 @@ class SurveyLocation:
         map_file : string or Path 
             Map that will be used as a basemap
         """
-        if 'geometry' not in df.columns: 
+        if 'geometry' not in df.columns:
             df = self.add_survey_location(df)
         _, ax = plt.subplots(1, 1)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
         if df[column].dtype != float:
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax) 
-        else: 
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax) 
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax)
+        else:
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax)
         if map_file is None:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite, reset_extent=False)
         else:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False, cmap='BrBG')
         ax.set_axis_off()
         ax.set_title('%s Distribution' % (column))
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-    
-    
+
     def add_distance_to(self, df, lat, lon, column='distance'):
         """
         Add the distances to a certain point. 
@@ -158,12 +150,11 @@ class SurveyLocation:
             Longitude of the point
 
         """
-        if "geometry" not in df.columns: 
+        if "geometry" not in df.columns:
             df = self.add_survey_location(df)
         df[column] = df['geometry'].apply(distance_m, lat=lat, lon=lon)
 
         return df
-    
 
     def add_distance_to_coast(self, df, coastfile, column='coast_dist'):
         """
@@ -176,13 +167,12 @@ class SurveyLocation:
             ASA output or GeoDataFrame
         coastfile : str or Path
             File with the points of the coast
-        """ 
+        """
         coastline = geopandas.read_file(coastfile).loc[0].geometry.coords
         coast_df = geopandas.GeoDataFrame(geometry=[shapely.geometry.Point(xy) for xy in coastline])
         df[column] = df['geometry'].apply(min_distance_m, geodf=coast_df)
 
         return df
-
 
 
 def distance_m(coords, lat, lon):
