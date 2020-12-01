@@ -680,10 +680,7 @@ class AcuFile:
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs)
             signal.set_band(band=self.band)
-            save_path = pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/'
-                                     'AMUC M002/Acoustic Measurements/pypam/%s.png'
-                                     % time_bin.strftime("%y%m%d_%H%M%S"))
-            events_df = detector.detect_events(signal, method='snr', verbose=True, save_path=save_path)
+            events_df = detector.detect_events(signal, method='snr', verbose=True)
             events_df['datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
             total_events = total_events.append(events_df)
