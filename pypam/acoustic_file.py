@@ -726,7 +726,7 @@ class AcuFile:
             # _, fbands, t, sxx_list = self.spectrogram(nfft=4096*4, scaling='spectrum', db=True, mode='fast')
             # sxx = sxx_list[0]
             fig, ax = plt.subplots(2, 1, sharex=True)
-            # im = ax[0].pcolormesh(t, fbands, sxx)
+            # im = ax[0].pcolormesh(t, fbands, sxx, shading='auto')
             # cbar = plt.colorbar(im)
             # cbar.set_label('SPLrms [dB re 1 uPa]', rotation=90)
             ax[0].set_title('Spectrogram')
@@ -937,7 +937,7 @@ class AcuFile:
         for i, sxx in enumerate(sxx_list):
             # Plot the patterns
             plt.figure()
-            im = plt.pcolormesh(t, fbands, sxx)
+            im = plt.pcolormesh(t, fbands, sxx, shading='auto')
             plt.title('Spectrogram of bin %s' % (time[i].strftime("%Y-%m-%d %H:%M")))
             plt.xlabel('Time [s]')
             plt.ylabel('Frequency [Hz]')
@@ -977,7 +977,7 @@ class AcuFile:
         for i, spd in enumerate(spd_list):
             # Plot the EPD
             fig = plt.figure()
-            im = plt.pcolormesh(fbands, edges_list[i], spd.T, cmap='BuPu')
+            im = plt.pcolormesh(fbands, edges_list[i], spd.T, cmap='BuPu', shading='auto')
             if log:
                 plt.xscale('log')
             plt.title('Spectral probability density at bin %s' % time[i].strftime("%Y-%m-%d %H:%M"))

@@ -602,7 +602,8 @@ class ASA:
         # Extra axes for the colorbar and delete the unused one
         fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
         fbands = df['band_' + col_name].columns
-        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float))
+        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
+                                 shading='auto')
         ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
         ax[0, 0].set_xlabel('Time')
         ax[0, 0].set_ylabel('Frequency [Hz]')
@@ -646,7 +647,7 @@ class ASA:
 
         # Plot the EPD
         fig = plt.figure()
-        im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu')
+        im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu', shading='auto')
         if log:
             plt.xscale('log')
         plt.title('Spectral probability density')

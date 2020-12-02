@@ -13,6 +13,7 @@ __status__ = "Development"
 import operator
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import noisereduce as nr
 import numpy as np
 import scipy.signal as sig
@@ -26,9 +27,11 @@ plt.style.use('ggplot')
 
 
 class Signal:
-    def __init__(self, signal, fs):
+    def __init__(self, signal, fs, channel=0):
         # Original signal
         self._fs = fs
+        if len(signal.shape) > 1:
+            signal = signal[:, channel]
         self._signal = signal.copy()
 
         # Init processed signal
@@ -585,16 +588,17 @@ class Signal:
         """
         self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
 
-        fig, ax = plt.subplots(2, 1, sharex=True)
-        ax[0].plot(self.times, self.signal)
-        ax[0].set_title('Signal')
-        ax[0].set_xlabel('Time [s]')
-        ax[0].set_ylabel('Amplitude [dB]')
-        im = ax[1].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150)
-        fig.colorbar(im, ax=ax[1])
-        ax[1].set_title('Spectrogram')
-        ax[1].set_xlabel('Time [s]')
-        ax[1].set_ylabel('Frequency [Hz]')
+        fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
+        ax[0, 0].plot(self.times, self.signal)
+        ax[0, 0].set_title('Signal')
+        ax[0, 0].set_xlabel('Time [s]')
+        ax[0, 0].set_ylabel('Amplitude [uPa]')
+        ax[0, 1].set_axis_off()
+        im = ax[1, 0].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150, shading='auto')
+        plt.colorbar(im, cax=ax[1, 1], label='Lrms [dB]')
+        ax[1, 0].set_title('Spectrogram')
+        ax[1, 0].set_xlabel('Time [s]')
+        ax[1, 0].set_ylabel('Frequency [Hz]')
         plt.show()
         plt.close()
 
