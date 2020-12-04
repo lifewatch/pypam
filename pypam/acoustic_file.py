@@ -30,7 +30,7 @@ plt.style.use('ggplot')
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None, utc=True):
+    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0):
         """
         Data recorded in a wav file.
 
@@ -45,6 +45,8 @@ class AcuFile:
             Band to filter 
         utc : boolean
             Set to True if working on UTC and not localtime
+        channel : int
+            Channel to perform the calculations in
         """
         # Save hydrophone model 
         self.hydrophone = hydrophone
@@ -77,6 +79,9 @@ class AcuFile:
 
         # Work on local time or UTC time
         self.utc = utc
+
+        # Select channel
+        self.channel = channel
 
         # Set an empty wav array
         self.wav = None
@@ -354,7 +359,7 @@ class AcuFile:
             print('bin %s' % time_bin)
             # Read the signal and prepare it for analysis
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             for band in band_list:
                 signal.set_band(band)
                 for method_name in method_list:
@@ -485,7 +490,7 @@ class AcuFile:
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(self.band)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             sxx_list.append(sxx)
@@ -526,7 +531,7 @@ class AcuFile:
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(band=self.band)
             fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db, percentiles=percentiles)
 
@@ -678,7 +683,7 @@ class AcuFile:
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(band=self.band)
             save_path = pathlib.Path('//fs/shared/mrc/P-Projects/02 PC-Commercial/PC1902-AMUC/05 projectverloop/'
                                      'AMUC M002/Acoustic Measurements/pypam/%s.png'
@@ -718,7 +723,7 @@ class AcuFile:
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             events_df = detector.detect_events(signal, verbose=True)
             events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
             events_df = events_df.set_index('start_datetime')
@@ -768,7 +773,7 @@ class AcuFile:
         tone_samples = self.samples(max_duration)
         self.file.seek(0)
         first_part = self.file.read(frames=tone_samples)
-        signal = Signal(first_part, self.fs)
+        signal = Signal(first_part, self.fs, channel=self.channel)
         signal.set_band(band=[low_freq, high_freq])
         amplitude_envelope = signal.envelope()
         possible_points = np.zeros(amplitude_envelope.shape)
@@ -1001,7 +1006,7 @@ class AcuFile:
 
 
 class HydroFile(AcuFile):
-    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True):
+    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0):
         """
         Sound data recorded in a wav file with a hydrophone.
 
@@ -1015,12 +1020,14 @@ class HydroFile(AcuFile):
             Reference pressure in upa
         band: tuple or list
             Lowcut, Highcut. Frequency band to analyze
+        channel : int
+            Channel to perform the calculations in
         """
         super().__init__(sfile, hydrophone, p_ref, band, utc)
 
 
 class MEMSFile(AcuFile):
-    def __init__(self, sfile, hydrophone, acc_ref=1.0, band=None, utc=True):
+    def __init__(self, sfile, hydrophone, acc_ref=1.0, band=None, utc=True, channel=0):
         """
         Acceleration data recorded in a wav file.
 

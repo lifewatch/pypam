@@ -39,7 +39,8 @@ class ASA:
                  period=None,
                  band=None,
                  freq_resolution='all',
-                 utc=True):
+                 utc=True,
+                 channel=0):
         """ 
         Init a AcousticSurveyAnalysis (ASA)
 
@@ -82,6 +83,7 @@ class ASA:
             self.period = None
 
         self.utc = utc
+        self.channel = channel
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
@@ -102,7 +104,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output)
@@ -125,7 +127,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
@@ -140,14 +142,14 @@ class ASA:
         print(wav_file)
 
         sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                               p_ref=self.p_ref, band=self.band, utc=self.utc)
+                               p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
         print(wav_file)
         sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                               p_ref=self.p_ref, band=self.band, utc=self.utc)
+                               p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
 
         return start_datetime, end_datetime
@@ -169,7 +171,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 f(sound_file)
 
@@ -182,7 +184,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 total_time += sound_file.total_time()
 
@@ -261,7 +263,7 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.contains_date(start_date) and sound_file.file.frames > 0:
                 print('start!', wav_file)
                 # Split the sound file in two files
@@ -328,7 +330,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = sound_file.detect_piling_events(min_separation=min_separation, threshold=threshold,
                                                             max_duration=max_duration, dt=dt, binsize=self.binsize)
@@ -353,7 +355,7 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
-                                   p_ref=self.p_ref, band=self.band, utc=self.utc)
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
             start_datetime = sound_file.date
             end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
             if last_end is not None:

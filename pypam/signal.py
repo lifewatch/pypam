@@ -28,6 +28,17 @@ plt.style.use('ggplot')
 
 class Signal:
     def __init__(self, signal, fs, channel=0):
+        """
+        Representation of a signal
+        Parameters
+        ----------
+        signal : np.array
+            Signal to process
+        fs : int
+            Sample rate
+        channel : int
+            Channel to perform the calculations in
+        """
         # Original signal
         self._fs = fs
         if len(signal.shape) > 1:
