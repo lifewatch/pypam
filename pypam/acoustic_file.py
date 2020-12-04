@@ -233,9 +233,6 @@ class AcuFile:
         """
         Return a time array for each point of the signal 
         """
-        # First time, read the file and store it to not read it over and over
-        if 'time' not in self.__dict__.keys():
-            self.wav = self.file.read()
         incr = pd.to_timedelta(np.linspace(start=0, stop=self.total_time(), num=self.file.frames), unit='seconds')
         self.time = self.date + incr
 
