@@ -4,24 +4,28 @@ Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
-import math
-from geopy import distance
-import pathlib
-import shapely
 import datetime
-import geopandas
-import pandas as pd
+import pathlib
+
 import contextily as ctx
+import geopandas
 import matplotlib.pyplot as plt
+import pandas as pd
+import shapely
+from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import geo
-
+import sqlite3
 
 
 class SurveyLocation:
     def __init__(self, geofile=None, **kwargs):
         """
         Location of all the survey points
+        Parameters
+        ----------
+        geofile : str or Path
+            Where the data is stored. can be a csv, gpx, pickle or sqlite3
         """
         if geofile is None:
             self.geotrackpoints = None
@@ -35,17 +39,24 @@ class SurveyLocation:
                 geotrackpoints = self.read_pickle(geofile, **kwargs)
             elif extension == '.csv':
                 geotrackpoints = self.read_csv(geofile, **kwargs)
+            elif extension == '.sqlite3':
+                geotrackpoints = self.read_sqlite3(geofile, **kwargs)
             else:
                 raise Exception('Extension %s is not implemented!' % (extension))
-            
+
             self.geotrackpoints = geotrackpoints
             self.geofile = geofile
-        
-
 
     def read_gpx(self, geofile):
         """
         Read a GPX from GARMIN
+        Parameters
+        ----------
+        geofile : str or Path
+            GPX file
+        Returns
+        -------
+        Geopandas DataFrame
         """
         geotrackpoints = geopandas.read_file(geofile, layer='track_points')
         geotrackpoints.drop_duplicates(subset='time', inplace=True)
@@ -55,8 +66,22 @@ class SurveyLocation:
 
         return geotrackpoints
 
-    
     def read_pickle(self, geofile, datetime_col='datetime', crs='EPSG:4326'):
+        """
+        Read a pickle file
+        Parameters
+        ----------
+        geofile : string or path
+            Where the gps information is
+        datetime_col : string
+            Name of the column where the datetime is
+        crs : string
+            Projection of the gps information
+
+        Returns
+        -------
+        A Geopandas DataFrame
+        """
         df = pd.read_pickle(geofile)
         geotrackpoints = geopandas.GeoDataFrame(df, crs=crs)
         geotrackpoints[datetime_col] = pd.to_datetime(df[datetime_col])
@@ -67,9 +92,62 @@ class SurveyLocation:
 
         return geotrackpoints
 
-
     def read_csv(self, geofile, datetime_col='datetime', lat_col='Lat', lon_col='Lon'):
+        """
+        Read a csv file
+        Parameters
+        ----------
+        geofile : string or path
+            Where the gps information is
+        datetime_col : string
+            Name of the column where the datetime is
+        lat_col : string
+            Column with the Latitude
+        lon_col : string
+            Column with the Longitude data
+
+        Returns
+        -------
+        A GeoPandasDataFrame
+        """
         df = pd.read_csv(geofile)
+        geotrackpoints = self.convert_df(df, datetime_col, lat_col, lon_col)
+        return geotrackpoints
+
+    def read_sqlite3(self, geofile, table_name='gpsData', datetime_col='UTC', lat_col='Latitude', lon_col='Longitude'):
+        """
+        Read a sqlite3 file with geolocation data
+        Parameters
+        ----------
+        geofile : str or Path
+            sqlite3 file
+        Returns
+        -------
+        Geopandas DataFrame
+        """
+        conn = sqlite3.connect(geofile).cursor()
+        query = conn.execute("SELECT * FROM %s" % table_name)
+        cols = [column[0] for column in query.description]
+        df = pd.DataFrame.from_records(data=query.fetchall(), columns=cols)
+        geotrackpoints = self.convert_df(df, datetime_col, lat_col, lon_col)
+        return geotrackpoints
+
+    def convert_df(self, df, datetime_col, lat_col, lon_col):
+        """
+        Convert the DataFrame in a GeoPandas DataFrame
+        Parameters
+        ----------
+        df : DataFrame
+        datetime_col: str
+            String where the time information is
+        lat_col: str
+            Column name where the latitude is
+        lon_col: str
+            Column name where the longitude is
+        Returns
+        -------
+        The df turned in a geopandas dataframe
+        """
         geotrackpoints = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df[lon_col], df[lat_col]))
         geotrackpoints[datetime_col] = pd.to_datetime(df[datetime_col])
         geotrackpoints.drop_duplicates(subset=datetime_col, inplace=True)
@@ -79,7 +157,6 @@ class SurveyLocation:
         geotrackpoints.dropna(subset=[lon_col], inplace=True)
 
         return geotrackpoints
-       
 
     def add_survey_location(self, df):
         """
@@ -98,7 +175,7 @@ class SurveyLocation:
                 t = i
             idx = self.geotrackpoints.index.get_loc(t, method='nearest')
             df.loc[i, 'geo_time'] = self.geotrackpoints.index[idx]
-        
+
         good_points_mask = abs(df.geo_time - df.datetime) < datetime.timedelta(seconds=600)
         if good_points_mask.sum() < len(df):
             print('This file %s is not corresponding with the timestamps!' % (self.geofile))
@@ -107,7 +184,6 @@ class SurveyLocation:
         geo_df = geo_df.merge(df, on='geo_time')
 
         return geo_df
-    
 
     def plot_survey_color(self, column, df, units=None, map_file=None, save_path=None):
         """
@@ -124,27 +200,26 @@ class SurveyLocation:
         map_file : string or Path 
             Map that will be used as a basemap
         """
-        if 'geometry' not in df.columns: 
+        if 'geometry' not in df.columns:
             df = self.add_survey_location(df)
         _, ax = plt.subplots(1, 1)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
         if df[column].dtype != float:
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax) 
-        else: 
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax) 
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax)
+        else:
+            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax)
         if map_file is None:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite, reset_extent=False)
         else:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False, cmap='BrBG')
         ax.set_axis_off()
         ax.set_title('%s Distribution' % (column))
-        if save_path is not None: 
+        if save_path is not None:
             plt.savefig(save_path)
         else:
             plt.show()
-    
-    
+
     def add_distance_to(self, df, lat, lon, column='distance'):
         """
         Add the distances to a certain point. 
@@ -160,12 +235,11 @@ class SurveyLocation:
             Longitude of the point
 
         """
-        if "geometry" not in df.columns: 
+        if "geometry" not in df.columns:
             df = self.add_survey_location(df)
         df[column] = df['geometry'].apply(distance_m, lat=lat, lon=lon)
 
         return df
-    
 
     def add_distance_to_coast(self, df, coastfile, column='coast_dist'):
         """
@@ -178,13 +252,14 @@ class SurveyLocation:
             ASA output or GeoDataFrame
         coastfile : str or Path
             File with the points of the coast
-        """ 
+        """
+        if "geometry" not in df.columns:
+            df = self.add_survey_location(df)
         coastline = geopandas.read_file(coastfile).loc[0].geometry.coords
         coast_df = geopandas.GeoDataFrame(geometry=[shapely.geometry.Point(xy) for xy in coastline])
         df[column] = df['geometry'].apply(min_distance_m, geodf=coast_df)
 
         return df
-
 
 
 def distance_m(coords, lat, lon):
