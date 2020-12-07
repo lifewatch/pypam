@@ -362,7 +362,7 @@ class AcuFile:
                 for method_name in method_list:
                     f = operator.methodcaller(method_name, **kwargs)
                     output = f(signal)
-                    df.at[time_bin, (method_name, signal.band_n)] = output
+                    df.at[time_bin, (method_name, signal.band_n - 1)] = output
 
         self.file.seek(0)
         return df
