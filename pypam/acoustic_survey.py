@@ -131,10 +131,6 @@ class ASA:
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
-<<<<<<< HEAD
-=======
-
->>>>>>> geofile
         return df
 
     def start_end_timestamp(self):
@@ -277,11 +273,7 @@ class ASA:
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
-<<<<<<< HEAD
-                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
-=======
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
->>>>>>> geofile
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
@@ -298,11 +290,7 @@ class ASA:
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] != '.log.xml':
                         df = pd.read_csv(metadata_file)
-<<<<<<< HEAD
-                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9) + datetime.timedelta(hours=2)
-=======
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
->>>>>>> geofile
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
@@ -616,12 +604,8 @@ class ASA:
         # Extra axes for the colorbar and delete the unused one
         fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
         fbands = df['band_' + col_name].columns
-<<<<<<< HEAD
         im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
                                  shading='auto')
-=======
-        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float))
->>>>>>> geofile
         ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
         ax[0, 0].set_xlabel('Time')
         ax[0, 0].set_ylabel('Frequency [Hz]')
@@ -665,11 +649,7 @@ class ASA:
 
         # Plot the EPD
         fig = plt.figure()
-<<<<<<< HEAD
         im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu', shading='auto')
-=======
-        im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu')
->>>>>>> geofile
         if log:
             plt.xscale('log')
         plt.title('Spectral probability density')
