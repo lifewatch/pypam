@@ -108,7 +108,6 @@ class ASA:
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output)
-                df.to_pickle('df_test.pkl', compression='gzip')
         return df
 
     def evolution(self, method_name, **kwargs):
