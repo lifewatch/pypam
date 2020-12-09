@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numba as nb
 import numpy as np
 import pandas as pd
+import scipy as sci
 
 from pypam import utils
 from pypam._event import Event
@@ -188,17 +189,15 @@ class ImpulseDetector:
         signal.set_band([10, 20000])
         columns_temp = ['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak']
         columns_df = pd.DataFrame({'variable': 'temporal', 'value': columns_temp})
+        freq = sci.fft.rfftfreq(128) * 40000
+        columns_df = pd.concat([columns_df, pd.DataFrame({'variable': 'psd', 'value': freq})])
+        columns = pd.MultiIndex.from_frame(columns_df)
+        events_df = pd.DataFrame(columns=columns)
         for i, e in enumerate(times_events):
-
             start, duration, end = e
             event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
-            freq, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
-
-            if i == 0:
-                columns_df = pd.concat([columns_df, pd.DataFrame({'variable': 'psd', 'value': freq})])
-                columns = pd.MultiIndex.from_frame(columns_df)
-                events_df = pd.DataFrame(columns=columns)
+            _, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
             events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
             events_df.at[i, ('psd', freq)] = psd
         return events_df

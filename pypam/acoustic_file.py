@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 import soundfile as sf
+import scipy as sci
 
 from pypam import impulse_detector
 from pypam import loud_event_detector
@@ -523,7 +524,10 @@ class AcuFile:
         else:
             columns_df = pd.DataFrame()
 
-        spectra_df = pd.DataFrame(columns=columns_df)
+        fbands = sci.fft.rfftfreq(nfft) * self.fs
+        columns_df = pd.concat([columns_df, pd.DataFrame({'variable': 'band_' + scaling, 'value': fbands})])
+        columns = pd.MultiIndex.from_frame(columns_df)
+        spectra_df = pd.DataFrame(columns=columns)
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
@@ -531,15 +535,8 @@ class AcuFile:
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(band=self.band)
             fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db, percentiles=percentiles)
+            spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
 
-            if i == 0:
-                columns_df = pd.concat(
-                    [columns_df, pd.DataFrame({'variable': 'band_' + scaling, 'value': fbands})])
-                columns = pd.MultiIndex.from_frame(columns_df)
-                spectra_df = pd.DataFrame(columns=columns)
-                spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
-            else:
-                spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
             # Calculate the percentiles
             if len(percentiles) != 0:
                 spectra_df.at[time_bin, ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
