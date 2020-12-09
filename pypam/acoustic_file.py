@@ -648,6 +648,7 @@ class AcuFile:
             Sampling frequency of the signal. It will be down/up sampled in case it does not match with the file
             samplig frequency
         """
+        # TODO
         fs = 1
         return fs
 
@@ -1023,7 +1024,7 @@ class HydroFile(AcuFile):
         channel : int
             Channel to perform the calculations in
         """
-        super().__init__(sfile, hydrophone, p_ref, band, utc)
+        super().__init__(sfile, hydrophone, p_ref, band, utc, channel)
 
 
 class MEMSFile(AcuFile):
