@@ -950,9 +950,9 @@ class AcuFile:
             if log:
                 plt.yscale('log')
             if db:
-                units = r'dB %s $\muPa$' % self.ref
+                units = r'dB %s $\mu Pa$' % self.ref
             else:
-                units = r'$\muPa$'
+                units = r'$\mu Pa$'
             cbar = plt.colorbar(im)
             cbar.set_label(r'$L_{rms}$ [%s]' % units, rotation=90)
             plt.tight_layout()
@@ -977,9 +977,9 @@ class AcuFile:
         """
         time, fbands, percentiles, edges_list, spd_list, p_list = self.spd(db=db, **kwargs)
         if db:
-            units = r'dB %s $\muPa^2/Hz$' % self.ref
+            units = r'dB %s $\mu Pa^2/Hz$' % self.ref
         else:
-            units = r'$\muPa^2/Hz$'
+            units = r'$\mu Pa^2/Hz$'
         for i, spd in enumerate(spd_list):
             # Plot the EPD
             fig = plt.figure()
