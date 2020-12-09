@@ -688,7 +688,7 @@ class AcuFile:
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(band=self.band)
-            events_df = detector.detect_events(signal, method='snr', verbose=verbose)
+            events_df = detector.detect_events(signal, method='snr', verbose=verbose, save_path=save_path)
             events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')], unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
             total_events = total_events.append(events_df)
