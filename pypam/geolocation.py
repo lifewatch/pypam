@@ -180,6 +180,7 @@ class SurveyLocation:
             print('This file %s is not corresponding with the timestamps!' % self.geofile)
         geo_df = self.geotrackpoints.reindex(df.geo_time)
         # geo_df['geo_time'] = df.geo_time.values
+
         geo_df = geo_df.merge(df, on='geo_time')
 
         return geo_df
