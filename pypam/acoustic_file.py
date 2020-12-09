@@ -1042,7 +1042,7 @@ class MEMSFile(AcuFile):
         band: tuple or list
             Lowcut, Highcut. Frequency band to analyze        
         """
-        super().__init__(sfile, hydrophone, acc_ref, band, utc)
+        super().__init__(sfile, hydrophone, acc_ref, band, utc, channel)
 
     def integrate_acceleration(self):
         """ 
