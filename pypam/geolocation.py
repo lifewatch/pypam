@@ -6,17 +6,17 @@ Institution: VLIZ (Vlaams Institute voor de Zee)
 
 import datetime
 import pathlib
+import sqlite3
 
 import contextily as ctx
 import geopandas
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import shapely
 from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import geo
-import sqlite3
-import seaborn as sns
 
 # Apply the default theme
 sns.set_theme()

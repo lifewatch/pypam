@@ -13,13 +13,12 @@ __status__ = "Development"
 import operator
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import noisereduce as nr
 import numpy as np
 import scipy.signal as sig
+import seaborn as sns
 import sklearn.linear_model as linear_model
 import sklearn.metrics as metrics
-import seaborn as sns
 
 from pypam import acoustic_indices
 from pypam import utils

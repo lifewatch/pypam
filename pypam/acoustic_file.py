@@ -17,10 +17,10 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scipy.integrate as integrate
-import soundfile as sf
 import scipy as sci
+import scipy.integrate as integrate
 import seaborn as sns
+import soundfile as sf
 
 from pypam import impulse_detector
 from pypam import loud_event_detector
