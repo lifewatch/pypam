@@ -168,9 +168,7 @@ class ImpulseDetector:
             n2 = min(int((t + duration + self.min_separation) * s.fs), s.signal.shape[0])
             event = Event(s.signal[n1:n2], s.fs)
             noise_clip = np.concatenate((s.signal[n1:start_n], s.signal[end_n:n2]))
-            # event.plot()
             event.reduce_noise(noise_clip=noise_clip, nfft=4096 * 8)
-            # event.plot(force_calc=True)
             event.signal = event.signal[start_n - n1:end_n - n1]
         else:
             event = Event(s.signal[start_n:end_n], s.fs)
@@ -188,13 +186,21 @@ class ImpulseDetector:
             Signal where the events were detected
         """
         signal.set_band([10, 20000])
-        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
-        for e in times_events:
+        columns_temp = ['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak']
+        columns_df = pd.DataFrame({'variable': 'temporal', 'value': columns_temp})
+        for i, e in enumerate(times_events):
+
             start, duration, end = e
             event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
-            events_df.at[len(events_df)] = {'start_seconds': start, 'end_seconds': end,
-                                            'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
+            freq, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
+
+            if i == 0:
+                columns_df = pd.concat([columns_df, pd.DataFrame({'variable': 'psd', 'value': freq})])
+                columns = pd.MultiIndex.from_frame(columns_df)
+                events_df = pd.DataFrame(columns=columns)
+            events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
+            events_df.at[i, ('psd', freq)] = psd
         return events_df
 
     def plot_all_events(self, signal, events_df, save_path=None):
@@ -213,28 +219,33 @@ class ImpulseDetector:
         signal.set_band(band=self.band)
         fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
         fig, ax = plt.subplots(3, 1, sharex=True)
-        ax[0].pcolormesh(t, fbands, sxx)
+        ax[0].pcolormesh(t, fbands, sxx, shading='auto')
         ax[0].set_title('Spectrogram')
         ax[0].set_ylabel('Frequency [Hz]')
         ax[0].set_yscale('log')
-        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='signal')
+        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal')
         # ax[1].plot(signal.times, envelope, label='Envelope')
         for index in events_df.index:
             row = events_df.loc[index]
-            ax[1].axvline(x=row['start_seconds'], color='red')
-            ax[1].axvline(x=row['end_seconds'], color='blue')
+            ax[1].axvline(x=row.loc[('temporal', 'start_seconds')], color='red')
+            ax[1].axvline(x=row.loc[('temporal', 'end_seconds')], color='blue')
         ax[1].set_title('Detections')
-        ax[1].legend(loc='right')
-        ax[1].set_xlabel('Time [s]')
-        ax[1].set_ylabel('Amplitude [dB]')
+        ax[1].set_ylabel('[dB]')
+        ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
         if len(events_df) > 0:
-            ax[2].scatter(events_df.start_seconds, events_df.rms, label='rms')
-            ax[2].scatter(events_df.start_seconds, events_df.peak, label='0-peak')
-            ax[2].scatter(events_df.start_seconds, events_df.sel, label='sel')
-        ax[2].legend()
+            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
+                          label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
+            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
+                          label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
+            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'sel')],
+                          label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
+        ax[2].legend(bbox_to_anchor=(1, 0), loc="lower left")
+        ax[2].set_title('Pulses detected')
+        ax[2].set_xlabel('Time [s]')
         ax[2].set_ylabel('[dB]')
         plt.tight_layout()
-        plt.savefig(save_path)
+        if save_path is not None:
+            plt.savefig(save_path)
         plt.show()
         plt.close()
 

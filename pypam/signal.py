@@ -106,7 +106,7 @@ class Signal:
 
     def _fill_or_crop(self, n_samples):
         """
-        Crop the signal to the number specified or fill it with Nan values in case it is too short
+        Crop the signal to the number specified or fill it with 0 values in case it is too short
 
         Parameters
         ----------
@@ -117,7 +117,7 @@ class Signal:
             s = self.signal[0:n_samples]
             # self._processed[self.band_n].append('crop')
         else:
-            nan_array = np.full((n_samples,), np.nan)
+            nan_array = np.full((n_samples,), 0)
             nan_array[0:self.signal.size] = self.signal
             s = nan_array
             # self._processed[self.band_n].append('fill')
@@ -331,20 +331,23 @@ class Signal:
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
-            Lenght of the fft window in samples. Power of 2.
+            Lenght of the fft window in samples. Power of 2. If the signal is shorter it will be zero-padded
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         """
-        if mode == 'fast':
-            # Choose the closest power of 2 to clocksize for faster computing
-            real_size = self.signal.size
-            optim_len = int(2 ** np.ceil(np.log2(real_size)))
-            # Fill the missing values with 0
-            s = self._fill_or_crop(n_samples=optim_len)
+        if nfft > self.signal.size:
+            s = self._fill_or_crop(n_samples=nfft)
         else:
-            s = self.signal
+            if mode == 'fast':
+                # Choose the closest power of 2 to clocksize for faster computing
+                real_size = self.signal.size
+                optim_len = int(2 ** np.ceil(np.log2(real_size)))
+                # Fill the missing values with 0
+                s = self._fill_or_crop(n_samples=optim_len)
+            else:
+                s = self.signal
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
         if self.band is not None:
