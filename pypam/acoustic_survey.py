@@ -15,6 +15,7 @@ import os
 import pathlib
 import zipfile
 
+import dateutil.parser as parser
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
