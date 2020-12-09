@@ -15,11 +15,13 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import scipy as sci
+import seaborn as sns
 
 from pypam import utils
 from pypam._event import Event
 
-plt.style.use('ggplot')
+# Apply the default theme
+sns.set_theme()
 
 
 class ImpulseDetector:

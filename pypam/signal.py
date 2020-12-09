@@ -19,11 +19,13 @@ import numpy as np
 import scipy.signal as sig
 import sklearn.linear_model as linear_model
 import sklearn.metrics as metrics
+import seaborn as sns
 
 from pypam import acoustic_indices
 from pypam import utils
 
-plt.style.use('ggplot')
+# Apply the default theme
+sns.set_theme()
 
 
 class Signal:
@@ -606,10 +608,10 @@ class Signal:
         ax[0, 0].plot(self.times, self.signal)
         ax[0, 0].set_title('Signal')
         ax[0, 0].set_xlabel('Time [s]')
-        ax[0, 0].set_ylabel('Amplitude [uPa]')
+        ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
         im = ax[1, 0].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150, shading='auto')
-        plt.colorbar(im, cax=ax[1, 1], label='Lrms [dB]')
+        plt.colorbar(im, cax=ax[1, 1], label=r'$L_{rms}$ [dB]')
         ax[1, 0].set_title('Spectrogram')
         ax[1, 0].set_xlabel('Time [s]')
         ax[1, 0].set_ylabel('Frequency [Hz]')

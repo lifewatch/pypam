@@ -13,11 +13,13 @@ __status__ = "Development"
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 from pypam import utils
 from pypam._event import Event
 
-plt.style.use('ggplot')
+# Apply the default theme
+sns.set_theme()
 
 
 class LoudEventDetector:
