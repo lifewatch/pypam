@@ -15,7 +15,11 @@ import shapely
 from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import geo
+import seaborn as sns
 
+
+# Apply the default theme
+sns.set_theme()
 
 class SurveyLocation:
     def __init__(self, geofile=None, **kwargs):

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import scipy.integrate as integrate
 import soundfile as sf
+import seaborn as sns
 
 from pypam import impulse_detector
 from pypam import loud_event_detector
@@ -26,7 +27,9 @@ from pypam import utils
 from pypam.signal import Signal
 
 pd.plotting.register_matplotlib_converters()
-plt.style.use('ggplot')
+
+# Apply the default theme
+sns.set_theme()
 
 
 class AcuFile:
@@ -909,7 +912,7 @@ class AcuFile:
             plt.figure()
             plt.plot(fbands, df.loc[i, 'band_' + col_name][fbands])
             plt.title('%s of bin %s' % (col_name.capitalize(), i.strftime("%Y-%m-%d %H:%M")))
-            plt.xlabel('Frequency [Hz')
+            plt.xlabel('Frequency [Hz]')
             plt.ylabel('%s [%s]' % (output_name, units))
 
             plt.hlines(y=df.loc[i, 'percentiles'].values, xmin=fbands.min(), xmax=fbands.max(),
@@ -947,11 +950,11 @@ class AcuFile:
             if log:
                 plt.yscale('log')
             if db:
-                units = 'db %s upa' % self.ref
+                units = 'dB %s $\muPa$' % self.ref
             else:
-                units = 'upa'
+                units = '$\muPa$'
             cbar = plt.colorbar(im)
-            cbar.set_label('SPLrms [%s]' % units, rotation=90)
+            cbar.set_label('$L_{rms}$ [%s]' % units, rotation=90)
             plt.tight_layout()
             plt.show()
             if save_path is not None:
@@ -974,9 +977,9 @@ class AcuFile:
         """
         time, fbands, percentiles, edges_list, spd_list, p_list = self.spd(db=db, **kwargs)
         if db:
-            units = 'db %s upa^2/Hz' % self.ref
+            units = 'dB %s $\muPa^2/Hz$' % self.ref
         else:
-            units = 'upa^2/Hz'
+            units = '$\muPa^2/Hz$'
         for i, spd in enumerate(spd_list):
             # Plot the EPD
             fig = plt.figure()
