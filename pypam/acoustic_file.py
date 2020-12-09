@@ -649,7 +649,7 @@ class AcuFile:
         fs = 1
         return fs
 
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None, **kwargs):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None, verbose=False, **kwargs):
         """
         Detect piling events
 
@@ -665,6 +665,8 @@ class AcuFile:
             Threshold above ref value which one it is considered piling, in db
         dt : float
             Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+        verbose : bool
+            Set to True to get plots of the detections
         """
         if binsize is None:
             blocksize = self.file.frames
@@ -680,8 +682,8 @@ class AcuFile:
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs)
             signal.set_band(band=self.band)
-            events_df = detector.detect_events(signal, method='snr', verbose=True)
-            events_df['datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
+            events_df = detector.detect_events(signal, method='snr', verbose=verbose)
+            events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')], unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
             total_events = total_events.append(events_df)
         self.file.seek(0)
