@@ -263,3 +263,33 @@ def oct3bankdsgn(fs, bands, n):
         filterbank.append(sos)
 
     return filterbank, fsnew
+
+
+def pcm2float(s, dtype='float64'):
+    """Convert PCM signal to floating point with a range from -1 to 1.
+    Use dtype='float32' for single precision.
+    Parameters
+    ----------
+    sig : array_like
+        Input array, must have integral type.
+    dtype : data type, optional
+        Desired (floating point) data type.
+    Returns
+    -------
+    numpy.ndarray
+        Normalized floating point data.
+    See Also
+    --------
+    float2pcm, dtype
+    """
+    s = np.asarray(s)
+    if sig.dtype.kind not in 'iu':
+        raise TypeError("'sig' must be an array of integers")
+    dtype = np.dtype(dtype)
+    if dtype.kind != 'f':
+        raise TypeError("'dtype' must be a floating point type")
+
+    i = np.iinfo(s.dtype)
+    abs_max = 2 ** (i.bits - 1)
+    offset = i.min + abs_max
+    return (s.astype(dtype) - offset) / abs_max

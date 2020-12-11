@@ -567,7 +567,8 @@ class Signal:
 
         return t, f, spg
 
-    def acoustic_index(self, name, **kwargs):
+    @staticmethod
+    def acoustic_index(name, **kwargs):
         """
         Return the acoustic index
 
@@ -600,17 +601,32 @@ class Signal:
     def plot(self, nfft=512, scaling='density', db=True, force_calc=False):
         """
         Plot the signal and its spectrogram
-        """
-        self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
+        Parameters
+        ----------
+        nfft : int
+            nfft value
+        scaling : string
+            'density' or 'spectrum'
+        db : bool
+            Set to True for dB output
+        force_calc : bool
+            Set to True to force the re-calulation of the spectrogram
 
+        """
+
+        self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
+        if scaling == 'density':
+            label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
+        elif scaling == 'spectrum':
+            label = r'Power Spectrum [dB re 1 $\mu Pa^2$]'
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
         ax[0, 0].plot(self.times, self.signal)
         ax[0, 0].set_title('Signal')
         ax[0, 0].set_xlabel('Time [s]')
         ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
-        im = ax[1, 0].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150, shading='auto')
-        plt.colorbar(im, cax=ax[1, 1], label=r'$L_{rms}$ [dB]')
+        im = ax[1, 0].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150, shading='auto', cmap='viridis')
+        plt.colorbar(im, cax=ax[1, 1], label=label)
         ax[1, 0].set_title('Spectrogram')
         ax[1, 0].set_xlabel('Time [s]')
         ax[1, 0].set_ylabel('Frequency [Hz]')
