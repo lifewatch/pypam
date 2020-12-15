@@ -20,8 +20,8 @@ Deprecated==1.2.9
 descartes==1.1.0
 docutils==0.16
 enum34==1.1.10
-Fiona @ file:///C:/Users/cleap/Downloads/Installation%20programs/Fiona-1.8.13-cp37-cp37m-win_amd64.whl
-GDAL @ file:///C:/Users/cleap/Downloads/Installation%20programs/GDAL-3.0.4-cp37-cp37m-win_amd64.whl
+Fiona==1.8.13
+GDAL=3.0.4
 geographiclib==1.50
 geopandas==0.7.0
 geopy==1.22.0
@@ -43,24 +43,26 @@ numpy==1.18.1
 ordereddict==1.1
 packaging==20.4
 pandas==0.25.3
+patsy==0.5.1
 Pillow==7.1.2
 pooch==1.2.0
 psycopg2==2.8.5
 pyarrow==1.0.1
 pycparser==2.19
 Pygments==2.6.1
-pyhydrophone @ file:///C:/Users/cleap/Documents/code/pyhydrophone
+-e https://github.com/lifewatch/pyhydrophone
 pyparsing==2.4.6
 pyproj==2.6.1.post1
 python-dateutil==2.8.1
 pytz==2019.3
-rasterio @ file:///C:/Users/cleap/Downloads/Installation%20programs/rasterio-1.1.4-cp37-cp37m-win_amd64.whl
+rasterio==1.1.4
 requests==2.23.0
 resampy==0.2.2
 rstcheck==3.3.1
-Rtree @ file:///C:/Users/cleap/Downloads/Installation%20programs/Rtree-0.9.4-cp37-cp37m-win_amd64.whl
+Rtree==0.9.4
 scikit-learn==0.23.0
 scipy==1.4.1
+seaborn==0.11.0
 Shapely==1.7.0
 six==1.14.0
 snowballstemmer==2.0.0
@@ -73,6 +75,7 @@ sphinxcontrib-htmlhelp==1.0.3
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
+statsmodels==0.12.1
 tabulate==0.8.6
 threadpoolctl==2.0.0
 tqdm==4.50.2
