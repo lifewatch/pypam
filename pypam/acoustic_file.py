@@ -369,6 +369,7 @@ class AcuFile:
                     df.at[time_bin, (method_name, signal.band_n - 1)] = output
 
         self.file.seek(0)
+        df[('fs', 'all')] = self.fs
         return df
 
     def _apply(self, method_name, binsize=None, db=True, band_list=None, **kwargs):
