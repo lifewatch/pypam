@@ -367,9 +367,12 @@ class AcuFile:
                     f = operator.methodcaller(method_name, **kwargs)
                     output = f(signal)
                     df.at[time_bin, (method_name, signal.band_n - 1)] = output
+                    df.at[time_bin, ('start_sample', 'all')] = i * blocksize
+                    df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
 
         self.file.seek(0)
         df[('fs', 'all')] = self.fs
+        df[('filename', 'all')] = self.file_path
         return df
 
     def _apply(self, method_name, binsize=None, db=True, band_list=None, **kwargs):
