@@ -17,6 +17,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytz
 import scipy as sci
 import scipy.integrate as integrate
 import seaborn as sns
@@ -372,7 +373,7 @@ class AcuFile:
 
         self.file.seek(0)
         df[('fs', 'all')] = self.fs
-        df[('filename', 'all')] = self.file_path
+        df[('filename', 'all')] = str(self.file_path)
         return df
 
     def _apply(self, method_name, binsize=None, db=True, band_list=None, **kwargs):

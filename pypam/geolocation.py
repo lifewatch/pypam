@@ -172,23 +172,18 @@ class SurveyLocation:
         df : DataFrame
             DataFrame from an ASA output
         """
-        for i in df.index:
-            if 'datetime' in df.columns:
-                t = df.loc[i].datetime
-            else:
-                t = i
-            idx = self.geotrackpoints.index.get_loc(t, method='nearest')
-            df.loc[i, 'geo_time'] = self.geotrackpoints.index[idx]
+        self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
+        if 'datetime' in df.columns:
+            datetime_df = pd.DataFrame({'datetime': df.datetime})
+        else:
+            datetime_df = pd.DataFrame({'datetime': df.index})
+        geo_df = pd.merge_asof(datetime_df, self.geotrackpoints, left_on="datetime", right_index=True,
+                               tolerance=pd.Timedelta("10min"))
+        geo_df = geo_df.set_index('datetime')
+        df = geopandas.GeoDataFrame(df, crs=self.geotrackpoints.crs)
+        df = df.set_geometry(geo_df.geometry)
 
-        good_points_mask = abs(df.geo_time - df.datetime) < datetime.timedelta(seconds=600)
-        if good_points_mask.sum() < len(df):
-            print('This file %s is not corresponding with the timestamps!' % self.geofile)
-        geo_df = self.geotrackpoints.reindex(df.geo_time)
-        # geo_df['geo_time'] = df.geo_time.values
-
-        geo_df = geo_df.merge(df, on='geo_time')
-
-        return geo_df
+        return df
 
     def plot_survey_color(self, column, df, units=None, map_file=None, save_path=None):
         """
