@@ -149,7 +149,12 @@ class Signal:
         """
         if self.band is not None:
             # Filter the signal
-            sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
+            if self.band[0] == 0 or self.band[0] is None:
+                sosfilt = sig.butter(N=4, btype='lowpass', Wn=self.band[1], analog=False, output='sos', fs=self.fs)
+            elif self.band[1] == self.fs/2 or self.band[1] is None:
+                sosfilt = sig.butter(N=4, btype='highpass', Wn=self.band[0], analog=False, output='sos', fs=self.fs)
+            else:
+                sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
             self.signal = sig.sosfilt(sosfilt, self.signal)
             self._processed[self.band_n].append('filter')
 
@@ -251,7 +256,7 @@ class Signal:
             y = utils.to_db(y, square=True)
         return y
 
-    def _spectrogram(self, nfft=512, scaling='density', db=True, mode='fast'):
+    def _spectrogram(self, nfft=512, scaling='density', mode='fast'):
         """
         Computes the spectrogram of the signal and saves it in the attributes
 
@@ -261,8 +266,6 @@ class Signal:
             Length of the fft window in samples. Power of 2.
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa^2
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
 
@@ -292,8 +295,6 @@ class Signal:
         n_bins = int(np.floor(real_size / (nfft * 7 / 8)))
         self.sxx = sxx[low_freq:, 0:n_bins]
         self.t = t[0:n_bins]
-        if db:
-            self.sxx = utils.to_db(self.sxx, ref=1.0, square=False)
 
     def spectrogram(self, nfft=512, scaling='density', db=True, mode='fast', force_calc=False):
         """
@@ -317,9 +318,12 @@ class Signal:
         freq, t, sxx
         """
         if self.sxx is None or force_calc:
-            self._spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
-
-        return self.freq, self.t, self.sxx
+            self._spectrogram(nfft=nfft, scaling=scaling, mode=mode)
+        if db:
+            sxx = utils.to_db(self.sxx, ref=1.0, square=False)
+        else:
+            sxx = self.sxx
+        return self.freq, self.t, sxx
 
     def _spectrum(self, scaling='density', nfft=512, db=True, mode='fast'):
         """
@@ -436,11 +440,91 @@ class Signal:
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         """
-        if self.sxx is None:
-            self._spectrogram(nfft=nfft, scaling='density', db=True, mode=mode)
-        aci_val = acoustic_indices.calculate_aci(self.sxx)
+        self.spectrogram(nfft=nfft, scaling='density', db=True, mode=mode)
+        aci_val = self.acoustic_index('aci', sxx=self.sxx)
 
         return aci_val
+
+    def bi(self, min_freq=2000, max_freq=8000, nfft=512, mode='fast', **kwargs):
+        """
+
+        """
+        if self.band[1] < max_freq or self.band[0] > min_freq:
+            print('The band %s does not include this band limits (%s, %s). '
+                  'BI will be set to nan' % (self.band, min_freq, max_freq))
+            return np.nan
+        else:
+            self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+            bi_val = self.acoustic_index('bi', sxx=self.sxx, frequencies=self.freq, min_freq=min_freq, max_freq=max_freq)
+            return bi_val
+
+    def sh(self, nfft=512, mode='fast', **kwargs):
+        """
+
+        """
+        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        sh_val = self.acoustic_index('sh', sxx=self.sxx)
+        return sh_val
+
+    def th(self, **kwargs):
+        """
+
+        """
+        th_val = self.acoustic_index('th', s=self.signal)
+        return th_val
+
+    def ndsi(self, window_length=1024, anthrophony=[1000, 2000], biophony=[2000, 11000], **kwargs):
+        """
+
+        """
+        if self.band[1] < anthrophony[1] or self.band[1] < biophony[1]:
+            print('The band %s does not include anthrophony %s or biophony %s. '
+                  'NDSI will be set to nan' % (self.band, anthrophony, biophony))
+            return np.nan
+        else:
+            ndsi_val = self.acoustic_index('ndsi', s=self.signal, fs=self.fs, window_length=window_length,
+                                           anthrophony=anthrophony, biophony=biophony)
+            return ndsi_val
+
+    def aei(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
+        """
+
+        """
+        sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        aei_val = self.acoustic_index('aei', sxx=self.sxx, frequencies=self.freq, max_freq=self.band[1],
+                                      min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
+        return aei_val
+
+    def adi(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
+        """
+        """
+        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        adi_val = self.acoustic_index('adi', sxx=self.sxx, frequencies=self.freq, max_freq=self.band[1],
+                                      min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
+        return adi_val
+
+    def zcr(self, **kwargs):
+        """
+
+        """
+        zcr = self.acoustic_index('zcr', s=self.signal)
+        return zcr
+
+    def zcr_avg(self, window_length=512, window_hop=256, **kwargs):
+        """
+
+        """
+        zcr = self.acoustic_index('zcr_avg', s=self.signal, window_length=window_length, window_hop=window_hop)
+        return zcr
+
+    def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, mode='fast', **kwargs):
+        """
+
+        """
+        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        peak_indices, peak_freqs = self.acoustic_index('bn_peaks', sxx=self.sxx, frequencies=self.freq,
+                                                       freqband=freqband, normalization=normalization, slopes=slopes)
+        return peak_indices, peak_freqs
 
     def total_correlation(self, signal):
         """
@@ -614,7 +698,7 @@ class Signal:
 
         """
 
-        self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
+        sxx, _, _ = self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
         if scaling == 'density':
             label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
         elif scaling == 'spectrum':
@@ -625,7 +709,7 @@ class Signal:
         ax[0, 0].set_xlabel('Time [s]')
         ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
-        im = ax[1, 0].pcolormesh(self.t, self.freq, self.sxx, vmin=60, vmax=150, shading='auto', cmap='viridis')
+        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=60, vmax=150, shading='auto', cmap='viridis')
         plt.colorbar(im, cax=ax[1, 1], label=label)
         ax[1, 0].set_title('Spectrogram')
         ax[1, 0].set_xlabel('Time [s]')

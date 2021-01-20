@@ -374,6 +374,8 @@ class AcuFile:
         self.file.seek(0)
         df[('fs', 'all')] = self.fs
         df[('filename', 'all')] = str(self.file_path)
+        df.start_sample = df.start_sample.astype('int')
+        df.end_sample = df.end_sample.astype('int')
         return df
 
     def _apply(self, method_name, binsize=None, db=True, band_list=None, **kwargs):
