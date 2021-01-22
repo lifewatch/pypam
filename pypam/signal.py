@@ -56,7 +56,7 @@ class Signal:
         self._processed = {}
         self._reset_spectro()
 
-        self.set_band(None)
+        self.set_band()
 
     def __getattr__(self, item):
         """
@@ -80,7 +80,7 @@ class Signal:
         self.freq = None
         self.t = None
 
-    def set_band(self, band):
+    def set_band(self, band=None):
         """
         Process the signal to be working on the specified band
         Parameters
@@ -93,8 +93,13 @@ class Signal:
         self.bands_list[self.band_n] = band
 
         # Restart the signal to the original one
-        self.signal = self._signal.copy()
-        self.fs = self._fs
+        if band is None:
+            self.signal = self._signal.copy()
+            self.fs = self._fs
+        else:
+            if band[1] > self.band[1]:
+                self.signal = self._signal.copy()
+                self.fs = self._fs
         self._reset_spectro()
         self._filter_and_downsample()
 
@@ -132,16 +137,16 @@ class Signal:
         new_fs : int
             New sampling rate
         """
-        self.fs = new_fs
-        if self.fs > self._fs:
+        if new_fs > self.fs:
             raise Exception('This is upsampling!')
-        ratio = (self._fs / self.fs)
+        ratio = (self.fs / new_fs)
         if (ratio % 2) != 0:
-            new_length = int(self.signal.size * (self.fs / self._fs))
+            new_length = int(self.signal.size * (new_fs / self.fs))
             self.signal = sig.resample(self.signal, new_length)
         else:
             self.signal = sig.resample_poly(self.signal, up=1, down=int(ratio))
         self._processed[self.band_n].append('downsample')
+        self.fs = new_fs
 
     def _filter_and_downsample(self):
         """
@@ -255,6 +260,66 @@ class Signal:
         if db:
             y = utils.to_db(y, square=True)
         return y
+
+    def third_octave_levels(self, db=True, **kwargs):
+        """
+        Calculation of calibrated 1/3-octave band levels
+
+        Returns
+        -------
+        f : numpy array
+            Array with the center frequencies of the bands
+        spg : numpy array
+            Level of each band
+        """
+        return self._octave_levels(db, 3)
+
+    def octave_levels(self, db=True, **kwargs):
+        """
+        Calculation of calibrated octave band levels
+
+        Returns
+        -------
+        f : numpy array
+            Array with the center frequencies of the bands
+        spg : numpy array
+            Level of each band
+        """
+        return self._octave_levels(db, 1)
+
+    def _octave_levels(self, db=True, fraction=1, **kwargs):
+        """
+        Calculation of calibrated octave band levels
+
+        Returns
+        -------
+        f : numpy array
+            Array with the center frequencies of the bands
+        spg : numpy array
+            Level of each band
+        """
+        # construct filterbank
+        bands = np.arange(-16, 11)  # TODO
+        filterbank, fsnew, d = utils.octbankdsgn(self.fs, bands, fraction, 2)
+        nx = d.max()  # number of downsampling steps
+
+        # construct time and frequency arrays
+        f = 1000 * ((2 ** (1 / 3)) ** bands)
+
+        # calculate octave band levels
+        spg = np.zeros(len(d))
+        newx = {}
+        newx[0] = self.signal
+        for i in np.arange(1, nx+1):
+            newx[i] = sig.decimate(newx[i - 1], 2)
+
+        # Perform filtering for each frequency band
+        for i in np.arange(len(d)):
+            y = sig.sosfilt(filterbank[i], newx[d[i]])  # Check the filter!
+            # Calculate level time series
+            spg[i] = 10 * np.log10(np.sum(y ** 2) / len(y))
+
+        return f, spg
 
     def _spectrogram(self, nfft=512, scaling='density', mode='fast'):
         """
@@ -611,14 +676,12 @@ class Signal:
         """
         # resample signal to 48 kHz
         new_fs = 48000
-        frames = self.signal.shape[0]  # total number of samples
-        channels = self.signal.shape[1]  # number of channels
 
-        new_lenght = int(frames / self.fs)
+        new_lenght = int(self.signal.size / self.fs)
         x = sig.resample(self.signal, new_lenght)
 
         n = np.floor(new_fs * dt)  # number of samples in one timestep
-        nt = np.floor(frames / n)  # number of timesteps to process
+        nt = np.floor(self.signal.size / n)  # number of timesteps to process
 
         # construct filterbank
         bands = np.arange(-16, 11)
@@ -630,24 +693,22 @@ class Signal:
         f = 1000 * ((2 ** (1 / 3)) ** bands)
 
         # calculate 1/3 octave band levels vs time
-        spg = {}
-        newx = {}  # CHANGE!!!
-        for j in np.arange(channels):
-            # perform downsampling of j'th channel
-            newx[1] = x[:, j]
-            for i in np.arange(2, nx):
-                newx[i] = sig.decimate(newx[i - 1], 2)
+        spg = np.zeros(nt, len(d))
+        newx = {}
+        newx[0] = x
+        for i in np.arange(1, nx):
+            newx[i] = sig.decimate(newx[i - 1], 2)
 
-            # Perform filtering for each frequency band
-            for i in np.arange(len(d)):
-                factor = 2 ** (d(i) - 1)
-                y = sig.sosfilt(b[i, :], a[i, :], newx[d(i)])  # Check the filter!
+        # Perform filtering for each frequency band
+        for i in np.arange(len(d)):
+            factor = 2 ** (d(i) - 1)
+            y = sig.sosfilt(b[i, :], a[i, :], newx[d(i)])  # Check the filter!
             # Calculate level time series
             for k in np.arange(nt):
                 startindex = (k - 1) * n / factor + 1
                 endindex = (k * n) / factor
                 z = y[startindex:endindex]
-                spg[j][k, i] = 10 * np.log10(np.sum(z ** 2) / len(z))
+                spg[k, i] = 10 * np.log10(np.sum(z ** 2) / len(z))
 
         return t, f, spg
 
@@ -698,11 +759,13 @@ class Signal:
 
         """
 
-        sxx, _, _ = self.spectrogram(nfft, scaling, db, mode=None, force_calc=force_calc)
+        sxx, _, _ = self.spectrogram(nfft, scaling, db, force_calc=force_calc)
         if scaling == 'density':
             label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
         elif scaling == 'spectrum':
             label = r'Power Spectrum [dB re 1 $\mu Pa^2$]'
+        else:
+            raise ValueError('%s is not implemented as a scaling type!' % scaling)
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
         ax[0, 0].plot(self.times, self.signal)
         ax[0, 0].set_title('Signal')

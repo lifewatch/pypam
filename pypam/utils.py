@@ -17,6 +17,21 @@ BANDS = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250'
          '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500',
          '3150', '4000', '5000', '6300', '8000', '10000', '12500']
 
+NOMINAL_OCTAVE_CENTER_FREQUENCIES = np.array([31.5, 63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0])
+"""Nominal octave center frequencies.
+"""
+
+NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES = np.array([
+    25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0, 200.0, 250.0, 315.0, 400.0, 500.0, 630.0, 800.0, 1000.0,
+    1250.0, 1600.0, 2000.0, 2500.0, 3150.0, 4000.0, 5000.0, 6300.0, 8000.0, 10000.0, 12500.0, 16000.0, 20000.0
+])
+"""Nominal third-octave center frequencies in the audio range.
+"""
+
+G = 10.0 ** (3.0 / 10.0)
+
+f_ref = 1000
+
 
 @nb.jit
 def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.ndarray):
@@ -192,9 +207,9 @@ def to_db(wave, ref=1.0, square=False):
     return db
 
 
-def oct3dsgn(fc, fs, n=3):
+def octdsgn(fc, fs, fraction=1, n=2):
     """
-    Design of a 1/3-octave band filter with center frequency fc for sampling frequency fs.
+    Design of a octave band filter with center frequency fc for sampling frequency fs.
     Default value for N is 3. For meaningful results, fc should be in range fs/200 < fc < fs/5.
 
     Parameters
@@ -202,28 +217,33 @@ def oct3dsgn(fc, fs, n=3):
     fc : float
       Center frequency, in Hz
     fs : float
-      Sample frequency at least 2.3x the center frequency of the highest 1/3 octave band, in Hz
+      Sample frequency at least 2.3x the center frequency of the highest octave band, in Hz
+    fraction : int
+        fraction of the octave band (3 for 1/3-octave bands and 1 for octave bands)
     n : int
       Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
       Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
     """
     if fc > 0.88 * fs / 2:
         raise Exception('Design not possible - check frequencies')
-    # design Butterworth 2N-th-order 1/3-octave band filter
-    f1 = fc / (2 ** (1 / 6))
-    f2 = fc * (2 ** (1 / 6))
+    # design Butterworth 2N-th-order
+    f1 = fc * G ** (-1.0 / (2.0 * fraction))
+    f2 = fc * G ** (+1.0 / (2.0 * fraction))
+    # f1 = fc / (2 ** (1 / 6))
+    # f2 = fc * (2 ** (1 / 6))
     qr = fc / (f2 - f1)
     qd = (np.pi / 2 / n) / (np.sin(np.pi / 2 / n)) * qr
     alpha = (1 + np.sqrt(1 + 4 * qd ** 2)) / 2 / qd
     w1 = fc / (fs / 2) / alpha
     w2 = fc / (fs / 2) * alpha
-    sos = sig.butter(n, [w1, w2], output='sos')
+    sos = sig.butter(n, [w1, w2], btype='bandpass', output='sos')
+
     return sos
 
 
-def oct3bankdsgn(fs, bands, n):
+def octbankdsgn(fs, bands, fraction=1, n=2):
     """
-    Construction of a 1/3 octave band filterbank.
+    Construction of a octave band filterbank.
 
     Parameters
     ----------
@@ -232,6 +252,8 @@ def oct3bankdsgn(fs, bands, n):
     bands : numpy array
       row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
       e.g. [-16:11] gives all bands with center frequency between 25 Hz and 12.5 kHz
+    fraction : int
+        1 or 3 to get 1-octave or 1/3-octave bands
     n : int
       Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
       Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
@@ -246,12 +268,17 @@ def oct3bankdsgn(fs, bands, n):
     fsnew : numpy array
       New sample frequencies.
     """
-    fc = 1000 * ((2 ** (1 / 3)) ** bands)  # exact center frequencies
+    ref = 1000
+    G = 10.0**(3.0 / 10.0)
+    uneven = (fraction % 2 != 0)
+    fc = ref * G**((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(uneven) + uneven * ref * G**(bands / fraction)
+    # fc = 1000 * ((2 ** (1 / fraction)) ** bands)  # exact center frequencies
+
     fclimit = 1 / 200  # limit for center frequency compared to sample frequency
     # calculate downsampling factors
     d = np.ones(len(fc))
     for i in np.arange(len(fc)):
-        while fc(i) < (fclimit * (fs / 2 ** (d[i] - 1))):
+        while fc[i] < (fclimit * (fs / 2 ** (d[i] - 1))):
             d[i] += 1
     # calculate new sample frequencies
     fsnew = fs / (2 ** (d - 1))
@@ -259,18 +286,19 @@ def oct3bankdsgn(fs, bands, n):
     filterbank = []
     for i in np.arange(len(fc)):
         # construct filter coefficients
-        sos = oct3dsgn(fc(i), fsnew(i), n)
+        sos = octdsgn(fc[i], fsnew[i], fraction, n)
         filterbank.append(sos)
 
-    return filterbank, fsnew
+    return filterbank, fsnew, d
 
 
 def pcm2float(s, dtype='float64'):
-    """Convert PCM signal to floating point with a range from -1 to 1.
+    """
+    Convert PCM signal to floating point with a range from -1 to 1.
     Use dtype='float32' for single precision.
     Parameters
     ----------
-    sig : array_like
+    s : array_like
         Input array, must have integral type.
     dtype : data type, optional
         Desired (floating point) data type.
@@ -278,12 +306,9 @@ def pcm2float(s, dtype='float64'):
     -------
     numpy.ndarray
         Normalized floating point data.
-    See Also
-    --------
-    float2pcm, dtype
     """
     s = np.asarray(s)
-    if sig.dtype.kind not in 'iu':
+    if s.dtype.kind not in 'iu':
         raise TypeError("'sig' must be an array of integers")
     dtype = np.dtype(dtype)
     if dtype.kind != 'f':

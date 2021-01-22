@@ -352,6 +352,16 @@ class AcuFile:
 
         if band_list is None:
             band_list = [self.band]
+        # Sort bands to diminish downsampling efforts!
+        sorted_bands = []
+        for band in band_list:
+            if len(sorted_bands) == 0:
+                sorted_bands = [band]
+            else:
+                if band[1] >= sorted_bands[-1][1]:
+                    sorted_bands = [band] + sorted_bands
+                else:
+                    sorted_bands = sorted_bands + [band]
 
         columns = pd.MultiIndex.from_product([method_list, np.arange(len(band_list))], names=['method', 'band'])
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
@@ -362,7 +372,7 @@ class AcuFile:
             # Read the signal and prepare it for analysis
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-            for band in band_list:
+            for band in sorted_bands:
                 signal.set_band(band)
                 for method_name in method_list:
                     f = operator.methodcaller(method_name, **kwargs)
@@ -457,6 +467,80 @@ class AcuFile:
         cumdr = self.dynamic_range(binsize=binsize, db=db)
         cumdr['cumsum_dr'] = cumdr.dr.cumsum()
         return cumdr
+
+    def octaves_levels(self, binsize=None, db=True, band=None, **kwargs):
+        """
+        Return the octave levels
+        Parameters
+        ----------
+        binsize
+        db
+        band
+
+        Returns
+        -------
+
+        """
+        return self._octaves_levels(fraction=1, binsize=binsize, db=db, band=band)
+
+    def third_octaves_levels(self, binsize=None, db=True, band=None, **kwargs):
+        """
+        Return the 1/3-octave levels
+        Parameters
+        ----------
+        binsize
+        db
+        band
+
+        Returns
+        -------
+
+        """
+        return self._octaves_levels(fraction=3, binsize=binsize, db=db, band=band)
+
+    def _octaves_levels(self, fraction=1, binsize=None, db=True, band=None):
+        """
+        Calculate octave levels or a fraction of octave levels
+        Parameters
+        ----------
+        fraction
+        binsize
+        db
+        band
+
+        Returns
+        -------
+
+        """
+        if binsize is None:
+            blocksize = self.file.frames
+        else:
+            blocksize = int(binsize * self.fs)
+
+        bands = np.arange(-16, 11)
+        bands = 1000 * ((2 ** (1 / 3)) ** bands)
+        columns = pd.MultiIndex.from_product([['oct%s' % fraction], bands], names=['method', 'band'])
+        df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
+
+        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            print('bin %s' % time_bin)
+            # Read the signal and prepare it for analysis
+            signal_upa = self.wav2upa(wav=block)
+            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+            signal.set_band(band)
+            _, levels = signal._octave_levels(db, fraction)
+            df.at[time_bin, ('oct%s' % fraction, bands)] = levels
+            df.at[time_bin, ('start_sample', 'all')] = i * blocksize
+            df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
+
+        self.file.seek(0)
+        df[('fs', 'all')] = self.fs
+        df[('filename', 'all')] = str(self.file_path)
+        df.start_sample = df.start_sample.astype('int')
+        df.end_sample = df.end_sample.astype('int')
+
+        return df
 
     def spectrogram(self, binsize=None, nfft=512, scaling='density', db=True, mode='fast'):
         """

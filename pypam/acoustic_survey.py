@@ -119,6 +119,30 @@ class ASA:
         """
         return self.evolution_multiple(method_list=[method_name], **kwargs)
 
+    def evolution_freq_dom(self, method_name, binsize=None, db=True, **kwargs):
+        """
+        Returns the evolution of frequency domain parameters
+        Parameters
+        ----------
+        binsize
+        db
+
+        Returns
+        -------
+
+        """
+        df = pd.DataFrame()
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
+        for file_list in self.acu_files:
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone,
+                                   p_ref=self.p_ref, band=self.band, utc=self.utc, channel=self.channel)
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
+                df_output = f(sound_file)
+                df = df.append(df_output)
+        return df
+
     def timestamps_df(self):
         """
         Return a pandas dataframe with the timestamps of each bin.
