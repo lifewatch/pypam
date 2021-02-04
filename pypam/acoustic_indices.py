@@ -67,8 +67,8 @@ def compute_aci(sxx: np.ndarray):
     """
     aci_evo = np.zeros(sxx.shape[1], dtype=np.float64)
     for j in np.arange(sxx.shape[1]):
-        d = np.float64(0)
-        i = np.float64(0)
+        d = 0
+        i = 0
         for k in np.arange(1, sxx.shape[0]):
             dk = np.abs(sxx[k][j] - sxx[k - 1][j])
             d = d + dk

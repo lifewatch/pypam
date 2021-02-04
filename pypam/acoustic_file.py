@@ -66,10 +66,10 @@ class AcuFile:
 
         try:
             self.date = hydrophone.get_name_datetime(file_name, utc=utc)
-        except UserWarning:
+        except:
             self.date = datetime.datetime.now()
-            raise Warning('Filename %s does not match the %s file structure. Setting time to now...' %
-                          (file_name, self.hydrophone.name))
+            print('Filename %s does not match the %s file structure. Setting time to now...' %
+                 (file_name, self.hydrophone.name))
 
         # Signal
         self.file_path = sfile
