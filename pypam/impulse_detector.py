@@ -68,6 +68,9 @@ class ImpulseDetector:
             df = self.detect_events_envelope(signal, verbose, save_path)
         elif method == 'snr':
             df = self.detect_events_snr(signal, verbose, save_path)
+        else:
+            raise Exception('Unknown method: ' + method)
+
         return df
 
     def detect_events_dt(self, signal, verbose=False, save_path=None):
@@ -92,7 +95,7 @@ class ImpulseDetector:
             level = block.rms(db=True)
             levels.append(level)
         times_events = events_times(np.array(levels), self.dt, self.threshold, self.min_separation)
-        events_df = self.load_event(times_events, signal)
+        events_df = self.load_event(times_events, signal) # FIXME: What about duration?
 
         if verbose:
             self.plot_all_events(signal, events_df, save_path)

@@ -52,7 +52,7 @@ class Signal:
 
         # Reset params
         self.band_n = -1
-        self.bands_list = {}
+        self.bands_list = {} # technically it's a dict
         self._processed = {}
         self._reset_spectro()
 
@@ -707,15 +707,15 @@ class Signal:
             newx[i] = sig.decimate(newx[i - 1], 2)
 
         # Perform filtering for each frequency band
-        for i in np.arange(len(d)):
-            factor = 2 ** (d(i) - 1)
-            y = sig.sosfilt(b[i, :], a[i, :], newx[d(i)])  # Check the filter!
+        for j in np.arange(len(d)):
+            factor = 2 ** (d(j) - 1)
+            y = sig.sosfilt(b[j, :], a[j, :], newx[d(j)])  # Check the filter!
             # Calculate level time series
             for k in np.arange(nt):
                 startindex = (k - 1) * n / factor + 1
                 endindex = (k * n) / factor
                 z = y[startindex:endindex]
-                spg[k, i] = 10 * np.log10(np.sum(z ** 2) / len(z))
+                spg[k, j] = 10 * np.log10(np.sum(z ** 2) / len(z))
 
         return t, f, spg
 
@@ -766,14 +766,13 @@ class Signal:
             Set to True to force the re-calulation of the spectrogram
 
         """
-
         sxx, _, _ = self.spectrogram(nfft, scaling, db, force_calc=force_calc)
         if scaling == 'density':
             label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
         elif scaling == 'spectrum':
             label = r'Power Spectrum [dB re 1 $\mu Pa^2$]'
         else:
-            raise ValueError('%s is not implemented as a scaling type!' % scaling)
+            raise Exception("Unknown value for scaling : " + scaling)
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
         ax[0, 0].plot(self.times, self.signal)
         ax[0, 0].set_title('Signal')

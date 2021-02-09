@@ -873,7 +873,7 @@ class AcuFile:
             ax[0].set_xlabel('Time [s]')
             ax[0].set_ylabel('Frequency [Hz]')
             ax[0].set_yscale('log')
-            for index in events_df.index:
+            for index in events_df.index: # FIXME: the events_df variable is instantiated and populated in the previous _for_loop_ why is only the last value being used?
                 row = events_df.loc[index]
                 start_x = (row['start_datetime'] - self.date).total_seconds()
                 end_x = start_x + row['duration']

@@ -185,7 +185,7 @@ def compute_th(s):
     return - th / np.log2(n)
 
 
-def compute_ndsi(s, fs, window_length=1024, anthrophony=[1000, 2000], biophony=[2000, 11000]):
+def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
     """
     Compute Normalized Difference Sound Index from an audio signal.
     This function computes an estimate power spectral density using Welch's method.
@@ -215,10 +215,13 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=[1000, 2000], biophony=[
     # Estimate power spectral density using Welch's method
     # TODO change of detrend for apollo
     # Estimate power spectral density using Welch's method
+    if biophony is None:
+        biophony = [2000, 11000]
+    if anthrophony is None:
+        anthrophony = [1000, 2000]
     frequencies, pxx = sig.welch(s, fs=fs, window='hamming', nperseg=window_length,
-                                 noverlap=window_length / 2, nfft=window_length, detrend='constant',
+                                 noverlap=int(window_length / 2), nfft=window_length, detrend='constant',
                                  return_onesided=True, scaling='density', axis=-1)
-
     avgpow = pxx * frequencies[1]
     # use a rectangle approximation of the integral of the signal's power spectral density (PSD)
     # avgpow = avgpow / np.linalg.norm(avgpow, ord=2)

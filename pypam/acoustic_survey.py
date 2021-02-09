@@ -391,7 +391,7 @@ class ASA:
         df = pd.DataFrame()
         last_end = None
         detector = loud_event_detector.LoudPilingDetector(min_duration=min_duration,
-                                                          threshold=threshold)
+                                                          threshold=threshold) #FIXME: Does this class exist?
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
