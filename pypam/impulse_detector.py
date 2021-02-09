@@ -38,7 +38,8 @@ class ImpulseDetector:
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         dt : float
-            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+            Window size in seconds for the analysis (time resolution). Has to be smaller han
+            min_duration!
         """
         self.min_separation = min_separation
         self.max_duration = max_duration
@@ -71,7 +72,8 @@ class ImpulseDetector:
 
     def detect_events_dt(self, signal, verbose=False, save_path=None):
         """
-        Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
+        Detection of event times. Events are detected on the basis of the SPL time series
+        (channel 1)
         The time resolution is dt
 
         Parameters
@@ -115,7 +117,8 @@ class ImpulseDetector:
         envelope = utils.to_db(envelope, ref=1.0, square=True)
 
         times_events = events_times_diff(signal=envelope, fs=signal.fs, threshold=self.threshold,
-                                         max_duration=self.max_duration, min_separation=self.min_separation)
+                                         max_duration=self.max_duration,
+                                         min_separation=self.min_separation)
         events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
@@ -140,8 +143,9 @@ class ImpulseDetector:
         signal.set_band(band=self.band)
         envelope = signal.envelope()
         envelope = utils.to_db(envelope, ref=1.0, square=True)
-        times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs, threshold=self.threshold,
-                                        max_duration=self.max_duration, min_separation=self.min_separation)
+        times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs,
+                                        threshold=self.threshold, max_duration=self.max_duration,
+                                        min_separation=self.min_separation)
         events_df = self.load_all_times_events(times_events, signal)
 
         if verbose:
@@ -151,7 +155,8 @@ class ImpulseDetector:
 
     def load_event(self, s, t, duration, removenoise=True):
         """
-        Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
+        Load the event at time t (in seconds), with supplied time before and after the event
+        (in seconds)
         return an object event
         Parameters
         ----------
@@ -162,7 +167,8 @@ class ImpulseDetector:
         duration : float
             Duration of the event, in seconds
         removenoise : bool
-            Set to True if noise calculated before and after the event can be removed from the event
+            Set to True if noise calculated before and after the event can be removed from the
+            event
         """
         start_n = int(t * s.fs)
         end_n = int((t + duration) * s.fs)
@@ -236,8 +242,8 @@ class ImpulseDetector:
         if len(events_df) > 0:
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
                           label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
-            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
-                          label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
+            ax[2].scatter(events_df[('temporal', 'start_seconds')],
+                          events_df[('temporal', 'peak')], label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'sel')],
                           label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
         ax[2].legend(bbox_to_anchor=(1, 0), loc="lower left")
@@ -253,8 +259,8 @@ class ImpulseDetector:
 
 class PilingDetector(ImpulseDetector):
     def __init__(self, min_separation, max_duration, threshold, dt):
-        super().__init__(min_separation=min_separation, max_duration=max_duration, band=[5000, 10000],
-                         threshold=threshold, dt=dt)
+        super().__init__(min_separation=min_separation, max_duration=max_duration,
+                         band=[5000, 10000], threshold=threshold, dt=dt)
 
 
 @nb.jit

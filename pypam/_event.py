@@ -17,7 +17,7 @@ class Event(Signal):
     def __init__(self, signal, fs):
         """
         Definition of an acoustic event
-        
+
         Parameters
         ----------
         signal : 1D numpy array

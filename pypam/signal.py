@@ -393,15 +393,16 @@ class Signal:
     def _spectrum(self, scaling='density', nfft=512, db=True, mode='fast'):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
-        Returns Dataframe with 'datetime' as index and a colum for each frequency and each percentile,
-        and a frequency array
+        Returns Dataframe with 'datetime' as index and a colum for each frequency and each
+        percentile, and a frequency array
 
         Parameters
         ----------
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
-            Lenght of the fft window in samples. Power of 2. If the signal is shorter it will be zero-padded
+            Lenght of the fft window in samples. Power of 2. If the signal is shorter it will be
+            zero-padded
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
         mode : string
@@ -430,11 +431,12 @@ class Signal:
         if db:
             self.psd = utils.to_db(self.psd, ref=1.0, square=False)
 
-    def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast', force_calc=False, **kwargs):
+    def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast',
+                 force_calc=False, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
-        Returns Dataframe with 'datetime' as index and a column for each frequency and each percentile,
-        and a frequency array
+        Returns Dataframe with 'datetime' as index and a column for each frequency and
+        each percentile, and a frequency array
 
         Parameters
         ----------
@@ -445,7 +447,8 @@ class Signal:
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
         percentiles : list
-            List of all the percentiles that have to be returned. If set to empty list, no percentiles is returned
+            List of all the percentiles that have to be returned. If set to empty list,
+            no percentiles is returned
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         force_calc : bool
@@ -464,7 +467,8 @@ class Signal:
 
         return self.freq, self.psd, percentiles_val
 
-    def spectrum_slope(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast', **kwargs):
+    def spectrum_slope(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast',
+                       **kwargs):
         """
         Return the slope of the spectrum
 
@@ -477,7 +481,8 @@ class Signal:
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
         percentiles : list
-            List of all the percentiles that have to be returned. If set to empty list, no percentiles is returned
+            List of all the percentiles that have to be returned. If set to empty list,
+            no percentiles is returned
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
 
@@ -626,7 +631,8 @@ class Signal:
     def sel_spectrum(self, spg, dt):
         """
         Calculation of total spectrum (SEL) of the calibrated spectrogram
-        Returns a numpy matrix with in each cell the spectrum of a single channel of the input signal
+        Returns a numpy matrix with in each cell the spectrum of a single channel of
+        the input signal
 
         Parameters
         ----------
@@ -643,7 +649,8 @@ class Signal:
     def average_spectrum(self, spg, dt):
         """
         Calculation of average spectrum (Leq) of the calibrated spectrogram
-        Returns a numpy array with in each cell the spectrum of a single channel of the input signal
+        Returns a numpy array with in each cell the spectrum of a single channel of
+        the input signal
 
         Parameters
         ----------
@@ -667,7 +674,7 @@ class Signal:
 
         Returns
         -------
-        t : numpy array 
+        t : numpy array
             Array with the time values of the spectrogram, in seconds
         f : numpy array
             Array with the frequency values of the spectrogram
@@ -738,8 +745,9 @@ class Signal:
         nfft : int
             Window size to compute the spectrum
         """
-        self.signal = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip, prop_decrease=prop_decrease,
-                                      n_fft=nfft, win_length=nfft, verbose=False, n_grad_freq=1, n_grad_time=1,
+        self.signal = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip,
+                                      prop_decrease=prop_decrease, n_fft=nfft, win_length=nfft,
+                                      verbose=False, n_grad_freq=1, n_grad_time=1,
                                       hop_length=int(nfft * 0.2))
         self._processed[self.band_n].append('noisereduction')
 
