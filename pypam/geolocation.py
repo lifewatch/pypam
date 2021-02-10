@@ -152,7 +152,8 @@ class SurveyLocation:
         -------
         The df turned in a geopandas dataframe
         """
-        geotrackpoints = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df[lon_col], df[lat_col]))
+        geotrackpoints = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df[lon_col], df[lat_col]),
+                                                crs='EPSG:4326')
         geotrackpoints[datetime_col] = pd.to_datetime(df[datetime_col])
         geotrackpoints.drop_duplicates(subset=datetime_col, inplace=True)
         geotrackpoints = geotrackpoints.set_index(datetime_col)
