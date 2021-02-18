@@ -521,18 +521,21 @@ class AcuFile:
         bands = 1000 * ((2 ** (1 / 3)) ** bands)
         columns = pd.MultiIndex.from_product([['oct%s' % fraction], bands], names=['method', 'band'])
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
-
+        df[('start_sample', 'all')] = None
+        df[('end_sample', 'all')] = None
         for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
-            print('bin %s' % time_bin)
-            # Read the signal and prepare it for analysis
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-            signal.set_band(band)
-            _, levels = signal._octave_levels(db, fraction)
-            df.at[time_bin, ('oct%s' % fraction, bands)] = levels
-            df.at[time_bin, ('start_sample', 'all')] = i * blocksize
-            df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
+            # If the block is shorter don't consider it (affects mean calculation)
+            if len(block) == blocksize:
+                time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+                print('bin %s' % time_bin)
+                # Read the signal and prepare it for analysis
+                signal_upa = self.wav2upa(wav=block)
+                signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+                signal.set_band(band)
+                _, levels = signal._octave_levels(db, fraction)
+                df.at[time_bin, ('oct%s' % fraction, bands)] = levels
+                df.at[time_bin, ('start_sample', 'all')] = i * blocksize
+                df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
 
         self.file.seek(0)
         df[('fs', 'all')] = self.fs
