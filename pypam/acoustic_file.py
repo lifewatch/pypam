@@ -35,7 +35,7 @@ sns.set_theme()
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0):
+    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0, calibration_time=0.0):
         """
         Data recorded in a wav file.
 
@@ -92,6 +92,9 @@ class AcuFile:
         self.wav = None
         self.time = None
 
+        # Set a starting frame for the file
+        self._start_frame = int(calibration_time * self.fs)
+
     def __getattr__(self, name):
         """
         Specific methods to make it easier to access attributes
@@ -113,6 +116,17 @@ class AcuFile:
             Seconds of bintime desired to convert to samples
         """
         return int(bintime * self.fs)
+
+    def set_calibration_time(self, calibration_time):
+        """
+        Set a calibration time in seconds. This time will be ignored in the processing
+
+        Parameters
+        ----------
+        calibration_time : float
+            Seconds to ignore at the beggining of the file
+        """
+        self._start_frame = int(calibration_time * self.fs)
 
     def instrument(self):
         """
@@ -366,7 +380,7 @@ class AcuFile:
         columns = pd.MultiIndex.from_product([method_list, np.arange(len(band_list))], names=['method', 'band'])
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
 
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             # Read the signal and prepare it for analysis
@@ -523,7 +537,7 @@ class AcuFile:
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
         df[('start_sample', 'all')] = None
         df[('end_sample', 'all')] = None
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             # If the block is shorter don't consider it (affects mean calculation)
             if len(block) == blocksize:
                 time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
@@ -581,7 +595,7 @@ class AcuFile:
         time = []
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
@@ -625,7 +639,7 @@ class AcuFile:
         columns_df = pd.concat([columns_df, pd.DataFrame({'variable': 'band_' + scaling, 'value': fbands})])
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
@@ -777,7 +791,7 @@ class AcuFile:
             save_path = kwargs['save_path']
         else:
             save_path = None
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
@@ -814,7 +828,7 @@ class AcuFile:
         if detector is None:
             detector = loud_event_detector.ShipDetector(min_duration=min_duration, threshold=threshold)
         total_events = pd.DataFrame()
-        for i, block in enumerate(self.file.blocks(blocksize=blocksize)):
+        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
@@ -1101,7 +1115,7 @@ class AcuFile:
 
 
 class HydroFile(AcuFile):
-    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0):
+    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0, calibration_time=0.0):
         """
         Sound data recorded in a wav file with a hydrophone.
 
@@ -1117,8 +1131,10 @@ class HydroFile(AcuFile):
             Lowcut, Highcut. Frequency band to analyze
         channel : int
             Channel to perform the calculations in
+        calibration_time : float
+            Time to ignore at the beggining of the file
         """
-        super().__init__(sfile, hydrophone, p_ref, band, utc, channel)
+        super().__init__(sfile, hydrophone, p_ref, band, utc, channel, calibration_time)
 
 
 class MEMSFile(AcuFile):
