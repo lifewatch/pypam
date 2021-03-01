@@ -17,7 +17,6 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pytz
 import scipy as sci
 import scipy.integrate as integrate
 import seaborn as sns
@@ -66,7 +65,7 @@ class AcuFile:
 
         try:
             self.date = hydrophone.get_name_datetime(file_name, utc=utc)
-        except:
+        except ValueError:
             self.date = datetime.datetime.now()
             print('Filename %s does not match the %s file structure. Setting time to now...' %
                  (file_name, self.hydrophone.name))
@@ -655,7 +654,7 @@ class AcuFile:
             spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
 
             # Calculate the percentiles
-            if len(percentiles) != 0:
+            if percentiles is not None:
                 spectra_df.at[time_bin,
                               ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
         self.file.seek(0)
@@ -726,11 +725,13 @@ class AcuFile:
 
         Returns
         -------
-        time : list
+        time : numpy array
             list with the starting point of each spd df
-        fbands : list
+        fbands : np array
             list of all the frequencies
-        bin_edges : list
+        percentiles : list
+            Percentiles to compute
+        edges_list : list
             list of the psd values of the distribution
         spd_list : list
             list of dataframes with 'frequency' as index and a colum for each psd bin and
@@ -865,7 +866,7 @@ class AcuFile:
             # _, fbands, t, sxx_list = self.spectrogram(nfft=4096*4, scaling='spectrum',
             # db=True, mode='fast')
             # sxx = sxx_list[0]
-            fig, ax = plt.subplots(2, 1, sharex=True)
+            fig, ax = plt.subplots(2, 1, sharex='all')
             # im = ax[0].pcolormesh(t, fbands, sxx, shading='auto')
             # cbar = plt.colorbar(im)
             # cbar.set_label('SPLrms [dB re 1 uPa]', rotation=90)
@@ -873,14 +874,14 @@ class AcuFile:
             ax[0].set_xlabel('Time [s]')
             ax[0].set_ylabel('Frequency [Hz]')
             ax[0].set_yscale('log')
-            for index in events_df.index: # FIXME: the events_df variable is instantiated and populated in the previous _for_loop_ why is only the last value being used?
-                row = events_df.loc[index]
+            for index in total_events.index:
+                row = total_events.loc[index]
                 start_x = (row['start_datetime'] - self.date).total_seconds()
                 end_x = start_x + row['duration']
                 ax[0].axvline(x=start_x, color='red', label='detected start')
                 ax[0].axvline(x=end_x, color='blue', label='detected stop')
-            if len(events_df) > 0:
-                events_df[['rms', 'sel', 'peak']].plot(ax=ax[2])
+            if len(total_events) > 0:
+                total_events[['rms', 'sel', 'peak']].plot(ax=ax[2])
             plt.tight_layout()
             plt.show()
             plt.close()

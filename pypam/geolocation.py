@@ -173,7 +173,8 @@ class SurveyLocation:
         df : DataFrame
             DataFrame from an ASA output
         """
-        self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
+        if self.geotrackpoints.index.tzinfo is None:
+            self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
         if 'datetime' in df.columns:
             datetime_df = pd.DataFrame({'datetime': df.datetime})
         else:
