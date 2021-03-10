@@ -63,7 +63,13 @@ class Signal:
         Return the current band
         """
         if item == 'band':
-            return self.bands_list[self.band_n]
+            if len(self.bands_list) == 0:
+                band = -1
+            else:
+                band = self.bands_list[self.band_n]
+                # if band is None:
+                #     band = [0, self.fs/2]
+            return band
         elif item == 'duration':
             return len(self.signal) / self.fs
         elif item == 'times':
@@ -88,20 +94,24 @@ class Signal:
         band : list or tuple
             [low_freq, high_freq] of the desired band
         """
-        self.band_n += 1
-        self._processed[self.band_n] = []
-        self.bands_list[self.band_n] = band
-
-        # Restart the signal to the original one
-        if band is None:
-            self.signal = self._signal.copy()
-            self.fs = self._fs
-        else:
-            if band[1] > self.band[1]:
+        if band != self.band:
+            # Restart the signal to the original one
+            if band is None:
                 self.signal = self._signal.copy()
                 self.fs = self._fs
+            else:
+                if band[1] > self._fs/2:
+                    raise ValueError('Frequency %s is higher than nyquist frequency %s' % (band[1], self.fs/2))
+                elif self.band is None or band[1] <= self.band[1]:
+                    self._filter_and_downsample(band)
+                elif band[1] > self.band[1]:
+                    self.signal = self._signal.copy()
+                    self.fs = self._fs
+                    self._filter_and_downsample(band)
+            self.band_n += 1
+            self._processed[self.band_n] = []
+            self.bands_list[self.band_n] = band
         self._reset_spectro()
-        self._filter_and_downsample()
 
     def reset_original(self):
         """
@@ -121,12 +131,12 @@ class Signal:
         """
         if self.signal.size >= n_samples:
             s = self.signal[0:n_samples]
-            # self._processed[self.band_n].append('crop')
+            self._processed[self.band_n].append('crop')
         else:
             nan_array = np.full((n_samples,), 0)
             nan_array[0:self.signal.size] = self.signal
             s = nan_array
-            # self._processed[self.band_n].append('fill')
+            self._processed[self.band_n].append('fill')
         return s
 
     def _downsample(self, new_fs):
@@ -148,24 +158,24 @@ class Signal:
         self._processed[self.band_n].append('downsample')
         self.fs = new_fs
 
-    def _filter_and_downsample(self):
+    def _filter_and_downsample(self, band):
         """
         Filter and downsample the signal
         """
-        if self.band is not None:
+        if (band is not None) and (band is not [None, None]) :
             # Filter the signal
-            if self.band[0] == 0 or self.band[0] is None:
-                sosfilt = sig.butter(N=4, btype='lowpass', Wn=self.band[1], analog=False, output='sos', fs=self.fs)
-            elif self.band[1] == self.fs/2 or self.band[1] is None:
-                sosfilt = sig.butter(N=4, btype='highpass', Wn=self.band[0], analog=False, output='sos', fs=self.fs)
+            if band[0] == 0 or band[0] is None:
+                sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
+            elif band[1] is None:
+                sosfilt = sig.butter(N=4, btype='highpass', Wn=band[0], analog=False, output='sos', fs=self.fs)
             else:
-                sosfilt = sig.butter(N=4, btype='bandpass', Wn=self.band, analog=False, output='sos', fs=self.fs)
+                sosfilt = sig.butter(N=4, btype='bandpass', Wn=band, analog=False, output='sos', fs=self.fs)
             self.signal = sig.sosfilt(sosfilt, self.signal)
             self._processed[self.band_n].append('filter')
 
             # Downsample if frequency analysis to get better resolution
-            if self.band[1] < self.fs / 2:
-                self._downsample(self.band[1] * 2)
+            if band[1] < self.fs / 2:
+                self._downsample(band[1] * 2)
 
     def envelope(self):
         """
@@ -422,7 +432,7 @@ class Signal:
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
         if self.band is not None:
-            low_freq = np.argmax(self.freq >= self.band[0])
+            low_freq = np.argmax(freq, self.band[0])
         else:
             low_freq = 0
         self.psd = psd[low_freq:]
@@ -732,7 +742,7 @@ class Signal:
         f = getattr(acoustic_indices, 'compute_' + name)
         return f(**kwargs)
 
-    def reduce_noise(self, noise_clip, prop_decrease=1.0, nfft=512):
+    def reduce_noise(self, noise_clip, prop_decrease=1.0, nfft=512, verbose=False):
         """
         Remove the noise of the signal using the noise clip
 
@@ -745,10 +755,35 @@ class Signal:
         nfft : int
             Window size to compute the spectrum
         """
-        self.signal = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip,
+        s = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip,
                                       prop_decrease=prop_decrease, n_fft=nfft, win_length=nfft,
                                       verbose=False, n_grad_freq=1, n_grad_time=1,
                                       hop_length=int(nfft * 0.2))
+        if verbose:
+            _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
+            fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
+            ax[0, 0].plot(self.times, self.signal)
+            ax[0, 0].set_title('Signal')
+            ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
+            ax[0, 1].set_axis_off()
+            im = ax[0, 1].pcolormesh(self.t, self.freq, sxx0, vmin=60, vmax=150, shading='auto', cmap='viridis')
+            plt.colorbar(im, cax=ax[0, 2], label=r'PSD [dB re 1 $\mu Pa^2 / Hz$]')
+            ax[0, 1].set_title('Spectrogram')
+
+            self.signal = s
+            _, _, sxx1 = self.spectrogram(nfft, db=True, force_calc=True)
+            ax[1, 0].plot(self.times, s)
+            ax[1, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
+            ax[1, 0].set_xlabel('Time [s]')
+            ax[1, 1].set_axis_off()
+            ax[1, 1].set_xlabel('Time [s]')
+            im = ax[1, 1].pcolormesh(self.t, self.freq, sxx1, vmin=60, vmax=150, shading='auto', cmap='viridis')
+            plt.colorbar(im, cax=ax[1, 2], label=r'PSD [dB re 1 $\mu Pa^2 / Hz$]')
+            plt.show()
+            plt.close()
+        else:
+            self.signal = s
+
         self._processed[self.band_n].append('noisereduction')
 
     def plot(self, nfft=512, scaling='density', db=True, force_calc=False):
@@ -766,7 +801,7 @@ class Signal:
             Set to True to force the re-calulation of the spectrogram
 
         """
-        sxx, _, _ = self.spectrogram(nfft, scaling, db, force_calc=force_calc)
+        _, _, sxx = self.spectrogram(nfft, scaling, db, force_calc=force_calc)
         if scaling == 'density':
             label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
         elif scaling == 'spectrum':
@@ -776,7 +811,6 @@ class Signal:
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
         ax[0, 0].plot(self.times, self.signal)
         ax[0, 0].set_title('Signal')
-        ax[0, 0].set_xlabel('Time [s]')
         ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
         im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=60, vmax=150, shading='auto', cmap='viridis')

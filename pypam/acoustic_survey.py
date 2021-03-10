@@ -347,7 +347,7 @@ class ASA:
                     pass
         return 0
 
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False):
         """
         Return a DataFrame with all the piling events and their rms, sel and peak values
 
@@ -373,7 +373,8 @@ class ASA:
                 df_output = sound_file.detect_piling_events(min_separation=min_separation,
                                                             threshold=threshold,
                                                             max_duration=max_duration,
-                                                            dt=dt, binsize=self.binsize)
+                                                            dt=dt, binsize=self.binsize,
+                                                            verbose=verbose)
                 df = df.append(df_output)
         return df
 

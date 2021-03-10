@@ -163,7 +163,7 @@ class SurveyLocation:
 
         return geotrackpoints
 
-    def add_survey_location(self, df, time_tolerance='10min'):
+    def add_survey_location(self, df, time_tolerance='10min', other_cols=None):
         """
         Add the closest location of the GeoSurvey to each timestamp of the DataFrame.
         Returns a new GeoDataFrame with all the information of df but with added geometry
@@ -186,6 +186,10 @@ class SurveyLocation:
         df = geopandas.GeoDataFrame(df, geometry='geom', crs=self.geotrackpoints.crs.to_string())
         # Patch to solve the multiindex incompatibiolity with crs in geopandas
         df['geometry'] = df.geometry
+
+        if other_cols is not None:
+            for col in other_cols:
+                df[col] = geo_df[col]
 
         return df
 
