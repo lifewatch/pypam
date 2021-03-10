@@ -87,7 +87,7 @@ class Signal:
         ----------
         band : list or tuple
             [low_freq, high_freq] of the desired band
-        """merge
+        """
         self.band_n += 1
         self._processed[self.band_n] = []
         self.bands_list[self.band_n] = band
