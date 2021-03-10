@@ -11,6 +11,7 @@ __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numba as nb
 import numpy as np
 import pandas as pd
@@ -38,7 +39,8 @@ class ImpulseDetector:
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         dt : float
-            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+            Window size in seconds for the analysis (time resolution). Has to be smaller han
+            min_duration!
         """
         self.min_separation = min_separation
         self.max_duration = max_duration
@@ -67,11 +69,15 @@ class ImpulseDetector:
             df = self.detect_events_envelope(signal, verbose, save_path)
         elif method == 'snr':
             df = self.detect_events_snr(signal, verbose, save_path)
+        else:
+            raise Exception('Unknown method: ' + method)
+
         return df
 
     def detect_events_dt(self, signal, verbose=False, save_path=None):
         """
-        Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
+        Detection of event times. Events are detected on the basis of the SPL time series
+        (channel 1)
         The time resolution is dt
 
         Parameters
@@ -90,7 +96,7 @@ class ImpulseDetector:
             level = block.rms(db=True)
             levels.append(level)
         times_events = events_times(np.array(levels), self.dt, self.threshold, self.min_separation)
-        events_df = self.load_event(times_events, signal)
+        events_df = self.load_event(times_events, signal, verbose=verbose) # FIXME: What about duration?
 
         if verbose:
             self.plot_all_events(signal, events_df, save_path)
@@ -115,8 +121,9 @@ class ImpulseDetector:
         envelope = utils.to_db(envelope, ref=1.0, square=True)
 
         times_events = events_times_diff(signal=envelope, fs=signal.fs, threshold=self.threshold,
-                                         max_duration=self.max_duration, min_separation=self.min_separation)
-        events_df = self.load_all_times_events(times_events, signal)
+                                         max_duration=self.max_duration,
+                                         min_separation=self.min_separation)
+        events_df = self.load_all_times_events(times_events, signal, verbose=verbose)
 
         if verbose:
             self.plot_all_events(signal, events_df, save_path)
@@ -140,18 +147,20 @@ class ImpulseDetector:
         signal.set_band(band=self.band)
         envelope = signal.envelope()
         envelope = utils.to_db(envelope, ref=1.0, square=True)
-        times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs, threshold=self.threshold,
-                                        max_duration=self.max_duration, min_separation=self.min_separation)
-        events_df = self.load_all_times_events(times_events, signal)
+        times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs,
+                                        threshold=self.threshold, max_duration=self.max_duration,
+                                        min_separation=self.min_separation)
+        events_df = self.load_all_times_events(times_events, signal, verbose=verbose)
 
         if verbose:
             self.plot_all_events(signal, events_df, save_path)
 
         return events_df
 
-    def load_event(self, s, t, duration, removenoise=True):
+    def load_event(self, s, t, duration, removenoise=True, verbose=False):
         """
-        Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
+        Load the event at time t (in seconds), with supplied time before and after the event
+        (in seconds)
         return an object event
         Parameters
         ----------
@@ -162,7 +171,8 @@ class ImpulseDetector:
         duration : float
             Duration of the event, in seconds
         removenoise : bool
-            Set to True if noise calculated before and after the event can be removed from the event
+            Set to True if noise calculated before and after the event can be removed from the
+            event
         """
         start_n = int(t * s.fs)
         end_n = int((t + duration) * s.fs)
@@ -171,13 +181,13 @@ class ImpulseDetector:
             n2 = min(int((t + duration + self.min_separation) * s.fs), s.signal.shape[0])
             event = Event(s.signal[n1:n2], s.fs)
             noise_clip = np.concatenate((s.signal[n1:start_n], s.signal[end_n:n2]))
-            event.reduce_noise(noise_clip=noise_clip, nfft=4096 * 8)
+            event.reduce_noise(noise_clip=noise_clip, nfft=512, verbose=verbose)
             event.signal = event.signal[start_n - n1:end_n - n1]
         else:
             event = Event(s.signal[start_n:end_n], s.fs)
         return event
 
-    def load_all_times_events(self, times_events, signal):
+    def load_all_times_events(self, times_events, signal, verbose=False):
         """
         Load in a dataframe all the events and their parameters
 
@@ -197,7 +207,7 @@ class ImpulseDetector:
         events_df = pd.DataFrame(columns=columns)
         for i, e in enumerate(times_events):
             start, duration, end = e
-            event = self.load_event(s=signal, t=start, duration=duration)
+            event = self.load_event(s=signal, t=start, duration=duration, verbose=verbose)
             rms, sel, peak = event.analyze()
             _, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
             events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
@@ -220,30 +230,38 @@ class ImpulseDetector:
         signal.set_band(band=self.band)
         fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
         fig, ax = plt.subplots(3, 1, sharex=True)
-        ax[0].pcolormesh(t, fbands, sxx, shading='auto')
+        im = ax[0].pcolormesh(t, fbands, sxx, shading='auto')
         ax[0].set_title('Spectrogram')
         ax[0].set_ylabel('Frequency [Hz]')
         ax[0].set_yscale('log')
-        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal')
-        # ax[1].plot(signal.times, envelope, label='Envelope')
-        for index in events_df.index:
-            row = events_df.loc[index]
-            ax[1].axvline(x=row.loc[('temporal', 'start_seconds')], color='red')
-            ax[1].axvline(x=row.loc[('temporal', 'end_seconds')], color='blue')
+        divider = make_axes_locatable(ax[0])
+        cax = divider.append_axes("right", size="5%", pad=.05)
+        plt.colorbar(im, cax=cax, label='$L_{rms} [dB]$')
+        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal', zorder=1)
+        # for index in events_df.index:
+        #     row = events_df.loc[index]
+        ylims = ax[1].get_ylim()
+        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1], color='red', label='Detections', zorder=2)
+        ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
         ax[1].set_title('Detections')
         ax[1].set_ylabel('[dB]')
-        ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
+        divider1 = make_axes_locatable(ax[1])
+        cax1 = divider1.append_axes("right", size="5%", pad=.05)
+        cax1.remove()
         if len(events_df) > 0:
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
-                          label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
+                          marker='.', label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
-                          label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
+                          marker='x', label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'sel')],
-                          label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
+                          marker='+', label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
         ax[2].legend(bbox_to_anchor=(1, 0), loc="lower left")
         ax[2].set_title('Pulses detected')
         ax[2].set_xlabel('Time [s]')
         ax[2].set_ylabel('[dB]')
+        divider2 = make_axes_locatable(ax[2])
+        cax2 = divider2.append_axes("right", size="5%", pad=.05)
+        cax2.remove()
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
@@ -253,8 +271,8 @@ class ImpulseDetector:
 
 class PilingDetector(ImpulseDetector):
     def __init__(self, min_separation, max_duration, threshold, dt):
-        super().__init__(min_separation=min_separation, max_duration=max_duration, band=[5000, 10000],
-                         threshold=threshold, dt=dt)
+        super().__init__(min_separation=min_separation, max_duration=max_duration,
+                         band=[5000, 10000], threshold=threshold, dt=dt)
 
 
 @nb.jit

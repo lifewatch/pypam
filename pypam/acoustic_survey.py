@@ -45,14 +45,14 @@ class ASA:
                  utc=True,
                  channel=0,
                  calibration_time=0.0):
-        """ 
+        """
         Init a AcousticSurveyAnalysis (ASA)
 
         Parameters
         ----------
         hydrophone : Hydrophone class from pyhydrophone
         folder_path : string or Path
-            Where all the sound files are 
+            Where all the sound files are
         zipped : boolean
             Set to True if the directory is zipped
         include_dirs : boolean
@@ -64,14 +64,16 @@ class ASA:
         nfft : int
             Samples of the fft bin used for the spectral analysis
         period : tuple or list
-            Tuple or list with two elements: start and stop. Has to be a string in the format YYYY-MM-DD HH:MM:SS
+            Tuple or list with two elements: start and stop. Has to be a string in the
+            format YYYY-MM-DD HH:MM:SS
         band : tuple or list
             Tuple or list with two elements: low-cut and high-cut of the band to analyze
         calibration_time : float
             Time in seconds to be ignored at the beggining of each file
         """
         self.hydrophone = hydrophone
-        self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped, include_dirs=include_dirs)
+        self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
+                                        include_dirs=include_dirs)
         self.p_ref = p_ref
         self.binsize = binsize
         self.nfft = nfft
@@ -101,7 +103,7 @@ class ASA:
         ----------
         method_list : string
             Method name present in HydroFile
-        **kwargs : 
+        **kwargs :
             Any accepted parameter for the method_name
         """
         df = pd.DataFrame()
@@ -119,7 +121,7 @@ class ASA:
 
     def evolution(self, method_name, **kwargs):
         """
-        Evolution of only one param name 
+        Evolution of only one param name
         """
         return self.evolution_multiple(method_list=[method_name], **kwargs)
 
@@ -187,12 +189,12 @@ class ASA:
     def apply_to_all(self, method_name, **kwargs):
         """
         Apply the method to all the files
-        
+
         Parameters
         ----------
         method_name : string
             Method name present in HydroFile
-        **kwargs : 
+        **kwargs :
             Any accepted parameter for the method_name
 
         """
@@ -228,7 +230,7 @@ class ASA:
 
         Parameters
         ----------
-        **kwargs : 
+        **kwargs :
             Any accepted arguments for the rms function of the AcuFile
         """
         rms_evolution = self.evolution('rms', **kwargs)
@@ -237,7 +239,7 @@ class ASA:
 
     def spd(self, db=True, h=0.1, percentiles=None):
         """
-        Return the empirical power density. 
+        Return the empirical power density.
 
         Parameters
         ----------
@@ -246,16 +248,18 @@ class ASA:
         h : float
             Histogram bin (in the correspondent units, uPa or db)
         percentiles : list
-            All the percentiles that have to be returned. If set to None, no percentiles is returned
+            All the percentiles that have to be returned. If set to None, no percentiles
+            is returned
 
         Returns
-        ------- 
+        -------
         fbands : list
             List of all the frequencies
         bin_edges : list
             List of the psd values of the distribution
         spd : DataFrame
-            DataFrame with 'frequency' as index and a column for each psd bin and for each percentile
+            DataFrame with 'frequency' as index and a column for each psd bin and for
+            each percentile
         p : numpy matrix
             Matrix with all the probabilities
         """
@@ -266,13 +270,14 @@ class ASA:
         bin_edges = np.arange(start=pxx.min(), stop=pxx.max(), step=h)
         if percentiles is None:
             percentiles = []
-        spd, p = utils.sxx2spd(Sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
+        spd, p = utils.sxx2spd(Sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0,
+                               bin_edges=bin_edges)
 
         return fbands, bin_edges, spd, percentiles, p
 
     def cut_and_place_files_period(self, period, folder_name, extensions=None):
         """
-        Cut the files in the specified periods and store them in the right folder 
+        Cut the files in the specified periods and store them in the right folder
 
         Parameters
         ----------
@@ -307,9 +312,10 @@ class ASA:
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
-                        new_metadata_path = second.parent.joinpath(second.name.replace('.wav', extensions[i]))
+                        new_metadata_path = second.parent.joinpath(
+                            second.name.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
-                        # Move the file 
+                        # Move the file
                         move_file(new_metadata_path, folder_path)
             elif sound_file.contains_date(end_date):
                 print('end!', wav_file)
@@ -324,7 +330,8 @@ class ASA:
                         df_first = df[df['datetime'] < start_date]
                         df_second = df[df['datetime'] >= start_date]
                         df_first.to_csv(metadata_file)
-                        new_metadata_path = second.parent.joinpath(second.name.replace('.wav', extensions[i]))
+                        new_metadata_path = second.parent.joinpath(
+                            second.name.replace('.wav', extensions[i]))
                         df_second.to_csv(new_metadata_path)
                     # Move the file (also if log)
                     move_file(metadata_file, folder_path)
@@ -340,7 +347,7 @@ class ASA:
                     pass
         return 0
 
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False):
         """
         Return a DataFrame with all the piling events and their rms, sel and peak values
 
@@ -353,7 +360,8 @@ class ASA:
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         dt : float
-            Window size in seconds for the analysis (time resolution). Has to be smaller han min_duration!
+            Window size in seconds for the analysis (time resolution). Has to be smaller
+            than min_duration!
         """
         df = pd.DataFrame()
         for file_list in self.acu_files:
@@ -362,8 +370,11 @@ class ASA:
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
                                    utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = sound_file.detect_piling_events(min_separation=min_separation, threshold=threshold,
-                                                            max_duration=max_duration, dt=dt, binsize=self.binsize)
+                df_output = sound_file.detect_piling_events(min_separation=min_separation,
+                                                            threshold=threshold,
+                                                            max_duration=max_duration,
+                                                            dt=dt, binsize=self.binsize,
+                                                            verbose=verbose)
                 df = df.append(df_output)
         return df
 
@@ -380,7 +391,8 @@ class ASA:
         """
         df = pd.DataFrame()
         last_end = None
-        detector = loud_event_detector.LoudPilingDetector(min_duration=min_duration, threshold=threshold)
+        detector = loud_event_detector.LoudPilingDetector(min_duration=min_duration,
+                                                          threshold=threshold) #FIXME: Does this class exist?
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)
@@ -393,8 +405,10 @@ class ASA:
                     detector.reset()
             last_end = end_datetime
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = sound_file.detect_ship_events(min_duration=min_duration, threshold=threshold,
-                                                          binsize=self.binsize, detector=detector, verbose=True)
+                df_output = sound_file.detect_ship_events(min_duration=min_duration,
+                                                          threshold=threshold,
+                                                          binsize=self.binsize, detector=detector,
+                                                          verbose=True)
                 df = df.append(df_output)
         return df
 
@@ -404,7 +418,7 @@ class ASA:
 
         Parameters
         ----------
-        method_name : string 
+        method_name : string
             Plot method present in HydroFile
         **kwargs : Any accepted in the method_name
         """
@@ -416,9 +430,9 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        save_path : string or Path 
+        db : boolean
+            If set to True, output in db
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db)
@@ -444,9 +458,9 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        save_path : string or Path 
+        db : boolean
+            If set to True, output in db
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db)
@@ -457,7 +471,8 @@ class ASA:
         daily_patterns = pd.DataFrame()
         for date in dates:
             for hour in hours:
-                rms = rms_evolution[(rms_evolution['date'] == date) and (rms_evolution['hour'] == hour)]['rms']
+                rms = rms_evolution[(rms_evolution['date'] == date) and
+                                    (rms_evolution['hour'] == hour)]['rms']
                 daily_patterns.loc[date, hour] = rms
 
         # Plot the patterns
@@ -486,11 +501,11 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        log : boolean 
+        db : boolean
+            If set to True, output in db
+        log : boolean
             If set to True, y axis in logarithmic scale
-        save_path : string or Path 
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the power_spectrum method
         """
@@ -509,11 +524,11 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        log : boolean 
+        db : boolean
+            If set to True, output in db
+        log : boolean
             If set to True, y axis in logarithmic scale
-        save_path : string or Path 
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the psd method
         """
@@ -534,15 +549,15 @@ class ASA:
         ----------
         df : DataFrame
             Output of evolution
-        units : string 
+        units : string
             Units of the spectrum
-        col_name : string 
+        col_name : string
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
             Name of the label. 'PSD' or 'SPLrms'
-        log : boolean 
+        log : boolean
             If set to True, y axis in logarithmic scale
-        save_path : string or Path 
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
         fbands = df['band_' + col_name].columns
@@ -558,7 +573,8 @@ class ASA:
 
         # Plot the percentile lines
         percentiles = df['percentiles'].mean(axis=0).values
-        plt.hlines(y=percentiles, xmin=fbands.min(), xmax=fbands.max(), label=df['percentiles'].columns)
+        plt.hlines(y=percentiles, xmin=fbands.min(), xmax=fbands.max(),
+                   label=df['percentiles'].columns)
 
         plt.tight_layout()
         if save_path is not None:
@@ -575,9 +591,9 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        save_path : string or Path 
+        db : boolean
+            If set to True, output in db
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the power spectrum method
         """
@@ -597,9 +613,9 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        save_path : string or Path 
+        db : boolean
+            If set to True, output in db
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the psd method
         """
@@ -621,20 +637,21 @@ class ASA:
         ----------
         df : DataFrame
             Output of evolution
-        units : string 
+        units : string
             Units of the spectrum
-        col_name : string 
+        col_name : string
             Column name of the value to plot. Can be 'density' or 'spectrum'
         output_name : string
             Name of the label. 'PSD' or 'SPLrms'
-        save_path : string or Path 
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
-        # Plot the evolution  
+        # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
         fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
         fbands = df['band_' + col_name].columns
-        im = ax[0, 0].pcolormesh(df.index, fbands, df['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
+        im = ax[0, 0].pcolormesh(df.index, fbands,
+                                 df['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
                                  shading='auto')
         ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
         ax[0, 0].set_xlabel('Time')
@@ -663,11 +680,11 @@ class ASA:
 
         Parameters
         ----------
-        db : boolean 
-            If set to True, output in db 
-        log : boolean 
+        db : boolean
+            If set to True, output in db
+        log : boolean
             If set to True, y axis in logarithmic scale
-        save_path : string or Path 
+        save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the spd method
         """
@@ -710,7 +727,8 @@ class AcousticFolder:
     def __init__(self, folder_path, zipped=False, include_dirs=False, extensions=None):
         """
         Store the information about the folder.
-        It will create an iterator that returns all the pairs of extensions having the same name than the wav file
+        It will create an iterator that returns all the pairs of extensions having the same
+        name than the wav file
 
         Parameters
         ----------
@@ -752,8 +770,10 @@ class AcousticFolder:
         else:
             if self.recursive:
                 self.folder_list = sorted(self.folder_path.iterdir())
-                self.zipped_subfolder = AcousticFolder(self.folder_list[self.n], extensions=self.extensions,
-                                                       zipped=self.zipped, include_dirs=self.recursive)
+                self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
+                                                       extensions=self.extensions,
+                                                       zipped=self.zipped,
+                                                       include_dirs=self.recursive)
             else:
                 zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
                 self.files_list = zipped_folder.namelist()
@@ -771,8 +791,10 @@ class AcousticFolder:
                         self.files_list = self.zipped_subfolder.__next__()
                     except StopIteration:
                         self.n += 1
-                        self.zipped_subfolder = AcousticFolder(self.folder_list[self.n], extensions=self.extensions,
-                                                               zipped=self.zipped, include_dirs=self.recursive)
+                        self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
+                                                               extensions=self.extensions,
+                                                               zipped=self.zipped,
+                                                               include_dirs=self.recursive)
                 else:
                     file_name = self.files_list[self.n]
                     extension = file_name.split(".")[-1]
@@ -780,7 +802,8 @@ class AcousticFolder:
                         wav_file = self.folder_path.open(file_name)
                         files_list.append(wav_file)
                         for extension in self.extensions:
-                            ext_file_name = file_name.parent.joinpath(file_name.name.replace('.wav', extension))
+                            ext_file_name = file_name.parent.joinpath(
+                                file_name.name.replace('.wav', extension))
                             files_list.append(self.folder_path.open(ext_file_name))
                     self.n += 1
                     return files_list
@@ -816,9 +839,9 @@ def move_file(file_path, new_folder_path):
 
     Parameters
     ----------
-    file_path : string or Path 
-        Original file path 
-    new_folder_path : string or Path 
+    file_path : string or Path
+        Original file path
+    new_folder_path : string or Path
         New folder destination (without the file name)
     """
     if not isinstance(file_path, pathlib.Path):

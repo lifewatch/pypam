@@ -16,7 +16,6 @@ import seaborn as sns
 import shapely
 from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from shapely.geometry import geo
 
 # Apply the default theme
 sns.set_theme()
@@ -46,7 +45,7 @@ class SurveyLocation:
             elif extension == '.sqlite3':
                 geotrackpoints = self.read_sqlite3(geofile, **kwargs)
             else:
-                raise Exception('Extension %s is not implemented!' % (extension))
+                raise Exception('Extension %s is not implemented!' % extension)
 
             self.geotrackpoints = geotrackpoints
             self.geofile = geofile
@@ -118,7 +117,8 @@ class SurveyLocation:
         geotrackpoints = self.convert_df(df, datetime_col, lat_col, lon_col)
         return geotrackpoints
 
-    def read_sqlite3(self, geofile, table_name='gpsData', datetime_col='UTC', lat_col='Latitude', lon_col='Longitude'):
+    def read_sqlite3(self, geofile, table_name='gpsData', datetime_col='UTC', lat_col='Latitude',
+                     lon_col='Longitude'):
         """
         Read a sqlite3 file with geolocation data
         Parameters
@@ -163,7 +163,7 @@ class SurveyLocation:
 
         return geotrackpoints
 
-    def add_survey_location(self, df, time_tolerance='10min'):
+    def add_survey_location(self, df, time_tolerance='10min', other_cols=None):
         """
         Add the closest location of the GeoSurvey to each timestamp of the DataFrame.
         Returns a new GeoDataFrame with all the information of df but with added geometry
@@ -173,7 +173,8 @@ class SurveyLocation:
         df : DataFrame
             DataFrame from an ASA output
         """
-        self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
+        if self.geotrackpoints.index.tzinfo is None:
+            self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
         if 'datetime' in df.columns:
             datetime_df = pd.DataFrame({'datetime': df.datetime})
         else:
@@ -186,6 +187,10 @@ class SurveyLocation:
         # Patch to solve the multiindex incompatibiolity with crs in geopandas
         df['geometry'] = df.geometry
 
+        if other_cols is not None:
+            for col in other_cols:
+                df[col] = geo_df[col]
+
         return df
 
     def plot_survey_color(self, column, df, units=None, map_file=None, save_path=None):
@@ -194,14 +199,15 @@ class SurveyLocation:
 
         Parameters
         ----------
-        column : string 
+        column : string
             Column of the df to plot
-        units : string 
-            Units of the legend 
+        units : string
+            Units of the legend
         df : DataFrame or GeoDataFrame
             DataFrame from an ASA output or GeoDataFrame
-        map_file : string or Path 
+        map_file : string or Path
             Map that will be used as a basemap
+        save_path : str or PathLike or file-like object
         """
         if 'geometry' not in df.columns:
             df = self.add_survey_location(df)
@@ -209,13 +215,16 @@ class SurveyLocation:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
         if df[column].dtype != float:
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax)
+            df.plot(column=column, ax=ax, legend=True, alpha=0.5, categorical=True, cax=cax)
         else:
-            im = df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False, cax=cax)
+            df.plot(column=column, ax=ax, legend=True, alpha=0.5, cmap='YlOrRd', categorical=False,
+                    cax=cax)
         if map_file is None:
-            ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite, reset_extent=False)
+            ctx.add_basemap(ax, crs=df.crs.to_string(), source=ctx.providers.Stamen.TonerLite,
+                            reset_extent=False)
         else:
-            ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False, cmap='BrBG')
+            ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False,
+                            cmap='BrBG')
         ax.set_axis_off()
         ax.set_title('%s Distribution' % (column))
         if save_path is not None:
@@ -225,15 +234,15 @@ class SurveyLocation:
 
     def add_distance_to(self, df, lat, lon, column='distance'):
         """
-        Add the distances to a certain point. 
+        Add the distances to a certain point.
         Returns GeoDataFrame with an added column with the distance to the point lat, lon
 
         Parameters
         ----------
         df : DataFrame or GeoDataFrame
             ASA output or GeoDataFrame
-        lat : float 
-            Latitude of the point 
+        lat : float
+            Latitude of the point
         lon : float
             Longitude of the point
 
@@ -246,7 +255,7 @@ class SurveyLocation:
 
     def add_distance_to_coast(self, df, coastfile, column='coast_dist'):
         """
-        Add the minimum distance to the coast. 
+        Add the minimum distance to the coast.
         Returns GeoDataFrame with an added column with the distance to the coast
 
         Parameters
@@ -259,7 +268,8 @@ class SurveyLocation:
         if "geometry" not in df.columns:
             df = self.add_survey_location(df)
         coastline = geopandas.read_file(coastfile).loc[0].geometry.coords
-        coast_df = geopandas.GeoDataFrame(geometry=[shapely.geometry.Point(xy) for xy in coastline])
+        coast_df = geopandas.GeoDataFrame(geometry=[shapely.geometry.Point(xy)
+                                                    for xy in coastline])
         df[column] = df['geometry'].apply(min_distance_m, geodf=coast_df)
 
         return df

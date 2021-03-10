@@ -4,7 +4,8 @@ Adapted version of acoustic_indexes.py (https://github.com/patriceguyot/Acoustic
 
 Set of functions to compute acoustic indices in the framework of Soundscape Ecology.
 Some features are inspired or ported from those proposed in:
-    - seewave R package (http://rug.mnhn.fr/seewave/) / Jerome Sueur, Thierry Aubin and  Caroline Simonis
+    - seewave R package (http://rug.mnhn.fr/seewave/) / Jerome Sueur, Thierry Aubin and
+    Caroline Simonis
     - soundecology R package (http://cran.r-project.org/web/packages/soundecology/index.html) /
     Luis J. Villanueva-Rivera and Bryan C. Pijanowski
 This file use an object oriented type for audio files described in the file "acoustic_index.py".
@@ -83,10 +84,11 @@ def compute_aci(sxx: np.ndarray):
 def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     """
     Compute the Bioacoustic Index from the spectrogram of an audio signal.
-    In this code, the Bioacoustic Index correspond to the area under the mean spectre (in db) minus the minimum
-    frequency value of this mean spectre.
-    Reference: Boelman NT, Asner GP, Hart PJ, Martin RE. 2007. Multi-trophic invasion resistance in Hawaii:
-    bioacoustics, field surveys, and airborne remote sensing. Ecological Applications 17: 2137-2144.
+    In this code, the Bioacoustic Index correspond to the area under the mean spectre (in db)
+    minus the minimum frequency value of this mean spectre.
+    Reference: Boelman NT, Asner GP, Hart PJ, Martin RE. 2007. Multi-trophic invasion resistance
+    in Hawaii: bioacoustics, field surveys, and airborne remote sensing.
+    Ecological Applications 17: 2137-2144.
     Ported from the soundecology R package.
 
     Parameters
@@ -183,12 +185,13 @@ def compute_th(s):
     return - th / np.log2(n)
 
 
-def compute_ndsi(s, fs, window_length=1024, anthrophony=[1000, 2000], biophony=[2000, 11000]):
+def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
     """
     Compute Normalized Difference Sound Index from an audio signal.
     This function computes an estimate power spectral density using Welch's method.
     Reference: Kasten, Eric P., Stuart H. Gage, Jordan Fox, and Wooyeong Joo. 2012.
-    The Remote Environ- mental Assessment Laboratory's Acoustic Library: An Archive for Studying Soundscape Ecology.
+    The Remote Environ- mental Assessment Laboratory's Acoustic Library: An Archive for Studying
+    Soundscape Ecology.
     Ecological Informatics 12: 50-67.
     Inspired by the seewave R package, the soundecology R package and the original matlab code from the authors.
 
@@ -205,15 +208,20 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=[1000, 2000], biophony=[
     biophony: list of ints
         list of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
-    # frequencies, pxx = signal.welch(file.sig_float, fs=file.sr, window='hamming', nperseg=window_length,
-    # noverlap=window_length/2, nfft=window_length, detrend=False, return_onesided=True, scaling='density', axis=-1)
+    # frequencies, pxx = signal.welch(file.sig_float, fs=file.sr, window='hamming',
+    # nperseg=window_length,
+    # noverlap=window_length/2, nfft=window_length, detrend=False, return_onesided=True,
+    # scaling='density', axis=-1)
     # Estimate power spectral density using Welch's method
     # TODO change of detrend for apollo
     # Estimate power spectral density using Welch's method
+    if biophony is None:
+        biophony = [2000, 11000]
+    if anthrophony is None:
+        anthrophony = [1000, 2000]
     frequencies, pxx = sig.welch(s, fs=fs, window='hamming', nperseg=window_length,
-                                 noverlap=window_length / 2, nfft=window_length, detrend='constant',
+                                 noverlap=int(window_length / 2), nfft=window_length, detrend='constant',
                                  return_onesided=True, scaling='density', axis=-1)
-
     avgpow = pxx * frequencies[1]
     # use a rectangle approximation of the integral of the signal's power spectral density (PSD)
     # avgpow = avgpow / np.linalg.norm(avgpow, ord=2)
@@ -243,7 +251,8 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=[1000, 2000], biophony=[
 def gini(values):
     """
     Compute the Gini index of values.
-    Inspired by http://mathworld.wolfram.com/GiniCoefficient.html and http://en.wikipedia.org/wiki/Gini_coefficient
+    Inspired by http://mathworld.wolfram.com/GiniCoefficient.html and
+    http://en.wikipedia.org/wiki/Gini_coefficient
 
     Parameters
     ----------
@@ -395,8 +404,9 @@ def compute_zcr(s):
 def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=(0.01, 0.01)):
     """
     Counts the number of major frequency peaks obtained on a mean spectrum.
-    Ref: Gasc, A., Sueur, J., Pavoine, S., Pellens, R., & Grandcolas, P. (2013). Biodiversity sampling using a global
-    acoustic approach: contrasting sites with microendemics in New Caledonia. PloS one, 8(5), e65311.
+    Ref: Gasc, A., Sueur, J., Pavoine, S., Pellens, R., & Grandcolas, P. (2013). Biodiversity
+    sampling using a global acoustic approach: contrasting sites with microendemics in
+    New Caledonia. PloS one, 8(5), e65311.
 
     Parameters
     ----------
@@ -405,13 +415,13 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
     frequencies: np.array 1D
         List of the frequencies of the spectrogram
     freqband: int or float
-        frequency threshold parameter (in Hz). If the frequency difference of two successive peaks is
-        less than this threshold, then the peak of highest amplitude will be kept only.
+        frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
+        is less than this threshold, then the peak of highest amplitude will be kept only.
         normalization: if set at True, the mean spectrum is scaled between 0 and 1
     slopes: tuple of length 2
         Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
-        The first value is the left slope and the second value is the right slope. Only peaks with higher
-        slopes than threshold values will be kept.
+        The first value is the left slope and the second value is the right slope. Only peaks with
+        higher slopes than threshold values will be kept.
     """
     meanspec = np.array([np.mean(row) for row in sxx])
 
@@ -419,11 +429,12 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
         meanspec = meanspec / np.max(meanspec)
 
     # Find peaks (with slopes)
-    peaks_indices = np.r_[False, meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
-        meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
+    peaks_indices = np.r_[False, meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] \
+        & np.r_[meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
     peaks_indices = peaks_indices.nonzero()[0].tolist()
 
-    peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()  # scipy method (without slope)
+    # scipy method (without slope)
+    peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
 
     # Remove peaks with difference of frequency < freqband
     # number of consecutive index
@@ -431,8 +442,8 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
     for consecutiveIndices in [np.arange(i, i + nb_bin) for i in peaks_indices]:
         if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
             # close values has been found
-            maxi = np.intersect1d(consecutiveIndices, peaks_indices)[
-                np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
+            maxi = np.intersect1d(consecutiveIndices, peaks_indices)[np.argmax(
+                [meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
             peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
             # remove all indices that are in consecutiveIndices
             # append the max

@@ -47,7 +47,8 @@ class LoudEventDetector:
 
     def detect_events(self, signal, verbose=False):
         """
-        Detection of event times. Events are detected on the basis of the SPL time series (channel 1)
+        Detection of event times. Events are detected on the basis of the SPL time series
+        (channel 1)
         The time resolution is dt
 
         Parameters
@@ -77,7 +78,8 @@ class LoudEventDetector:
         else:
             self._last_start = 0
 
-        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak'])
+        events_df = pd.DataFrame(columns=['start_seconds', 'end_seconds', 'duration', 'rms',
+                                          'sel', 'peak'])
         for i, start_i in enumerate(start_points):
             duration = (end_points[i] - start_i)
             if duration >= self.min_duration:
@@ -94,8 +96,8 @@ class LoudEventDetector:
             ax[0].set_title('Spectrogram')
             ax[0].set_ylabel('Frequency [Hz]')
             ax[0].set_yscale('log')
-            ax[1].plot(np.arange(len(signal.signal)) / signal.fs, utils.to_db(signal.signal, ref=1.0,
-                                                                              square=True), label='signal')
+            ax[1].plot(np.arange(len(signal.signal)) / signal.fs,
+                       utils.to_db(signal.signal, ref=1.0, square=True), label='signal')
             ax[1].plot(times_envelope, envelope, label='Average envelope window %s' % window)
             ax[1].set_title('Signal')
             ax[1].set_ylabel('Lrms [dB]')
@@ -119,7 +121,8 @@ class LoudEventDetector:
     @staticmethod
     def load_event(s, n_start, duration_samples):
         """
-        Load the event at time t (in seconds), with supplied time before and after the event (in seconds)
+        Load the event at time t (in seconds), with supplied time before and after the event
+        (in seconds)
         return an object event
         Parameters
         ----------
