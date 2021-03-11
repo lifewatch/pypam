@@ -4,7 +4,6 @@ Authors: Clea Parcerisas
 Institution: VLIZ (Vlaams Institute voor de Zee)
 """
 
-import datetime
 import pathlib
 import sqlite3
 
@@ -13,7 +12,7 @@ import geopandas
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import shapely
+import shapely.geometry as sgeom
 from geopy import distance
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -50,7 +49,8 @@ class SurveyLocation:
             self.geotrackpoints = geotrackpoints
             self.geofile = geofile
 
-    def read_gpx(self, geofile):
+    @staticmethod
+    def read_gpx(geofile):
         """
         Read a GPX from GARMIN
         Parameters
@@ -69,7 +69,8 @@ class SurveyLocation:
 
         return geotrackpoints
 
-    def read_pickle(self, geofile, datetime_col='datetime', crs='EPSG:4326'):
+    @staticmethod
+    def read_pickle(geofile, datetime_col='datetime', crs='EPSG:4326'):
         """
         Read a pickle file
         Parameters
@@ -125,6 +126,15 @@ class SurveyLocation:
         ----------
         geofile : str or Path
             sqlite3 file
+        table_name : str
+            name of the table to read from the sqlite3 db
+        datetime_col : str
+            name of the column of the table where the datetime information is
+        lat_col : string
+            Column with the Latitude
+        lon_col : string
+            Column with the Longitude data
+
         Returns
         -------
         Geopandas DataFrame
@@ -136,7 +146,8 @@ class SurveyLocation:
         geotrackpoints = self.convert_df(df, datetime_col, lat_col, lon_col)
         return geotrackpoints
 
-    def convert_df(self, df, datetime_col, lat_col, lon_col):
+    @staticmethod
+    def convert_df(df, datetime_col, lat_col, lon_col):
         """
         Convert the DataFrame in a GeoPandas DataFrame
         Parameters
@@ -172,6 +183,10 @@ class SurveyLocation:
         ----------
         df : DataFrame
             DataFrame from an ASA output
+        time_tolerance : str
+            Maximum time to be acceptable distance between the survey timestamp and the geolocation point i.e. 10min
+        other_cols : str
+
         """
         if self.geotrackpoints.index.tzinfo is None:
             self.geotrackpoints.index = self.geotrackpoints.index.tz_localize('UTC')
@@ -193,7 +208,7 @@ class SurveyLocation:
 
         return df
 
-    def plot_survey_color(self, column, df, units=None, map_file=None, save_path=None):
+    def plot_survey_color(self, column, df, map_file=None, save_path=None):
         """
         Add the closest location to each timestamp and color the points in a map
 
@@ -201,8 +216,6 @@ class SurveyLocation:
         ----------
         column : string
             Column of the df to plot
-        units : string
-            Units of the legend
         df : DataFrame or GeoDataFrame
             DataFrame from an ASA output or GeoDataFrame
         map_file : string or Path
@@ -226,7 +239,7 @@ class SurveyLocation:
             ctx.add_basemap(ax, crs=df.crs.to_string(), source=map_file, reset_extent=False,
                             cmap='BrBG')
         ax.set_axis_off()
-        ax.set_title('%s Distribution' % (column))
+        ax.set_title('%s Distribution' % column)
         if save_path is not None:
             plt.savefig(save_path)
         else:
@@ -245,7 +258,8 @@ class SurveyLocation:
             Latitude of the point
         lon : float
             Longitude of the point
-
+        column : str
+            Name where to save the distance to
         """
         if "geometry" not in df.columns:
             df = self.add_survey_location(df)
@@ -264,11 +278,13 @@ class SurveyLocation:
             ASA output or GeoDataFrame
         coastfile : str or Path
             File with the points of the coast
+        column : str
+            Name where to save the distance to the coast
         """
         if "geometry" not in df.columns:
             df = self.add_survey_location(df)
         coastline = geopandas.read_file(coastfile).loc[0].geometry.coords
-        coast_df = geopandas.GeoDataFrame(geometry=[shapely.geometry.Point(xy)
+        coast_df = geopandas.GeoDataFrame(geometry=[sgeom.Point(xy)
                                                     for xy in coastline])
         df[column] = df['geometry'].apply(min_distance_m, geodf=coast_df)
 

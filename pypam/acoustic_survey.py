@@ -125,17 +125,16 @@ class ASA:
         """
         return self.evolution_multiple(method_list=[method_name], **kwargs)
 
-    def evolution_freq_dom(self, method_name, binsize=None, db=True, **kwargs):
+    def evolution_freq_dom(self, method_name, **kwargs):
         """
         Returns the evolution of frequency domain parameters
         Parameters
         ----------
-        binsize
-        db
-
+        method_name : str
+            Name of the method of the acoustic_file class to compute
         Returns
         -------
-
+        A pandas DataFrame with a row per bin with the method name output
         """
         df = pd.DataFrame()
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
@@ -260,6 +259,8 @@ class ASA:
         spd : DataFrame
             DataFrame with 'frequency' as index and a column for each psd bin and for
             each percentile
+        percentiles : array like
+            List of the percentiles calculated
         p : numpy matrix
             Matrix with all the probabilities
         """
@@ -362,6 +363,8 @@ class ASA:
         dt : float
             Window size in seconds for the analysis (time resolution). Has to be smaller
             than min_duration!
+        verbose : boolean
+            Set to True to plot the detected events per bin
         """
         df = pd.DataFrame()
         for file_list in self.acu_files:
@@ -391,8 +394,8 @@ class ASA:
         """
         df = pd.DataFrame()
         last_end = None
-        detector = loud_event_detector.LoudPilingDetector(min_duration=min_duration,
-                                                          threshold=threshold) #FIXME: Does this class exist?
+        detector = loud_event_detector.ShipDetector(min_duration=min_duration,
+                                                    threshold=threshold)
         for file_list in self.acu_files:
             wav_file = file_list[0]
             print(wav_file)

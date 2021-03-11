@@ -330,7 +330,7 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
 
     spec_adi = 10 * np.log10(sxx ** 2 / np.max(sxx ** 2))
     values = np.zeros(bands_hz.size)
-    for k in range(bands_hz.size-1):
+    for k in range(bands_hz.size - 1):
         spec_adi_band = spec_adi[np.where((frequencies > bands_hz[k]) & (frequencies < bands_hz[k + 1]))]
         values[k] = np.sum(spec_adi_band > db_threshold) / float(spec_adi_band.size)
 
@@ -401,7 +401,7 @@ def compute_zcr(s):
 
 
 @nb.jit
-def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=(0.01, 0.01)):
+def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=None):
     """
     Counts the number of major frequency peaks obtained on a mean spectrum.
     Ref: Gasc, A., Sueur, J., Pavoine, S., Pellens, R., & Grandcolas, P. (2013). Biodiversity
@@ -418,23 +418,27 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
         frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
         is less than this threshold, then the peak of highest amplitude will be kept only.
         normalization: if set at True, the mean spectrum is scaled between 0 and 1
+    normalization : bool
+        Set to true if normalization is desired
     slopes: tuple of length 2
         Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
         The first value is the left slope and the second value is the right slope. Only peaks with
-        higher slopes than threshold values will be kept.
+        higher slopes than threshold values will be kept. i.e (0.01, 0.01)
     """
     meanspec = np.array([np.mean(row) for row in sxx])
 
     if normalization:
         meanspec = meanspec / np.max(meanspec)
 
-    # Find peaks (with slopes)
-    peaks_indices = np.r_[False, meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] \
-        & np.r_[meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
-    peaks_indices = peaks_indices.nonzero()[0].tolist()
-
-    # scipy method (without slope)
-    peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
+    if slopes is not None:
+        # Find peaks (with slopes)
+        peaks_indices = np.r_[False,
+                              meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
+            meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
+        peaks_indices = peaks_indices.nonzero()[0].tolist()
+    else:
+        # scipy method (without slope)
+        peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
 
     # Remove peaks with difference of frequency < freqband
     # number of consecutive index
@@ -442,8 +446,8 @@ def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=
     for consecutiveIndices in [np.arange(i, i + nb_bin) for i in peaks_indices]:
         if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
             # close values has been found
-            maxi = np.intersect1d(consecutiveIndices, peaks_indices)[np.argmax(
-                [meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
+            maxi, _, _ = np.intersect1d(consecutiveIndices, peaks_indices)
+            maxi = maxi[np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
             peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
             # remove all indices that are in consecutiveIndices
             # append the max

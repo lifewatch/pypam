@@ -52,7 +52,7 @@ class Signal:
 
         # Reset params
         self.band_n = -1
-        self.bands_list = {} # technically it's a dict
+        self.bands_list = {}
         self._processed = {}
         self._reset_spectro()
 
@@ -100,8 +100,8 @@ class Signal:
                 self.signal = self._signal.copy()
                 self.fs = self._fs
             else:
-                if band[1] > self._fs/2:
-                    raise ValueError('Frequency %s is higher than nyquist frequency %s' % (band[1], self.fs/2))
+                if band[1] > self._fs / 2:
+                    raise ValueError('Frequency %s is higher than nyquist frequency %s' % (band[1], self.fs / 2))
                 elif self.band is None or band[1] <= self.band[1]:
                     self._filter_and_downsample(band)
                 elif band[1] > self.band[1]:
@@ -162,7 +162,7 @@ class Signal:
         """
         Filter and downsample the signal
         """
-        if (band is not None) and (band is not [None, None]) :
+        if (band is not None) and (band is not [None, None]):
             # Filter the signal
             if band[0] == 0 or band[0] is None:
                 sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
@@ -282,9 +282,9 @@ class Signal:
         spg : numpy array
             Level of each band
         """
-        return self._octave_levels(db, 3)
+        return self.octave_levels(db, 3)
 
-    def octave_levels(self, db=True, **kwargs):
+    def octave_levels(self, db=True, fraction=1, **kwargs):
         """
         Calculation of calibrated octave band levels
 
@@ -292,24 +292,13 @@ class Signal:
         -------
         f : numpy array
             Array with the center frequencies of the bands
-        spg : numpy array
-            Level of each band
-        """
-        return self._octave_levels(db, 1)
-
-    def _octave_levels(self, db=True, fraction=1, **kwargs):
-        """
-        Calculation of calibrated octave band levels
-
-        Returns
-        -------
-        f : numpy array
-            Array with the center frequencies of the bands
-        spg : numpy array
-            Level of each band
+        db : boolean
+            Set to True to get the result in db
+        fraction : int
+            fraction of an octave to compute the bands (i.e. fraction=3 leads to 1/3 octave bands)
         """
         # construct filterbank
-        bands = np.arange(-16, 11)  # TODO
+        bands = np.arange(-16, 11)  # TODO make it an option for the user
         filterbank, fsnew, d = utils.octbankdsgn(self.fs, bands, fraction, 2)
         nx = d.max()  # number of downsampling steps
 
@@ -318,16 +307,18 @@ class Signal:
 
         # calculate octave band levels
         spg = np.zeros(len(d))
-        newx = {}
-        newx[0] = self.signal
-        for i in np.arange(1, nx+1):
+        newx = {0: self.signal}
+        for i in np.arange(1, nx + 1):
             newx[i] = sig.decimate(newx[i - 1], 2)
 
         # Perform filtering for each frequency band
         for i in np.arange(len(d)):
             y = sig.sosfilt(filterbank[i], newx[d[i]])  # Check the filter!
             # Calculate level time series
-            spg[i] = 10 * np.log10(np.sum(y ** 2) / len(y))
+            if db:
+                spg[i] = 10 * np.log10(np.sum(y ** 2) / len(y))
+            else:
+                spg[i] = y
 
         return f, spg
 
@@ -477,7 +468,7 @@ class Signal:
 
         return self.freq, self.psd, percentiles_val
 
-    def spectrum_slope(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast',
+    def spectrum_slope(self, scaling='density', nfft=512, db=True, mode='fast',
                        **kwargs):
         """
         Return the slope of the spectrum
@@ -490,9 +481,6 @@ class Signal:
             Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
-        percentiles : list
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
 
@@ -520,8 +508,8 @@ class Signal:
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         """
-        self.spectrogram(nfft=nfft, scaling='density', db=True, mode=mode)
-        aci_val = self.acoustic_index('aci', sxx=self.sxx)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=True, mode=mode)
+        aci_val = self.acoustic_index('aci', sxx=sxx)
 
         return aci_val
 
@@ -534,16 +522,17 @@ class Signal:
                   'BI will be set to nan' % (self.band, min_freq, max_freq))
             return np.nan
         else:
-            self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-            bi_val = self.acoustic_index('bi', sxx=self.sxx, frequencies=self.freq, min_freq=min_freq, max_freq=max_freq)
+            _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+            bi_val = self.acoustic_index('bi', sxx=sxx, frequencies=self.freq, min_freq=min_freq,
+                                         max_freq=max_freq)
             return bi_val
 
     def sh(self, nfft=512, mode='fast', **kwargs):
         """
 
         """
-        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-        sh_val = self.acoustic_index('sh', sxx=self.sxx)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        sh_val = self.acoustic_index('sh', sxx=sxx)
         return sh_val
 
     def th(self, **kwargs):
@@ -553,10 +542,14 @@ class Signal:
         th_val = self.acoustic_index('th', s=self.signal)
         return th_val
 
-    def ndsi(self, window_length=1024, anthrophony=[1000, 2000], biophony=[2000, 11000], **kwargs):
+    def ndsi(self, window_length=1024, anthrophony=None, biophony=None, **kwargs):
         """
 
         """
+        if anthrophony is None:
+            anthrophony = [1000, 2000]
+        if biophony is None:
+            biophony = [2000, 11000]
         if self.band[1] < anthrophony[1] or self.band[1] < biophony[1]:
             print('The band %s does not include anthrophony %s or biophony %s. '
                   'NDSI will be set to nan' % (self.band, anthrophony, biophony))
@@ -570,16 +563,16 @@ class Signal:
         """
 
         """
-        sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-        aei_val = self.acoustic_index('aei', sxx=self.sxx, frequencies=self.freq, max_freq=self.band[1],
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        aei_val = self.acoustic_index('aei', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
                                       min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
         return aei_val
 
     def adi(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
         """
         """
-        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-        adi_val = self.acoustic_index('adi', sxx=self.sxx, frequencies=self.freq, max_freq=self.band[1],
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        adi_val = self.acoustic_index('adi', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
                                       min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
         return adi_val
 
@@ -601,8 +594,8 @@ class Signal:
         """
 
         """
-        self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-        peak_indices, peak_freqs = self.acoustic_index('bn_peaks', sxx=self.sxx, frequencies=self.freq,
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        peak_indices, peak_freqs = self.acoustic_index('bn_peaks', sxx=sxx, frequencies=self.freq,
                                                        freqband=freqband, normalization=normalization, slopes=slopes)
         return peak_indices, peak_freqs
 
@@ -656,7 +649,7 @@ class Signal:
             y.append(10.0 * np.log10(sum(10.0 ** (spg_i / 10.0), 1) * dt))
         return y
 
-    def average_spectrum(self, spg, dt):
+    def average_spectrum(self, spg):
         """
         Calculation of average spectrum (Leq) of the calibrated spectrogram
         Returns a numpy array with in each cell the spectrum of a single channel of
@@ -666,8 +659,6 @@ class Signal:
         ----------
         spg: numpy matrix
             Array with in each cell the spectrogram of a single channel of the input signal
-        dt : float
-            timestep of the spectrogram calculation, in seconds
         """
         y = []
         for spg_i in spg:
@@ -702,7 +693,7 @@ class Signal:
 
         # construct filterbank
         bands = np.arange(-16, 11)
-        b, a, d, fsnew = utils.oct3bankdsgn(new_fs, bands, 3)
+        filterbank, fsnew, d = utils.octbankdsgn(new_fs, bands, 3)
         nx = d.max()  # number of downsampling steps
 
         # construct time and frequency arrays
@@ -711,15 +702,14 @@ class Signal:
 
         # calculate 1/3 octave band levels vs time
         spg = np.zeros(nt, len(d))
-        newx = {}
-        newx[0] = x
+        newx = {0: x}
         for i in np.arange(1, nx):
             newx[i] = sig.decimate(newx[i - 1], 2)
 
         # Perform filtering for each frequency band
         for j in np.arange(len(d)):
             factor = 2 ** (d(j) - 1)
-            y = sig.sosfilt(b[j, :], a[j, :], newx[d(j)])  # Check the filter!
+            y = sig.sosfilt(filterbank[j], newx[d(j)])
             # Calculate level time series
             for k in np.arange(nt):
                 startindex = (k - 1) * n / factor + 1
@@ -754,11 +744,13 @@ class Signal:
             0 to 1 amout of noise to be removed (0 None, 1 All)
         nfft : int
             Window size to compute the spectrum
+        verbose : boolean
+            Set to True to plot the signal before and after the reduction
         """
         s = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip,
-                                      prop_decrease=prop_decrease, n_fft=nfft, win_length=nfft,
-                                      verbose=False, n_grad_freq=1, n_grad_time=1,
-                                      hop_length=int(nfft * 0.2))
+                            prop_decrease=prop_decrease, n_fft=nfft, win_length=nfft,
+                            verbose=False, n_grad_freq=1, n_grad_time=1,
+                            hop_length=int(nfft * 0.2))
         if verbose:
             _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
             fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')

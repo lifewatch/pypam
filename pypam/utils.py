@@ -29,7 +29,6 @@ NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES = np.array([
 """
 
 G = 10.0 ** (3.0 / 10.0)
-
 f_ref = 1000
 
 
@@ -112,24 +111,6 @@ def peak(signal):
         Signal to compute the dynamic range
     """
     return np.max(np.abs(signal))
-
-
-@nb.njit
-def calculate_aci(sxx):
-    """
-    Return the aci of the signal
-    """
-    aci_val = 0
-    for j in np.arange(sxx.shape[1]):
-        d = 0
-        i = 0
-        for k in np.arange(1, sxx.shape[0]):
-            dk = np.abs(sxx[k][j] - sxx[k - 1][j])
-            d = d + dk
-            i = i + sxx[k][j]
-        aci_val = aci_val + d / i
-
-    return aci_val
 
 
 @nb.njit
@@ -229,8 +210,6 @@ def octdsgn(fc, fs, fraction=1, n=2):
     # design Butterworth 2N-th-order
     f1 = fc * G ** (-1.0 / (2.0 * fraction))
     f2 = fc * G ** (+1.0 / (2.0 * fraction))
-    # f1 = fc / (2 ** (1 / 6))
-    # f2 = fc * (2 ** (1 / 6))
     qr = fc / (f2 - f1)
     qd = (np.pi / 2 / n) / (np.sin(np.pi / 2 / n)) * qr
     alpha = (1 + np.sqrt(1 + 4 * qd ** 2)) / 2 / qd
@@ -268,13 +247,12 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     fsnew : numpy array
       New sample frequencies.
     """
-    ref = 1000
-    G = 10.0**(3.0 / 10.0)
     uneven = (fraction % 2 != 0)
-    fc = ref * G**((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(uneven) + uneven * ref * G**(bands / fraction)
-    # fc = 1000 * ((2 ** (1 / fraction)) ** bands)  # exact center frequencies
+    fc = f_ref * G ** ((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(uneven) + uneven * f_ref * G ** (
+                bands / fraction)
 
-    fclimit = 1 / 200  # limit for center frequency compared to sample frequency
+    # limit for center frequency compared to sample frequency
+    fclimit = 1 / 200
     # calculate downsampling factors
     d = np.ones(len(fc))
     for i in np.arange(len(fc)):

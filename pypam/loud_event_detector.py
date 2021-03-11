@@ -91,7 +91,7 @@ class LoudEventDetector:
 
         if verbose:
             fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-            fig, ax = plt.subplots(4, 1, sharex=True)
+            fig, ax = plt.subplots(4, 1, sharex='col')
             ax[0].pcolormesh(t, fbands, sxx)
             ax[0].set_title('Spectrogram')
             ax[0].set_ylabel('Frequency [Hz]')

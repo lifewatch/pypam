@@ -11,12 +11,12 @@ __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numba as nb
 import numpy as np
 import pandas as pd
 import scipy as sci
 import seaborn as sns
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pypam import utils
 from pypam._event import Event
@@ -96,7 +96,7 @@ class ImpulseDetector:
             level = block.rms(db=True)
             levels.append(level)
         times_events = events_times(np.array(levels), self.dt, self.threshold, self.min_separation)
-        events_df = self.load_event(times_events, signal, verbose=verbose) # FIXME: What about duration?
+        events_df = self.load_all_times_events(times_events, signal, verbose=verbose)
 
         if verbose:
             self.plot_all_events(signal, events_df, save_path)
@@ -173,6 +173,8 @@ class ImpulseDetector:
         removenoise : bool
             Set to True if noise calculated before and after the event can be removed from the
             event
+        verbose : bool
+            Set to True to plot all the detections of the signal
         """
         start_n = int(t * s.fs)
         end_n = int((t + duration) * s.fs)
@@ -197,6 +199,8 @@ class ImpulseDetector:
             Each tuple is (start, duration, end) of the event
         signal : Signal object
             Signal where the events were detected
+        verbose : bool
+            Set to True to plot all the events of the signal
         """
         signal.set_band([10, 20000])
         columns_temp = ['start_seconds', 'end_seconds', 'duration', 'rms', 'sel', 'peak']
@@ -229,7 +233,7 @@ class ImpulseDetector:
         """
         signal.set_band(band=self.band)
         fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
-        fig, ax = plt.subplots(3, 1, sharex=True)
+        fig, ax = plt.subplots(3, 1, sharex='col')
         im = ax[0].pcolormesh(t, fbands, sxx, shading='auto')
         ax[0].set_title('Spectrogram')
         ax[0].set_ylabel('Frequency [Hz]')
@@ -241,7 +245,8 @@ class ImpulseDetector:
         # for index in events_df.index:
         #     row = events_df.loc[index]
         ylims = ax[1].get_ylim()
-        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1], color='red', label='Detections', zorder=2)
+        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1],
+                     color='red', label='Detections', zorder=2)
         ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
         ax[1].set_title('Detections')
         ax[1].set_ylabel('[dB]')
@@ -328,6 +333,7 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
     min_separation_samples = int(min_separation * fs)
     event_on = False
     event_start = 0
+    event_end = 0
     j = 0
     while j < len(signal):
         if j + blocksize > len(signal):

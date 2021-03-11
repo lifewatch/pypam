@@ -68,7 +68,7 @@ class AcuFile:
         except ValueError:
             self.date = datetime.datetime.now()
             print('Filename %s does not match the %s file structure. Setting time to now...' %
-                 (file_name, self.hydrophone.name))
+                  (file_name, self.hydrophone.name))
 
         # Signal
         self.file_path = sfile
@@ -264,7 +264,7 @@ class AcuFile:
 
         Parameters
         ----------
-        wav : numpy array
+        wav : ndarray
             Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
@@ -283,7 +283,7 @@ class AcuFile:
 
         Parameters
         ----------
-        wav : numpy array
+        wav : ndarray
             Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
@@ -298,7 +298,7 @@ class AcuFile:
 
         Parameters
         ----------
-        db : numpy array
+        db : ndarray
             Signal in db
         """
         if db is None:
@@ -312,7 +312,7 @@ class AcuFile:
 
         Parameters
         ----------
-        upa : numpy array
+        upa : ndarray
             Signal in upa
         """
         if upa is None:
@@ -325,7 +325,7 @@ class AcuFile:
 
         Parameters
         ----------
-        wav : numpy array
+        wav : ndarray
             Signal in wav (-1 to 1)
         """
         if wav is None:
@@ -548,7 +548,7 @@ class AcuFile:
                 signal_upa = self.wav2upa(wav=block)
                 signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
                 signal.set_band(band)
-                _, levels = signal._octave_levels(db, fraction)
+                _, levels = signal.octave_levels(db, fraction)
                 df.at[time_bin, ('oct%s' % fraction, bands)] = levels
                 df.at[time_bin, ('start_sample', 'all')] = i * blocksize
                 df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
@@ -580,11 +580,11 @@ class AcuFile:
 
         Returns
         -------
-        time : numpy array
+        time : ndarray
             Array with the starting time of each bin
-        freq : numpy array
+        freq : ndarray
             Array with all the frequencies
-        t : numpy array
+        t : ndarray
             Time array in seconds of the windows of the spectrogram
         sxx_list : list
             Spectrogram list, one for each bin
@@ -719,24 +719,24 @@ class AcuFile:
             Lenght of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list
+        percentiles : array_like
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
 
         Returns
         -------
-        time : numpy array
+        time : ndarray
             list with the starting point of each spd df
-        fbands : np array
+        fbands : ndarray
             list of all the frequencies
-        percentiles : list
+        percentiles : list of float
             Percentiles to compute
-        edges_list : list
+        edges_list : list of float
             list of the psd values of the distribution
-        spd_list : list
-            list of dataframes with 'frequency' as index and a colum for each psd bin and
+        spd_list : list of ndarray
+            list of dataframes with 'frequency' as index and a column for each psd bin and
             for each percentile (one df per bin)
-        p_list : list of numpy matrices
+        p_list : list of 2d ndarray
             list of matrices with all the probabilities
         """
         time, fbands, t, sxx_list = self.spectrogram(binsize=binsize, nfft=nfft, db=db,
@@ -765,7 +765,7 @@ class AcuFile:
         ----------
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
-        signal : numpy array
+        signal : ndarray
             Signal to be correlated with
         fs_signal : int
             Sampling frequency of the signal. It will be down/up sampled in case it does not match
@@ -830,15 +830,15 @@ class AcuFile:
         Find the loud events of the file
         Parameters
         ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
+        binsize : float
+            Time window considered, in seconds. If set to None, only one value is returned
         threshold : float
             Threshold above which it is considered loud
         min_duration : float
             Minimum duration of the event, in seconds
         detector : loud_event_detector object
             The detector to be used
-        verbose : boolan
+        verbose : boolean
             Set to True to see the spectrograms of the detections
         """
         if binsize is None:
@@ -856,8 +856,7 @@ class AcuFile:
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             events_df = detector.detect_events(signal, verbose=True)
-            events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') +\
-                self.date
+            events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
             events_df = events_df.set_index('start_datetime')
             total_events = total_events.append(events_df)
 
@@ -926,14 +925,6 @@ class AcuFile:
         if (end - start) / self.fs < min_duration:
             return None, None
 
-        # plt.figure()
-        # plt.plot(filtered_signal, label='filtered_signal')
-        # plt.plot(amplitude_envelope, label='envelope')
-        # plt.axvline(x=start, color='red')
-        # plt.axvline(x=end, color='blue')
-        # plt.tight_layout()
-        # plt.show()
-        # plt.close()
         self.file.seek(0)
         return start, end
 
