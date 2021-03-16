@@ -393,7 +393,7 @@ class AcuFile:
                     f = operator.methodcaller(method_name, **kwargs)
                     try:
                         output = f(signal)
-                    except ValueError as e:
+                    except Exception as e:
                         print('There was an error in band %s, feature %s. Setting to None. '
                               'Error: %s' % (band, method_name, e))
                         output = None
