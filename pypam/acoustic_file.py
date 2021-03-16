@@ -162,7 +162,6 @@ class AcuFile:
         if period is None:
             return True
         else:
-            # end = self.date + datetime.timedelta(seconds=self.file.frames / self.fs)
             return (self.date >= period[0]) & (self.date <= period[1])
 
     def contains_date(self, date):
@@ -392,7 +391,12 @@ class AcuFile:
                 signal.set_band(band)
                 for method_name in method_list:
                     f = operator.methodcaller(method_name, **kwargs)
-                    output = f(signal)
+                    try:
+                        output = f(signal)
+                    except ValueError as e:
+                        print('There was an error in band %s, feature %s. Setting to None. '
+                              'Error: %s' % (band, method_name, e))
+                        output = None
                     df.at[time_bin, (method_name, signal.band_n - 1)] = output
                     df.at[time_bin, ('start_sample', 'all')] = i * blocksize
                     df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
