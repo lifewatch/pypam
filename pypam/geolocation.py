@@ -295,15 +295,19 @@ def distance_m(coords, lat, lon):
     """
     Return the distance in meters between the coordinates and the point (lat, lon)
     """
-    d = distance.distance((lat, lon), (coords.y, coords.x)).m
-
-    return d
+    if coords is None:
+        return None
+    else:
+        d = distance.distance((lat, lon), (coords.y, coords.x)).m
+        return d
 
 
 def min_distance_m(coords, geodf):
     """
     Return the minimum distance in meters between the coords and the points of the geodf
     """
-    distances = geodf['geometry'].apply(distance_m, args=(coords.y, coords.x))
-
-    return distances.min()
+    if coords is None:
+        return None
+    else:
+        distances = geodf['geometry'].apply(distance_m, args=(coords.y, coords.x))
+        return distances.min()
