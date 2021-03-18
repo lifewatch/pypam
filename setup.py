@@ -1,9 +1,19 @@
-from setuptools import setup, find_packages
+import setuptools
 
-setup(
+setuptools.setup(
     name='pypam',
-    version='0.0.1',
-    packages=find_packages(),
+    version='0.1',
+    description='Facilitate acoustic processing from underwater acoustic recorders',
+    author='Clea Parcerisas',
+    author_email='cleap@vliz.be',
+    url="https://github.com/lifewatch/pypam.git",
+    license='',
     test_suite='tests',
-    tests_require=['pypam']
+    tests_require=['pypam'],
+    packages=setuptools.find_packages(),
+    install_requires=['pandas', 'soundfile', 'numpy', 'pyhydrophone'],
+    extras_require={
+        "geolocation": ["geopandas", "contextily", "rtree", "Shapely"],
+        "plotting": ["matplotlib", "seaborn"]
+    },
 )
