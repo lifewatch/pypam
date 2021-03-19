@@ -39,3 +39,37 @@ band_list = [[10,100], [500, 1000], [500, 100000]]
 asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='', binsize=60.0)
 df_output = asa.evolution_multiple(method_list=features, band_list=band_list)
 ```
+
+The available methods and features are: 
+- Events detection: 
+  - Ship detection 
+  - Pile driving detection 
+- Acoustic Indices: 
+  - ACI 
+  - BI 
+  - SH 
+  - TH 
+  - NDSI
+  - AEI 
+  - ADI 
+  - Zero crossing (average)
+  - BN peaks 
+- Features: 
+  - rms 
+  - dynamic range
+  - sel
+  - peak 
+  - rms envelope
+  - spectrum slope
+  - correlation coefficient
+- Frequency domain 
+  - spectrogram (also octave bands spectrogram)
+  - spectrum
+  - spectral probability density 
+  - 1/3-octave bands 
+  - octave bands
+- Operations
+   - Noise reduction 
+   - Downsample, filtering and cropping 
+   - Envelope
+   - Calibration signal detection
