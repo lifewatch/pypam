@@ -194,10 +194,10 @@ class SurveyLocation:
             datetime_df = pd.DataFrame({'datetime': df.datetime})
         else:
             datetime_df = pd.DataFrame({'datetime': df.index})
-        geo_df = pd.merge_asof(datetime_df, self.geotrackpoints, left_on="datetime", right_index=True,
-                               tolerance=pd.Timedelta(time_tolerance))
+        geo_df = pd.merge_asof(datetime_df.sort_values('datetime'), self.geotrackpoints, left_on="datetime",
+                               right_index=True, tolerance=pd.Timedelta(time_tolerance))
         geo_df = geo_df.set_index('datetime')
-        df['geom'] = geo_df.geometry
+        df['geom'] = geo_df.geometry.values
         df = geopandas.GeoDataFrame(df, geometry='geom', crs=self.geotrackpoints.crs.to_string())
         # Patch to solve the multiindex incompatibiolity with crs in geopandas
         df['geometry'] = df.geometry
