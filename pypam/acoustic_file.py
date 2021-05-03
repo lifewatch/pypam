@@ -929,10 +929,6 @@ class AcuFile:
 
         Parameters
         ----------
-        max_duration : float
-            Maximum duration of the calibration tone, in sec
-        freq : float
-            Expected frequency of the calibration tone, in Hz
         min_duration : float
             Minimum duration of the calibration tone, in sec
         """
@@ -979,8 +975,7 @@ class AcuFile:
         save_path : string or Path
             Path where to save the calibration tone
         """
-        start, stop = self.find_calibration_tone(max_duration=self.max_cal_duration, freq=self.cal_freq,
-                                                 min_duration=min_duration)
+        start, stop = self.find_calibration_tone(min_duration=min_duration)
         if start is not None:
             new_datetime = self.date + datetime.timedelta(seconds=self.samples2time(stop))
             calibration_signal, _ = sf.read(self.file_path, start=start, stop=stop)
