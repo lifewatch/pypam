@@ -34,7 +34,8 @@ sns.set_theme()
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0, calibration_time=0.0):
+    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0,
+                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250):
         """
         Data recorded in a wav file.
 
@@ -51,6 +52,13 @@ class AcuFile:
             Set to True if working on UTC and not localtime
         channel : int
             Channel to perform the calculations in
+        calibration_time: float or str
+            If a float, the amount of seconds that are ignored at the beggning of the file. If 'auto' then
+            before the analysis, find_calibration_tone will be performed
+        max_cal_duration: float
+            Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
+        cal_freq: float
+            Frequency of the calibration tone (only applies if calibration_time is 'auto')
         """
         # Save hydrophone model
         self.hydrophone = hydrophone
@@ -92,7 +100,12 @@ class AcuFile:
         self.time = None
 
         # Set a starting frame for the file
-        self._start_frame = int(calibration_time * self.fs)
+        if calibration_time == 'auto':
+            _, stop = self.find_calibration_tone(max_duration=max_cal_duration, freq=cal_freq)
+            if stop is None:
+                self._start_frame = 0
+        else:
+            self._start_frame = int(calibration_time * self.fs)
 
     def __getattr__(self, name):
         """
