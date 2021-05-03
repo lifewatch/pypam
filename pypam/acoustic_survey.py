@@ -44,7 +44,9 @@ class ASA:
                  freq_resolution='all',
                  utc=True,
                  channel=0,
-                 calibration_time=0.0):
+                 calibration_time=0.0,
+                 max_cal_duration=60.0,
+                 cal_freq=250):
         """
         Init a AcousticSurveyAnalysis (ASA)
 
@@ -68,8 +70,13 @@ class ASA:
             format YYYY-MM-DD HH:MM:SS
         band : tuple or list
             Tuple or list with two elements: low-cut and high-cut of the band to analyze
-        calibration_time : float
-            Time in seconds to be ignored at the beggining of each file
+        calibration_time: float or str
+            If a float, the amount of seconds that are ignored at the beggning of the file. If 'auto' then
+            before the analysis, find_calibration_tone will be performed
+        max_cal_duration: float
+            Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
+        cal_freq: float
+            Frequency of the calibration tone (only applies if calibration_time is 'auto')
         """
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
@@ -93,6 +100,8 @@ class ASA:
         self.utc = utc
         self.channel = channel
         self.calibration_time = calibration_time
+        self.cal_freq = cal_freq
+        self.max_cal_duration = max_cal_duration
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
@@ -113,7 +122,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output)
@@ -142,7 +152,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output)
@@ -158,7 +169,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = f(sound_file)
                 df = df.append(df_output, ignore_index=True)
@@ -173,14 +185,16 @@ class ASA:
         print(wav_file)
 
         sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
         print(wav_file)
         sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
 
         return start_datetime, end_datetime
@@ -202,7 +216,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 f(sound_file)
 
@@ -215,7 +230,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 total_time += sound_file.total_time()
 
@@ -299,7 +315,8 @@ class ASA:
         for file_list in self.acu_files:
             wav_file = file_list[0]
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.contains_date(start_date) and sound_file.file.frames > 0:
                 print('start!', wav_file)
                 # Split the sound file in two files
@@ -371,7 +388,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 df_output = sound_file.detect_piling_events(min_separation=min_separation,
                                                             threshold=threshold,
@@ -400,7 +418,8 @@ class ASA:
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time)
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
             start_datetime = sound_file.date
             end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
             if last_end is not None:

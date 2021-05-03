@@ -34,7 +34,8 @@ sns.set_theme()
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0, calibration_time=0.0):
+    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0,
+                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250):
         """
         Data recorded in a wav file.
 
@@ -51,6 +52,13 @@ class AcuFile:
             Set to True if working on UTC and not localtime
         channel : int
             Channel to perform the calculations in
+        calibration_time: float or str
+            If a float, the amount of seconds that are ignored at the beggning of the file. If 'auto' then
+            before the analysis, find_calibration_tone will be performed
+        max_cal_duration: float
+            Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
+        cal_freq: float
+            Frequency of the calibration tone (only applies if calibration_time is 'auto')
         """
         # Save hydrophone model
         self.hydrophone = hydrophone
@@ -92,7 +100,14 @@ class AcuFile:
         self.time = None
 
         # Set a starting frame for the file
-        self._start_frame = int(calibration_time * self.fs)
+        self.cal_freq = cal_freq
+        self.max_cal_duration = max_cal_duration
+        if calibration_time == 'auto':
+            _, self._start_frame = self.find_calibration_tone()
+            if self._start_frame is None:
+                self._start_frame = 0
+        else:
+            self._start_frame = int(calibration_time * self.fs)
 
     def __getattr__(self, name):
         """
@@ -382,7 +397,7 @@ class AcuFile:
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
 
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            time_bin = self.date + datetime.timedelta(seconds=(((blocksize * i) + self._start_frame) / self.fs))
             print('bin %s' % time_bin)
             # Read the signal and prepare it for analysis
             signal_upa = self.wav2upa(wav=block)
@@ -546,7 +561,7 @@ class AcuFile:
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             # If the block is shorter don't consider it (affects mean calculation)
             if len(block) == blocksize:
-                time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+                time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
                 print('bin %s' % time_bin)
                 # Read the signal and prepare it for analysis
                 signal_upa = self.wav2upa(wav=block)
@@ -602,7 +617,7 @@ class AcuFile:
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -648,7 +663,7 @@ class AcuFile:
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -814,7 +829,7 @@ class AcuFile:
         else:
             save_path = None
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -855,7 +870,7 @@ class AcuFile:
                                                         threshold=threshold)
         total_events = pd.DataFrame()
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(blocksize / self.fs * i))
+            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -890,7 +905,7 @@ class AcuFile:
             plt.close()
         return total_events
 
-    def find_calibration_tone(self, max_duration, freq, min_duration=10.0):
+    def find_calibration_tone(self, min_duration=10.0):
         """
         Find the beggining and ending sample of the calibration tone
         Returns start and end points, in seconds
@@ -904,9 +919,9 @@ class AcuFile:
         min_duration : float
             Minimum duration of the calibration tone, in sec
         """
-        high_freq = freq * 1.05
-        low_freq = freq * 0.95
-        tone_samples = self.samples(max_duration)
+        high_freq = self.cal_freq * 1.05
+        low_freq = self.cal_freq * 0.95
+        tone_samples = self.samples(self.max_cal_duration)
         self.file.seek(0)
         first_part = self.file.read(frames=tone_samples)
         signal = Signal(first_part, self.fs, channel=self.channel)
@@ -923,8 +938,9 @@ class AcuFile:
         if start_points.size != end_points.size:
             start_points = start_points[0:end_points.size]
         select_idx = np.argmax(end_points - start_points)
-        start = start_points[select_idx]
-        end = end_points[select_idx]
+        # Round to a second
+        start = int(int(start_points[select_idx] / signal.fs) * self.fs)
+        end = int(int(end_points[select_idx] / signal.fs) * self.fs)
 
         if (end - start) / self.fs < min_duration:
             return None, None
@@ -932,7 +948,7 @@ class AcuFile:
         self.file.seek(0)
         return start, end
 
-    def cut_calibration_tone(self, max_duration, freq, min_duration=10.0, save_path=None):
+    def cut_calibration_tone(self, min_duration=10.0, save_path=None):
         """
         Cut the calibration tone from the file
         Returns a numpy array with only calibration signal and signal without the
@@ -941,16 +957,12 @@ class AcuFile:
 
         Parameters
         ----------
-        max_duration : float
-            Maximum duration of the calibration tone, in sec
-        freq : float
-            Expected frequency of the calibration tone, in Hz
         min_duration : float
             Minimum duration of the calibration tone, in sec
         save_path : string or Path
             Path where to save the calibration tone
         """
-        start, stop = self.find_calibration_tone(max_duration=max_duration, freq=freq,
+        start, stop = self.find_calibration_tone(max_duration=self.max_cal_duration, freq=self.cal_freq,
                                                  min_duration=min_duration)
         if start is not None:
             new_datetime = self.date + datetime.timedelta(seconds=self.samples2time(stop))
@@ -1139,7 +1151,8 @@ class AcuFile:
 
 
 class HydroFile(AcuFile):
-    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0, calibration_time=0.0):
+    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0,
+                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250):
         """
         Sound data recorded in a wav file with a hydrophone.
 
@@ -1158,7 +1171,7 @@ class HydroFile(AcuFile):
         calibration_time : float
             Time to ignore at the beggining of the file
         """
-        super().__init__(sfile, hydrophone, p_ref, band, utc, channel, calibration_time)
+        super().__init__(sfile, hydrophone, p_ref, band, utc, channel, calibration_time, max_cal_duration, cal_freq)
 
 
 class MEMSFile(AcuFile):
