@@ -297,6 +297,15 @@ class SurveyLocation:
 def distance_m(coords, lat, lon):
     """
     Return the distance in meters between the coordinates and the point (lat, lon)
+
+    Parameters
+    ----------
+    coords: shapely point object
+        First point
+    lat: float
+        Latitude of the second point
+    lon: float
+        Longitude of the second point
     """
     if coords is None:
         return None
@@ -308,6 +317,16 @@ def distance_m(coords, lat, lon):
 def min_distance_m(coords, geodf):
     """
     Return the minimum distance in meters between the coords and the points of the geodf
+    Parameters
+    ----------
+    coords: shapely point object
+        Coordinates to compute the min distance to
+    geodf: GeoDataFrame
+        The dataframe with the 'geometry' column to calculate the min distance to the point
+
+    Returns
+    -------
+    The minimum distance between all the points of the geodf and the coords (in m, float)
     """
     if coords is None:
         return None
