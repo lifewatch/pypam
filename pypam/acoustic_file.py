@@ -131,6 +131,23 @@ class AcuFile:
         """
         return int(bintime * self.fs)
 
+    def time_bin(self, blocksize, i):
+        """
+        Return the datetime of the bin i with a bin size of blocksize samples
+
+        Parameters
+        ----------
+        blocksize : int
+            Number of samples in each bin
+        i : int
+            Index of the bin to get the time of
+
+        Returns
+        -------
+        datetime object
+        """
+        return self.date + datetime.timedelta(seconds=(((blocksize * i) + self._start_frame) / self.fs))
+
     def set_calibration_time(self, calibration_time):
         """
         Set a calibration time in seconds. This time will be ignored in the processing
@@ -397,7 +414,7 @@ class AcuFile:
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
 
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=(((blocksize * i) + self._start_frame) / self.fs))
+            time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             # Read the signal and prepare it for analysis
             signal_upa = self.wav2upa(wav=block)
@@ -561,7 +578,7 @@ class AcuFile:
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             # If the block is shorter don't consider it (affects mean calculation)
             if len(block) == blocksize:
-                time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
+                time_bin = self.time_bin(blocksize, i)
                 print('bin %s' % time_bin)
                 # Read the signal and prepare it for analysis
                 signal_upa = self.wav2upa(wav=block)
@@ -617,7 +634,7 @@ class AcuFile:
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
+            time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -663,7 +680,7 @@ class AcuFile:
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
+            time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -829,7 +846,7 @@ class AcuFile:
         else:
             save_path = None
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
+            time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -870,7 +887,7 @@ class AcuFile:
                                                         threshold=threshold)
         total_events = pd.DataFrame()
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.date + datetime.timedelta(seconds=((blocksize * i) + self._start_frame) / self.fs)
+            time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
