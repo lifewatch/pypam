@@ -166,7 +166,7 @@ class Signal:
             # Filter the signal
             if band[0] == 0 or band[0] is None:
                 sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
-            elif band[1] is None:
+            elif band[1] is None or band[1] == self.fs / 2:
                 sosfilt = sig.butter(N=4, btype='highpass', Wn=band[0], analog=False, output='sos', fs=self.fs)
             else:
                 sosfilt = sig.butter(N=4, btype='bandpass', Wn=band, analog=False, output='sos', fs=self.fs)
