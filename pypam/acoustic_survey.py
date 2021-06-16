@@ -324,7 +324,7 @@ class ASA:
                 move_file(second, folder_path)
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
-                    if extensions[i] != '.log.xml':
+                    if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
                         df = pd.read_csv(metadata_file)
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
                         df_first = df[df['datetime'] < start_date]
@@ -335,6 +335,9 @@ class ASA:
                         df_second.to_csv(new_metadata_path)
                         # Move the file
                         move_file(new_metadata_path, folder_path)
+                    else:
+                        move_file(metadata_file, folder_path)
+
             elif sound_file.contains_date(end_date):
                 print('end!', wav_file)
                 # Split the sound file in two files
@@ -342,7 +345,7 @@ class ASA:
                 move_file(first, folder_path)
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
-                    if extensions[i] != '.log.xml':
+                    if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
                         df = pd.read_csv(metadata_file)
                         df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
                         df_first = df[df['datetime'] < start_date]
