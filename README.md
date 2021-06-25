@@ -73,3 +73,7 @@ The available methods and features are:
    - Downsample, filtering and cropping 
    - Envelope
    - Calibration signal detection
+   
+ 
+## Cite
+DOI: 10.5281/zenodo.5031690
