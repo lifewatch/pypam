@@ -368,7 +368,7 @@ class ASA:
                     pass
         return 0
 
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, **kwargs):
         """
         Return a DataFrame with all the piling events and their rms, sel and peak values
 
@@ -398,7 +398,7 @@ class ASA:
                                                             threshold=threshold,
                                                             max_duration=max_duration,
                                                             dt=dt, binsize=self.binsize,
-                                                            verbose=verbose)
+                                                            verbose=verbose, **kwargs)
                 df = df.append(df_output)
         return df
 

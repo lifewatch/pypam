@@ -812,7 +812,7 @@ class AcuFile:
         return fs
 
     def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None,
-                             verbose=False, **kwargs):
+                             verbose=False, save_path=None, band=None, method=None):
         """
         Detect piling events
 
@@ -839,20 +839,19 @@ class AcuFile:
 
         detector = impulse_detector.PilingDetector(min_separation=min_separation,
                                                    max_duration=max_duration,
-                                                   threshold=threshold, dt=dt)
+                                                   threshold=threshold, dt=dt, detection_band=band,
+                                                   analysis_band=self.band)
         total_events = pd.DataFrame()
-        if 'save_path' in kwargs.keys():
-            save_path = kwargs['save_path']
-        else:
-            save_path = None
         for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
             time_bin = self.time_bin(blocksize, i)
             print('bin %s' % time_bin)
             signal_upa = self.wav2upa(wav=block)
             signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             signal.set_band(band=self.band)
-            events_df = detector.detect_events(signal, method='snr', verbose=verbose,
-                                               save_path=save_path)
+            events_df = detector.detect_events(signal, method=method, verbose=verbose,
+                                               save_path=save_path.joinpath('%s.png' % 
+                                                                            datetime.datetime.strftime(time_bin,
+                                                                                              "%y%m%d_%H%M%S")))
             events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')],
                                                     unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
