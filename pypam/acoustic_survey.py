@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from tqdm import tqdm
 from pypam import loud_event_detector
 from pypam import utils
 from pypam.acoustic_file import HydroFile
@@ -118,7 +119,7 @@ class ASA:
         df = pd.DataFrame()
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
                                   nfft=self.nfft, **kwargs)
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -148,7 +149,7 @@ class ASA:
         """
         df = pd.DataFrame()
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -165,7 +166,7 @@ class ASA:
         """
         df = pd.DataFrame()
         f = operator.methodcaller('timestamps_df', binsize=self.binsize)
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -212,7 +213,7 @@ class ASA:
 
         """
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -226,7 +227,7 @@ class ASA:
         Return the duration in seconds of all the survey
         """
         total_time = 0
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -312,7 +313,7 @@ class ASA:
         print(start_date, end_date)
         folder_path = self.acu_files.folder_path.joinpath(folder_name)
         self.acu_files.extensions = extensions
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
                                    utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
@@ -387,7 +388,7 @@ class ASA:
             Set to True to plot the detected events per bin
         """
         df = pd.DataFrame()
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
@@ -417,7 +418,7 @@ class ASA:
         last_end = None
         detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                     threshold=threshold)
-        for file_list in self.acu_files:
+        for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
             sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,

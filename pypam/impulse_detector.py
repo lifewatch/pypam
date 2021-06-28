@@ -274,7 +274,8 @@ class ImpulseDetector:
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
-        plt.show()
+        else:
+            plt.show()
         plt.close()
 
 

@@ -22,6 +22,7 @@ import scipy.integrate as integrate
 import seaborn as sns
 import soundfile as sf
 
+from tqdm.auto import tqdm
 from pypam import impulse_detector
 from pypam import loud_event_detector
 from pypam import utils
@@ -119,6 +120,17 @@ class AcuFile:
             return self.get_time()
         else:
             return self.__dict__[name]
+
+    def _bins(self, blocksize):
+        n_blocks = int((sf.SoundFile(self.file_path).frames - self._start_frame) / blocksize)
+        for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)),
+                             total=n_blocks, leave=False, position=0):
+            if len(block) == blocksize:
+                time_bin = self.time_bin(blocksize, i)
+                # Read the signal and prepare it for analysis
+                signal_upa = self.wav2upa(wav=block)
+                signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+                yield time_bin, signal
 
     def samples(self, bintime):
         """
@@ -413,12 +425,7 @@ class AcuFile:
                                              names=['method', 'band'])
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
 
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.time_bin(blocksize, i)
-            print('bin %s' % time_bin)
-            # Read the signal and prepare it for analysis
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+        for time_bin, signal in self._bins(blocksize):
             for band in sorted_bands:
                 signal.set_band(band)
                 for method_name in method_list:
@@ -575,19 +582,12 @@ class AcuFile:
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
         df[('start_sample', 'all')] = None
         df[('end_sample', 'all')] = None
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            # If the block is shorter don't consider it (affects mean calculation)
-            if len(block) == blocksize:
-                time_bin = self.time_bin(blocksize, i)
-                print('bin %s' % time_bin)
-                # Read the signal and prepare it for analysis
-                signal_upa = self.wav2upa(wav=block)
-                signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-                signal.set_band(band)
-                _, levels = signal.octave_levels(db, fraction)
-                df.at[time_bin, ('oct%s' % fraction, bands)] = levels
-                df.at[time_bin, ('start_sample', 'all')] = i * blocksize
-                df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
+        for time_bin, signal in self._bins(blocksize):
+            signal.set_band(band)
+            _, levels = signal.octave_levels(db, fraction)
+            df.at[time_bin, ('oct%s' % fraction, bands)] = levels
+            df.at[time_bin, ('start_sample', 'all')] = i * blocksize
+            df.at[time_bin, ('end_sample', 'all')] = i * blocksize + blocksize
 
         self.file.seek(0)
         df[('fs', 'all')] = self.fs
@@ -633,11 +633,7 @@ class AcuFile:
         time = []
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.time_bin(blocksize, i)
-            print('bin %s' % time_bin)
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+        for time_bin, signal in self._bins(blocksize):
             signal.set_band(self.band)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             sxx_list.append(sxx)
@@ -679,11 +675,7 @@ class AcuFile:
             {'variable': 'band_' + scaling, 'value': fbands})])
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.time_bin(blocksize, i)
-            print('bin %s' % time_bin)
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+        for time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
             fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                               percentiles=percentiles)
@@ -842,11 +834,7 @@ class AcuFile:
                                                    threshold=threshold, dt=dt, detection_band=band,
                                                    analysis_band=self.band)
         total_events = pd.DataFrame()
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.time_bin(blocksize, i)
-            print('bin %s' % time_bin)
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+        for time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
             events_df = detector.detect_events(signal, method=method, verbose=verbose,
                                                save_path=save_path.joinpath('%s.png' % 
@@ -885,11 +873,7 @@ class AcuFile:
             detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                         threshold=threshold)
         total_events = pd.DataFrame()
-        for i, block in enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)):
-            time_bin = self.time_bin(blocksize, i)
-            print('bin %s' % time_bin)
-            signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+        for time_bin, signal in self._bins(blocksize):
             events_df = detector.detect_events(signal, verbose=True)
             events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
             events_df = events_df.set_index('start_datetime')
