@@ -104,6 +104,33 @@ class ASA:
         self.cal_freq = cal_freq
         self.max_cal_duration = max_cal_duration
 
+    def _files(self):
+        """
+        Iterator that returns HydroFile for each wav file in the folder
+        """
+        for file_list in tqdm(self.acu_files):
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = self._hydro_file(wav_file)
+            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
+                yield sound_file
+
+    def _hydro_file(self, wav_file):
+        """
+        Return the HydroFile object from the wav_file
+        Parameters
+        ----------
+        wav_file : str or Path
+            Sound file
+
+        Returns
+        -------
+        Object HydroFile
+        """
+        return HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+
     def evolution_multiple(self, method_list: list, **kwargs):
         """
         Compute the method in each file and output the evolution
@@ -119,15 +146,9 @@ class ASA:
         df = pd.DataFrame()
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
                                   nfft=self.nfft, **kwargs)
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = f(sound_file)
-                df = df.append(df_output)
+        for sound_file in self._files():
+            df_output = f(sound_file)
+            df = df.append(df_output)
         return df
 
     def evolution(self, method_name, **kwargs):
@@ -149,15 +170,9 @@ class ASA:
         """
         df = pd.DataFrame()
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = f(sound_file)
-                df = df.append(df_output)
+        for sound_file in self._files():
+            df_output = f(sound_file)
+            df = df.append(df_output)
         return df
 
     def timestamps_df(self):
@@ -166,36 +181,25 @@ class ASA:
         """
         df = pd.DataFrame()
         f = operator.methodcaller('timestamps_df', binsize=self.binsize)
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = f(sound_file)
-                df = df.append(df_output, ignore_index=True)
+        for sound_file in self._files():
+            df_output = f(sound_file)
+            df = df.append(df_output, ignore_index=True)
         return df
 
     def start_end_timestamp(self):
         """
         Return the start and the end timestamps
         """
-        file_list = self.acu_files[0]
-        wav_file = file_list[0]
+        wav_file = self.acu_files[0][0]
         print(wav_file)
 
-        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+        sound_file = self._hydro_file(wav_file)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
         print(wav_file)
-        sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+        sound_file = self._hydro_file(wav_file)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
 
         return start_datetime, end_datetime
@@ -213,28 +217,16 @@ class ASA:
 
         """
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                f(sound_file)
+        for sound_file in self._files():
+            f(sound_file)
 
     def duration(self):
         """
         Return the duration in seconds of all the survey
         """
         total_time = 0
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                total_time += sound_file.total_time()
+        for sound_file in self._files():
+            total_time += sound_file.total_time()
 
         return total_time
 
@@ -315,9 +307,7 @@ class ASA:
         self.acu_files.extensions = extensions
         for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+            sound_file = self._hydro_file(wav_file)
             if sound_file.contains_date(start_date) and sound_file.file.frames > 0:
                 print('start!', wav_file)
                 # Split the sound file in two files
@@ -388,19 +378,13 @@ class ASA:
             Set to True to plot the detected events per bin
         """
         df = pd.DataFrame()
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = sound_file.detect_piling_events(min_separation=min_separation,
-                                                            threshold=threshold,
-                                                            max_duration=max_duration,
-                                                            dt=dt, binsize=self.binsize,
-                                                            verbose=verbose, **kwargs)
-                df = df.append(df_output)
+        for sound_file in self._files():
+            df_output = sound_file.detect_piling_events(min_separation=min_separation,
+                                                        threshold=threshold,
+                                                        max_duration=max_duration,
+                                                        dt=dt, binsize=self.binsize,
+                                                        verbose=verbose, **kwargs)
+            df = df.append(df_output)
         return df
 
     def detect_ship_events(self, min_duration, threshold):
@@ -421,9 +405,7 @@ class ASA:
         for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+            sound_file = self._hydro_file(wav_file)
             start_datetime = sound_file.date
             end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
             if last_end is not None:
@@ -450,12 +432,7 @@ class ASA:
         -------
 
         """
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+        for sound_file in self._files():
             sound_file.source_separation(window_time, n_sources)
 
     def plot_all_files(self, method_name, **kwargs):
