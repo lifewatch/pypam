@@ -1,9 +1,9 @@
-from unittest import TestCase
+import unittest
 
 from pypam.acoustic_survey import ASA
 
 
-class TestASA(TestCase):
+class TestASA(unittest.TestCase):
     def setUp(self) -> None:
         self.asa = ASA({}, 'a_path_there')
 
@@ -14,3 +14,9 @@ class TestASA(TestCase):
         # just a smoke test to check if the function can run without errors
         self.asa.detect_ship_events(0.1, 0.5)
 
+    def test_nmf(self):
+        self.asa.source_separation(1.0, 15)
+
+
+if __name__ == '__main__':
+    unittest.main()
