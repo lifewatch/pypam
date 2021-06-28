@@ -27,6 +27,7 @@ from pypam import impulse_detector
 from pypam import loud_event_detector
 from pypam import utils
 from pypam.signal import Signal
+from pypam import nmf
 
 pd.plotting.register_matplotlib_converters()
 
@@ -904,6 +905,22 @@ class AcuFile:
             plt.show()
             plt.close()
         return total_events
+
+    def source_separation(self, window_time=1.0, n_sources=15):
+        """
+        Perform non-negative Matrix Factorization
+
+        Parameters
+        ----------
+        window_time: float
+            window time to consider in seconds
+        n_sources : int
+            Number of sources
+        """
+        separator = nmf.NMF(window_time=window_time, rank=n_sources)
+        for time_bin, signal in self._bins(None):
+            W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal)
+        return W, H, WH_prod, G_tf, C_tf, c_tf
 
     def find_calibration_tone(self, min_duration=10.0):
         """

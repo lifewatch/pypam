@@ -383,6 +383,7 @@ class Signal:
         -------
         freq, t, sxx
         """
+        # TODO implement noverlap!
         if self.sxx is None or force_calc:
             self._spectrogram(nfft=nfft, scaling=scaling, mode=mode)
         if db:
@@ -431,6 +432,8 @@ class Signal:
 
         if db:
             self.psd = utils.to_db(self.psd, ref=1.0, square=False)
+
+    # TODO implement stft!
 
     def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast',
                  force_calc=False, **kwargs):

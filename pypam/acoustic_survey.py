@@ -438,6 +438,26 @@ class ASA:
                 df = df.append(df_output)
         return df
 
+    def source_separation(self, window_time=1.0, n_sources=15):
+        """
+
+        Parameters
+        ----------
+        window_time
+        n_sources
+
+        Returns
+        -------
+
+        """
+        for file_list in tqdm(self.acu_files):
+            wav_file = file_list[0]
+            print(wav_file)
+            sound_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
+                                   utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                   cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration)
+            sound_file.source_separation(window_time, n_sources)
+
     def plot_all_files(self, method_name, **kwargs):
         """
         Apply the plot method to all the files
