@@ -837,10 +837,10 @@ class AcuFile:
         total_events = pd.DataFrame()
         for time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
+            if save_path is not None:
+                save_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
             events_df = detector.detect_events(signal, method=method, verbose=verbose,
-                                               save_path=save_path.joinpath('%s.png' % 
-                                                                            datetime.datetime.strftime(time_bin,
-                                                                                              "%y%m%d_%H%M%S")))
+                                               save_path=save_path)
             events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')],
                                                     unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
