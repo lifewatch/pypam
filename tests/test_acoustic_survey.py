@@ -18,10 +18,10 @@ REF_PRESSURE = 1e-6
 nfft = 4096
 binsize = 60.0
 band_lf = [50, 500]
-band_mf = [500, 2000]
-band_hf = [2000, 20000]
-band_list = [band_lf, band_mf, band_hf]
-features = ['rms', 'sel', 'aci']
+band_hf = [500, 2000]
+band_list = [band_lf, band_hf]
+features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg',
+            'bn_peaks']
 third_octaves = True
 
 include_dirs = False
@@ -40,7 +40,15 @@ class TestASA(unittest.TestCase):
         self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 
     def test_detect_piling_events(self):
-        self.asa.detect_piling_events(0.1, 0.5, 0.001)
+        min_separation = 1
+        max_duration = 0.2
+        threshold = 20
+        dt = 2.0
+        detection_band = [500, 1000]
+
+        self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
+                                      threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
+                                      save_path=None)
 
     def test_detect_ship_events(self):
         # just a smoke test to check if the function can run without errors
