@@ -9,3 +9,4 @@ docs/build/
 venv/
 .idea/
 *.wav
+data/
