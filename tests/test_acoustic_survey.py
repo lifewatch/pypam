@@ -16,13 +16,14 @@ REF_PRESSURE = 1e-6
 
 # SURVEY PARAMETERS
 nfft = 4096
-binsize = 60.0
+binsize = 5.0
 band_lf = [50, 500]
 band_hf = [500, 2000]
 band_list = [band_lf, band_hf]
 features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg',
             'bn_peaks']
 third_octaves = True
+dc_substract = True
 
 include_dirs = False
 zipped_files = False
@@ -31,7 +32,7 @@ zipped_files = False
 class TestASA(unittest.TestCase):
     def setUp(self) -> None:
         self.asa = ASA(hydrophone=soundtrap, folder_path='./../data', binsize=binsize, nfft=nfft, utc=True,
-                       include_dirs=include_dirs, zipped=zipped_files)
+                       include_dirs=include_dirs, zipped=zipped_files, dc_substract=dc_substract)
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=features, band_list=band_list)

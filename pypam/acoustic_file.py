@@ -36,8 +36,8 @@ sns.set_theme()
 
 
 class AcuFile:
-    def __init__(self, sfile, hydrophone, ref, band=None, utc=True, channel=0,
-                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250):
+    def __init__(self, sfile, hydrophone, p_ref, band=None, utc=True, channel=0,
+                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250, dc_substract=False):
         """
         Data recorded in a wav file.
 
@@ -46,8 +46,8 @@ class AcuFile:
         sfile : Sound file
             Can be a path or an file object
         hydrophone : Object for the class hydrophone
-        ref : Float
-            Reference pressure or acceleration in upa or um/s
+        p_ref : Float
+            Reference pressure in upa
         band : list
             Band to filter
         utc : boolean
@@ -61,6 +61,8 @@ class AcuFile:
             Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
         cal_freq: float
             Frequency of the calibration tone (only applies if calibration_time is 'auto')
+        dc_substract: bool
+            Set to True to substract the dc noise (root mean squared value
         """
         # Save hydrophone model
         self.hydrophone = hydrophone
@@ -85,8 +87,8 @@ class AcuFile:
         self.file = sf.SoundFile(self.file_path)
         self.fs = self.file.samplerate
 
-        # Reference pressure or acceleration in upa or um/s
-        self.ref = ref
+        # Reference pressure in upa
+        self.ref = p_ref
 
         # Band selected to study
         self.band = band
@@ -111,6 +113,8 @@ class AcuFile:
         else:
             self._start_frame = int(calibration_time * self.fs)
 
+        self.dc_substract = dc_substract
+
     def __getattr__(self, name):
         """
         Specific methods to make it easier to access attributes
@@ -131,7 +135,9 @@ class AcuFile:
                 # Read the signal and prepare it for analysis
                 signal_upa = self.wav2upa(wav=block)
                 signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-                yield time_bin, signal
+                if self.dc_substract:
+                    signal.remove_dc()
+                yield i, time_bin, signal
 
     def samples(self, bintime):
         """
@@ -314,10 +320,11 @@ class AcuFile:
         # Read if no signal is passed
         if wav is None:
             wav = self.signal('wav')
-        # First convert it to Volts and then to db according to sensitivity
+        # First convert it to Volts and then to Pascals according to sensitivity
         mv = 10 ** (self.hydrophone.sensitivity / 20.0) * self.ref
         ma = 10 ** (self.hydrophone.preamp_gain / 20.0) * self.ref
         gain_upa = (self.hydrophone.Vpp / 2.0) / (mv * ma)
+
         return utils.set_gain(wave=wav, gain=gain_upa)
 
     def wav2db(self, wav=None):
@@ -426,7 +433,7 @@ class AcuFile:
                                              names=['method', 'band'])
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
 
-        for time_bin, signal in self._bins(blocksize):
+        for i, time_bin, signal in self._bins(blocksize):
             for band in sorted_bands:
                 signal.set_band(band)
                 for method_name in method_list:
@@ -583,7 +590,7 @@ class AcuFile:
         df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
         df[('start_sample', 'all')] = None
         df[('end_sample', 'all')] = None
-        for time_bin, signal in self._bins(blocksize):
+        for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(band)
             _, levels = signal.octave_levels(db, fraction)
             df.at[time_bin, ('oct%s' % fraction, bands)] = levels
@@ -634,7 +641,7 @@ class AcuFile:
         time = []
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
-        for time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(blocksize):
             signal.set_band(self.band)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             sxx_list.append(sxx)
@@ -676,7 +683,7 @@ class AcuFile:
             {'variable': 'band_' + scaling, 'value': fbands})])
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
-        for time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
             fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                               percentiles=percentiles)
@@ -835,7 +842,7 @@ class AcuFile:
                                                    threshold=threshold, dt=dt, detection_band=band,
                                                    analysis_band=self.band)
         total_events = pd.DataFrame()
-        for time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
             if save_path is not None:
                 save_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
@@ -874,7 +881,7 @@ class AcuFile:
             detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                         threshold=threshold)
         total_events = pd.DataFrame()
-        for time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(blocksize):
             events_df = detector.detect_events(signal, verbose=True)
             events_df['start_datetime'] = pd.to_timedelta(events_df.duration, unit='seconds') + self.date
             events_df = events_df.set_index('start_datetime')
@@ -918,7 +925,7 @@ class AcuFile:
             Number of sources
         """
         separator = nmf.NMF(window_time=window_time, rank=n_sources)
-        for time_bin, signal in self._bins(None):
+        for i, time_bin, signal in self._bins(None):
             W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal)
         return W, H, WH_prod, G_tf, C_tf, c_tf
 
@@ -1163,8 +1170,7 @@ class AcuFile:
 
 
 class HydroFile(AcuFile):
-    def __init__(self, sfile, hydrophone, p_ref=1.0, band=None, utc=True, channel=0,
-                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250):
+    def __init__(self, **kwargs):
         """
         Sound data recorded in a wav file with a hydrophone.
 
@@ -1174,16 +1180,16 @@ class HydroFile(AcuFile):
             Can be a path or an file object
         hydrophone : Object for the class hydrophone
             Hydrophone used to record
-        p_ref : Float
-            Reference pressure in upa
         band: tuple or list
             Lowcut, Highcut. Frequency band to analyze
         channel : int
             Channel to perform the calculations in
         calibration_time : float
             Time to ignore at the beggining of the file
+        dc_substract: bool
+            Set to True to substract the dc noise (root mean squared value
         """
-        super().__init__(sfile, hydrophone, p_ref, band, utc, channel, calibration_time, max_cal_duration, cal_freq)
+        super().__init__(**kwargs)
 
 
 class MEMSFile(AcuFile):

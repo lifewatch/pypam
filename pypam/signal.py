@@ -177,6 +177,14 @@ class Signal:
             if band[1] < self.fs / 2:
                 self._downsample(band[1] * 2)
 
+    def remove_dc(self):
+        """
+        Remove the dc component of the signal
+        """
+        dc = np.mean(self.signal)
+        self.signal = self.signal - dc
+        self._processed[self.band_n].append('dc_removal')
+
     def envelope(self):
         """
         Return the envelope of the signal
