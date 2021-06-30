@@ -24,6 +24,8 @@ from pypam._event import Event
 # Apply the default theme
 sns.set_theme()
 
+MIN_SNR = 3
+
 
 class ImpulseDetector:
     def __init__(self, min_separation, max_duration, detection_band, analysis_band, threshold=150, dt=None):
@@ -151,7 +153,7 @@ class ImpulseDetector:
         envelope = signal.envelope()
         times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs,
                                         threshold=self.threshold, max_duration=self.max_duration,
-                                        min_separation=self.min_separation, original_sig=signal.signal)
+                                        min_separation=self.min_separation)
 
         events_df = self.load_all_times_events(times_events, signal, verbose=verbose)
 
@@ -160,7 +162,7 @@ class ImpulseDetector:
 
         return events_df
 
-    def load_event(self, s, t, duration, removenoise=True, verbose=False):
+    def load_event(self, s, t, duration, removenoise=True):
         """
         Load the event at time t (in seconds), with supplied time before and after the event
         (in seconds)
@@ -215,7 +217,7 @@ class ImpulseDetector:
         events_df = pd.DataFrame(columns=columns)
         for i, e in enumerate(times_events):
             start, duration, end = e
-            event = self.load_event(s=signal, t=start, duration=duration, verbose=verbose)
+            event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
             _, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
             events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
@@ -346,14 +348,13 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
 
 
 @nb.jit
-def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation, original_sig):
+def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation):
     times_events = []
     min_separation_samples = int(min_separation * fs)
     event_on = False
     event_start = 0
     event_end = 0
     j = 0
-    threshold_upa = 10 ** (threshold/20.0)
     while j < len(signal):
         if j + blocksize > len(signal):
             blocksize = len(signal) - j
@@ -361,28 +362,37 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
         max_value = noise
         for i in np.arange(blocksize - 1) + j:
             xi = signal[i]
+            snr = 20 * np.log10(xi / noise)
             if event_on:
+                snr_max = 20 * np.log10(max_value / xi)
                 duration = (i - event_start) / fs
-                if duration >= max_duration or (xi - noise) < 10**(6.0/20.0):
+                if duration >= max_duration or snr < MIN_SNR:
                     # Event finished, too long! Or event detected!
                     event_on = False
                     event_end = i
                     times_events.append([event_start / fs, duration, event_end / fs])
+
+                    # # Plot the detection (has to be not numba!)
+                    # half_wind = int(min_separation_samples / 8.0)
                     # plt.Figure()
-                    # plt.plot(original_sig[event_start-min_separation_samples:event_end+min_separation_samples],
+                    # plt.plot(10*np.log10(original_sig[event_start-half_wind:event_end+half_wind]**2),
                     #          label='Signal')
-                    # plt.plot(signal[event_start-min_separation_samples:event_end+min_separation_samples],
+                    # plt.plot(10*np.log10(signal[event_start-half_wind:event_end+half_wind]**2),
                     #          label='Envelope')
-                    # plt.axhline(noise + threshold_upa, label='Threshold')
-                    # plt.axhline(noise + threshold_upa/2.0, label='Threshold')
-                    # plt.axvline(min_separation_samples, color='green', label='Start')
-                    # plt.axvline(min_separation_samples+event_end-event_start, color='red', label='End')
+                    # plt.axhline(20*np.log10(noise) + threshold, color='k', label='Threshold start')
+                    # plt.axhline(20*np.log10(noise) + MIN_SNR, label='Threshold end')
+                    # plt.axvline(half_wind, color='green', label='Start')
+                    # plt.axvline(half_wind+event_end-event_start, color='red', label='End')
+                    # plt.xlabel('Time [samples]')
+                    # plt.ylabel('SPL [dB]')
+                    # plt.title(len(times_events))
+                    # plt.legend()
                     # plt.show()
                     # plt.close()
                 if xi > max_value:
                     max_value = xi
             else:
-                if (xi - noise) >= threshold_upa:
+                if snr >= threshold:
                     if len(times_events) == 0 or (i - event_end) >= min_separation_samples:
                         event_on = True
                         event_start = i
