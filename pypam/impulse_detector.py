@@ -375,17 +375,14 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
                     # # Plot the detection (has to be not numba!)
                     # half_wind = int(min_separation_samples / 8.0)
                     # plt.Figure()
-                    # plt.plot(10*np.log10(original_sig[event_start-half_wind:event_end+half_wind]**2),
-                    #          label='Signal')
                     # plt.plot(10*np.log10(signal[event_start-half_wind:event_end+half_wind]**2),
-                    #          label='Envelope')
+                    #          color='orange', label='Envelope')
                     # plt.axhline(20*np.log10(noise) + threshold, color='k', label='Threshold start')
                     # plt.axhline(20*np.log10(noise) + MIN_SNR, label='Threshold end')
                     # plt.axvline(half_wind, color='green', label='Start')
                     # plt.axvline(half_wind+event_end-event_start, color='red', label='End')
                     # plt.xlabel('Time [samples]')
                     # plt.ylabel('SPL [dB]')
-                    # plt.title(len(times_events))
                     # plt.legend()
                     # plt.show()
                     # plt.close()
