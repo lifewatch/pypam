@@ -396,15 +396,20 @@ class AcuFile:
             blocksize = self.file.frames
         else:
             blocksize = int(binsize * self.fs)
-        df = pd.DataFrame(columns=['datetime'])
-        time_list = []
+
         i = 0
+        columns = pd.MultiIndex.from_product([['start_sample', 'end_sample'], ['all']],
+                                             names=['method', 'band'])
+        df = pd.DataFrame(columns=columns, index=pd.DatetimeIndex([]))
         while i < self.file.frames:
             time = self.date + datetime.timedelta(seconds=i / self.fs)
-            time_list.append(time)
+            df.at[time, ('start_sample', 'all')] = np.int(i * blocksize)
+            df.at[time, ('end_sample', 'all')] = np.int(i * blocksize + blocksize)
             i += blocksize
-        df['datetime'] = time_list
 
+        self.file.seek(0)
+        df[('fs', 'all')] = self.fs
+        df[('filename', 'all')] = str(self.file_path)
         return df
 
     def _apply_multiple(self, method_list, band_list=None, binsize=None, **kwargs):

@@ -188,7 +188,7 @@ class ASA:
         f = operator.methodcaller('timestamps_df', binsize=self.binsize)
         for sound_file in self._files():
             df_output = f(sound_file)
-            df = df.append(df_output, ignore_index=True)
+            df = df.append(df_output)
         return df
 
     def start_end_timestamp(self):

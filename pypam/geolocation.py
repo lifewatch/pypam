@@ -61,7 +61,10 @@ class SurveyLocation:
         -------
         Geopandas DataFrame
         """
-        geotrackpoints = geopandas.read_file(geofile, layer='track_points')
+        geotrackpoints = geopandas.read_file(geofile)
+        if len(geotrackpoints) == 0:
+            geotrackpoints = geopandas.read_file(geofile, layer='track_points')
+
         geotrackpoints.drop_duplicates(subset='time', inplace=True)
         geotrackpoints = geotrackpoints.set_index(pd.to_datetime(geotrackpoints['time']))
         geotrackpoints = geotrackpoints.sort_index()
