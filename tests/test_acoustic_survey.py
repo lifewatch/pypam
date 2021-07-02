@@ -1,8 +1,14 @@
 import unittest
+import requests
+import pathlib
 
 from pypam.acoustic_survey import ASA
 import pyhydrophone as pyhy
 
+
+# Data information
+data_path = pathlib.Path('./../data')
+data_url = 'https://www.lifewatch.be/code/pypam-files/tests/'
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
