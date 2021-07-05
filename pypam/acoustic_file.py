@@ -127,7 +127,11 @@ class AcuFile:
             return self.__dict__[name]
 
     def _bins(self, blocksize):
-        n_blocks = int((sf.SoundFile(self.file_path).frames - self._start_frame) / blocksize)
+
+        if blocksize is None:
+            n_blocks = 1
+        else:
+            n_blocks = int((sf.SoundFile(self.file_path).frames - self._start_frame) / blocksize)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)),
                              total=n_blocks, leave=False, position=0):
             if len(block) == blocksize:
