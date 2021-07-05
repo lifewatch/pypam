@@ -526,7 +526,21 @@ class Signal:
 
     def bi(self, min_freq=2000, max_freq=8000, nfft=512, mode='fast', **kwargs):
         """
+        Calculate the Bioacoustic Index index
+        Parameters
+        ----------
+        min_freq: int
+            Minimum frequency (in Hertz)
+        max_freq: int
+            Maximum frequency (in Hertz)
+        nfft: int
+            FFT number
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
 
+        Returns
+        -------
+        BI value
         """
         if self.band[1] < max_freq or self.band[0] > min_freq:
             print('The band %s does not include this band limits (%s, %s). '
@@ -540,7 +554,17 @@ class Signal:
 
     def sh(self, nfft=512, mode='fast', **kwargs):
         """
+        Return the Spectral Entropy of Shannon
+        Parameters
+        ----------
+        nfft: int
+            FFT number
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
 
+        Returns
+        -------
+        SH index
         """
         _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
         sh_val = self.acoustic_index('sh', sxx=sxx)
@@ -548,14 +572,30 @@ class Signal:
 
     def th(self, **kwargs):
         """
+        Compute Temporal Entropy of Shannon
 
+        Returns
+        -------
+        TH value
         """
         th_val = self.acoustic_index('th', s=self.signal)
         return th_val
 
     def ndsi(self, window_length=1024, anthrophony=None, biophony=None, **kwargs):
         """
+        Compute the Normalized Difference Sound Index
+        Parameters
+        ----------
+        window_length: int
+            Length of the window to use in samples
+        anthrophony: list or tuple
+            Band to consider the anthrophony. If set to None, the default is [1000, 2000] Hz
+        biophony: list or tuple
+            Band to consider the biophony. If set to None, the default is [2000, 11000] Hz
 
+        Returns
+        -------
+        NDSI value
         """
         if anthrophony is None:
             anthrophony = [1000, 2000]
@@ -572,7 +612,21 @@ class Signal:
 
     def aei(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
         """
+        Compute Acoustic Evenness Index
+        Parameters
+        ----------
+        db_threshold: int or float
+            The minimum db value to consider for the bins of the spectrogram
+        freq_step: int
+            Size of frequency bands to compute AEI (in Hertz)
+        nfft: int
+            FFT number
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
 
+        Returns
+        -------
+        AEI value
         """
         _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
         aei_val = self.acoustic_index('aei', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
@@ -581,6 +635,20 @@ class Signal:
 
     def adi(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
         """
+        Compute Acoustic Diversity Index
+        Parameters
+        db_threshold: int or float
+            The minimum db value to consider for the bins of the spectrogram
+        freq_step: int
+            Size of frequency bands to compute AEI (in Hertz)
+        nfft: int
+            FFT number
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
+
+        Returns
+        -------
+        ADI value
         """
         _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
         adi_val = self.acoustic_index('adi', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
@@ -589,21 +657,55 @@ class Signal:
 
     def zcr(self, **kwargs):
         """
+        Compute the Zero Crossing Rate
 
+        Returns
+        -------
+        A list of values (number of zero crossing for each window)
         """
         zcr = self.acoustic_index('zcr', s=self.signal)
         return zcr
 
     def zcr_avg(self, window_length=512, window_hop=256, **kwargs):
         """
+        Zero Crossing Rate average
+        Parameters
+        ----------
+        window_length: int
+            Size of the sliding window (samples)
+        window_hop: int
+            Size of the lag window (samples)
 
+        Returns
+        -------
+        ZCR average
         """
         zcr = self.acoustic_index('zcr_avg', s=self.signal, window_length=window_length, window_hop=window_hop)
         return zcr
 
     def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, mode='fast', **kwargs):
         """
+        Counts the number of major frequency peaks obtained on a mean spectrum.
+        Parameters
+        ----------
+        freqband: int or float
+            frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
+            is less than this threshold, then the peak of highest amplitude will be kept only.
+            normalization: if set at True, the mean spectrum is scaled between 0 and 1
+        normalization : bool
+            Set to true if normalization is desired
+        slopes: tuple of length 2
+            Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
+            The first value is the left slope and the second value is the right slope. Only peaks with
+            higher slopes than threshold values will be kept. i.e (0.01, 0.01)
+        nfft: int
+            FFT number
+        mode : string
+            If set to 'fast', the signal will be zero padded up to the closest power of 2
 
+        Returns
+        -------
+        Int, number of BN peaks
         """
         _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
         peak_indices, peak_freqs = self.acoustic_index('bn_peaks', sxx=sxx, frequencies=self.freq,

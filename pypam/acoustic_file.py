@@ -126,8 +126,20 @@ class AcuFile:
         else:
             return self.__dict__[name]
 
-    def _bins(self, blocksize):
+    def _bins(self, blocksize=None):
+        """
+        Yields the bins each blocksize
+        Parameters
+        ----------
+        blocksize: int or None
+            Number of frames per bin to yield
 
+        Returns
+        -------
+        Iterates through all the bins, yields i, time_bin, signal
+        Where i is the index, time_bin is the datetime of the beggning of the block and signal is the signal object
+        of the bin
+        """
         if blocksize is None:
             n_blocks = 1
         else:
@@ -418,7 +430,21 @@ class AcuFile:
 
     def _apply_multiple(self, method_list, band_list=None, binsize=None, **kwargs):
         """
-        Apply the method name
+        Apply multiple methods per bin to save computational time
+
+        Parameters
+        ----------
+        method_list: list of strings
+            List of all the methods to apply
+        band_list: list of tuples (or lists)
+            List of all the bands to analyze. If set to None, broadband is analyzed
+        binsize: float
+            Lenght in seconds of the bins to analyze
+        kwargs: any parameters that have to be passed to the methods
+
+        Returns
+        -------
+        DataFrame with time as index and a multiindex column with band, method as levels.
         """
         if binsize is None:
             blocksize = self.file.frames
@@ -549,43 +575,56 @@ class AcuFile:
         Return the octave levels
         Parameters
         ----------
-        binsize
-        db
-        band
+        binsize: float
+            Lenght in seconds of the bin to analyze
+        db: boolean
+            Set to True if the result should be in decibels
+        band: list or tuple
+            List or tuple of [low_frequency, high_frequency]
 
         Returns
         -------
+        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
 
         """
         return self._octaves_levels(fraction=1, binsize=binsize, db=db, band=band)
 
     def third_octaves_levels(self, binsize=None, db=True, band=None, **kwargs):
         """
-        Return the 1/3-octave levels
+        Return the octave levels
         Parameters
         ----------
-        binsize
-        db
-        band
+        binsize: float
+            Lenght in seconds of the bin to analyze
+        db: boolean
+            Set to True if the result should be in decibels
+        band: list or tuple
+            List or tuple of [low_frequency, high_frequency]
 
         Returns
         -------
+        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
 
         """
         return self._octaves_levels(fraction=3, binsize=binsize, db=db, band=band)
 
     def _octaves_levels(self, fraction=1, binsize=None, db=True, band=None):
         """
-        Calculate octave levels or a fraction of octave levels
+        Return the octave levels
         Parameters
         ----------
-        fraction
-        binsize
-        db
-        band
+        fraction: int
+            Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
+        binsize: float
+            Lenght in seconds of the bin to analyze
+        db: boolean
+            Set to True if the result should be in decibels
+        band: list or tuple
+            List or tuple of [low_frequency, high_frequency]
 
         Returns
         -------
+        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
 
         """
         if binsize is None:
@@ -840,6 +879,12 @@ class AcuFile:
             than min_duration!
         verbose : bool
             Set to True to get plots of the detections
+        save_path: Path or str
+            Path where to save the images of the detections
+        band : list or tuple
+            Band to analyze [low_freq, high_freq]
+        method : str
+            Method to use for the detection. Can be 'snr', 'dt' or 'envelope'
         """
         if binsize is None:
             blocksize = self.file.frames
@@ -854,6 +899,8 @@ class AcuFile:
         for _, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
             if save_path is not None:
+                if type(save_path) == str:
+                    save_path = pathlib.Path(save_path)
                 save_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
             events_df = detector.detect_events(signal, method=method, verbose=verbose,
                                                save_path=save_path)

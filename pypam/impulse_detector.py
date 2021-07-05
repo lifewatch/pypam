@@ -151,7 +151,7 @@ class ImpulseDetector:
         envelope = signal.envelope()
         times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs,
                                         threshold=self.threshold, max_duration=self.max_duration,
-                                        min_separation=self.min_separation, original_sig=signal.signal)
+                                        min_separation=self.min_separation)
 
         events_df = self.load_all_times_events(times_events, signal, verbose=verbose)
 
@@ -160,7 +160,7 @@ class ImpulseDetector:
 
         return events_df
 
-    def load_event(self, s, t, duration, removenoise=True, verbose=False):
+    def load_event(self, s, t, duration, removenoise=True):
         """
         Load the event at time t (in seconds), with supplied time before and after the event
         (in seconds)
@@ -176,8 +176,6 @@ class ImpulseDetector:
         removenoise : bool
             Set to True if noise calculated before and after the event can be removed from the
             event
-        verbose : bool
-            Set to True to plot all the detections of the signal
         """
         start_n = int(t * s.fs)
         end_n = int((t + duration) * s.fs)
@@ -215,7 +213,7 @@ class ImpulseDetector:
         events_df = pd.DataFrame(columns=columns)
         for i, e in enumerate(times_events):
             start, duration, end = e
-            event = self.load_event(s=signal, t=start, duration=duration, verbose=verbose)
+            event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
             _, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
             events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
@@ -346,7 +344,7 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
 
 
 @nb.jit
-def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation, original_sig):
+def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation):
     times_events = []
     min_separation_samples = int(min_separation * fs)
     event_on = False
