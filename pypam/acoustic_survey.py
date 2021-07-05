@@ -48,7 +48,7 @@ class ASA:
                  calibration_time=0.0,
                  max_cal_duration=60.0,
                  cal_freq=250,
-                 dc_substract=False):
+                 dc_subtract=False):
         """
         Init a AcousticSurveyAnalysis (ASA)
 
@@ -73,14 +73,14 @@ class ASA:
         band : tuple or list
             Tuple or list with two elements: low-cut and high-cut of the band to analyze
         calibration_time: float or str
-            If a float, the amount of seconds that are ignored at the beggning of the file. If 'auto' then
+            If a float, the amount of seconds that are ignored at the beginning of the file. If 'auto' then
             before the analysis, find_calibration_tone will be performed
         max_cal_duration: float
             Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
         cal_freq: float
             Frequency of the calibration tone (only applies if calibration_time is 'auto')
-        dc_substract: bool
-            Set to True to substract the dc noise (root mean squared value
+        dc_subtract: bool
+            Set to True to subtract the dc noise (root mean squared value
         """
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
@@ -106,7 +106,7 @@ class ASA:
         self.calibration_time = calibration_time
         self.cal_freq = cal_freq
         self.max_cal_duration = max_cal_duration
-        self.dc_substract = dc_substract
+        self.dc_subtract = dc_subtract
 
     def _files(self):
         """
@@ -134,7 +134,7 @@ class ASA:
         return HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
                          utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
                          cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
-                         dc_substract=self.dc_substract)
+                         dc_subtract=self.dc_subtract)
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
@@ -429,20 +429,22 @@ class ASA:
                 df = df.append(df_output)
         return df
 
-    def source_separation(self, window_time=1.0, n_sources=15):
+    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
 
         Parameters
         ----------
-        window_time
-        n_sources
+        window_time: float
+            Duration of the window in seconds
+        n_sources: int
+            Number of sources to separate the sound in
 
         Returns
         -------
 
         """
         for sound_file in self._files():
-            sound_file.source_separation(window_time, n_sources)
+            sound_file.source_separation(window_time, n_sources, band=self.band, save_path=save_path, verbose=verbose)
 
     def plot_all_files(self, method_name, **kwargs):
         """

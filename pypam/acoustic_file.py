@@ -37,7 +37,7 @@ sns.set_theme()
 
 class AcuFile:
     def __init__(self, sfile, hydrophone, p_ref, band=None, utc=True, channel=0,
-                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250, dc_substract=False):
+                 calibration_time=0.0, max_cal_duration=60.0, cal_freq=250, dc_subtract=False):
         """
         Data recorded in a wav file.
 
@@ -61,8 +61,8 @@ class AcuFile:
             Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
         cal_freq: float
             Frequency of the calibration tone (only applies if calibration_time is 'auto')
-        dc_substract: bool
-            Set to True to substract the dc noise (root mean squared value
+        dc_subtract: bool
+            Set to True to subtract the dc noise (root mean squared value
         """
         # Save hydrophone model
         self.hydrophone = hydrophone
@@ -113,7 +113,7 @@ class AcuFile:
         else:
             self._start_frame = int(calibration_time * self.fs)
 
-        self.dc_substract = dc_substract
+        self.dc_subtract = dc_subtract
 
     def __getattr__(self, name):
         """
@@ -151,7 +151,7 @@ class AcuFile:
                 # Read the signal and prepare it for analysis
                 signal_upa = self.wav2upa(wav=block)
                 signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-                if self.dc_substract:
+                if self.dc_subtract:
                     signal.remove_dc()
                 yield i, time_bin, signal
 
@@ -968,9 +968,9 @@ class AcuFile:
             plt.close()
         return total_events
 
-    def source_separation(self, window_time=1.0, n_sources=15):
+    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
-        Perform non-negative Matrix Factorization
+        Perform non-negative Matrix Factorization to separate sources
 
         Parameters
         ----------
@@ -980,8 +980,9 @@ class AcuFile:
             Number of sources
         """
         separator = nmf.NMF(window_time=window_time, rank=n_sources)
-        for i, time_bin, signal in self._bins(None):
-            W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal)
+        for i, time_bin, signal in self._bins(self.file.frames):
+            signal.set_band(self.band)
+            W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal, verbose=verbose)
         return W, H, WH_prod, G_tf, C_tf, c_tf
 
     def find_calibration_tone(self, min_duration=10.0):
@@ -1241,8 +1242,8 @@ class HydroFile(AcuFile):
             Channel to perform the calculations in
         calibration_time : float
             Time to ignore at the beggining of the file
-        dc_substract: bool
-            Set to True to substract the dc noise (root mean squared value
+        dc_subtract: bool
+            Set to True to subtract the dc noise (root mean squared value
         """
         super().__init__(**kwargs)
 

@@ -46,7 +46,7 @@ class NMF:
         # The STFT will be needed to do the filtering with the time-freq. mask.
         # The STFT function is used since it will take into account the COLA constraints so that an iSTFT can be done.
         # The STFT has a length (time dimension) longer than the spectrogram because it does some extra padding.
-        f_sg, t_sg, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, mode='fast')  # TODO noverlap!
+        f_sg, t_sg, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, mode='fast')  # TODO noverlap to 50%!
 
         f, t, Z_stft = sig.stft(s.signal, fs=s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
         Z_mag = np.abs(Z_stft)      # Magnitude of STFT
@@ -222,7 +222,7 @@ class NMF:
         # cmin, cmax = np.min(Z_mag), np.max(Z_mag)
 
         fig, ax = plt.subplots()
-        sp = ax.pcolormesh(t, f, Z_mag, origin='lower', aspect='auto')
+        sp = ax.pcolormesh(t, f, Z_mag, shading='auto')
         ax.set_xlabel('Time (mins)')
         ax.set_ylabel('Frequency (Hz)')
         plt.colorbar(sp, ax=[ax], location='right')
@@ -246,26 +246,26 @@ class NMF:
         fig, axes = plt.subplots(2, 2, figsize=(12, 4))
         fig.subplots_adjust(hspace=0.5)  # horizontal spacing
 
-        sp = axes[0, 0].pcolormesh(Vlg, origin='lower', aspect='auto')
+        sp = axes[0, 0].pcolormesh(Vlg, shading='auto')
         axes[0, 0].set_xlabel('Time (mins)')
         axes[0, 0].set_ylabel('Frequency (Hz)')
         plt.colorbar(sp, ax=[axes[0, 0]], location='right')
 
-        sp2 = axes[1, 0].pcolormesh(W_sklg, origin='lower', aspect='auto')
+        sp2 = axes[1, 0].pcolormesh(W_sklg, shading='auto')
         axes[1, 0].set_title('W = basis vectors')
         axes[1, 0].set_xticks(np.arange(0, self.R, 5))
         axes[1, 0].set_xlabel('Number of basis vectors')
         axes[1, 0].set_ylabel('Frequency (Hz)')
         plt.colorbar(sp2, ax=[axes[1, 0]], location='right')
 
-        sp3 = axes[1, 1].pcolormesh(H_sklg, origin='lower', aspect='auto')
+        sp3 = axes[1, 1].pcolormesh(H_sklg, shading='auto')
         axes[1, 1].set_title('H = activations')
         axes[1, 1].set_xlabel('Time (mins)')
         axes[1, 1].set_ylabel('Number of basis vectors')
         axes[1, 1].set_yticks(np.arange(0, self.R, 5))
         plt.colorbar(sp3, ax=[axes[1, 1]], location='right')
 
-        sp4 = axes[0, 1].pcolormesh(Vlg_ap, origin='lower', aspect='auto')
+        sp4 = axes[0, 1].pcolormesh(Vlg_ap, shading='auto')
         axes[0, 1].set_title('V approximation (WH)')
         axes[0, 1].set_xlabel('Time (mins)')
         axes[0, 1].set_ylabel('Frequency (Hz)')

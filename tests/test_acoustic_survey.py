@@ -34,29 +34,29 @@ class TestASA(unittest.TestCase):
         self.asa = ASA(hydrophone=soundtrap, folder_path='./../data', binsize=binsize, nfft=nfft, utc=True,
                        include_dirs=include_dirs, zipped=zipped_files, dc_substract=dc_substract)
 
-    # def test_features(self):
-    #     self.asa.evolution_multiple(method_list=features, band_list=band_list)
-    #
-    # def test_third_oct(self):
-    #     self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
-    #
-    # def test_detect_piling_events(self):
-    #     min_separation = 1
-    #     max_duration = 0.2
-    #     threshold = 20
-    #     dt = 2.0
-    #     detection_band = [500, 1000]
-    #
-    #     self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
-    #                                   threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
-    #                                   save_path=None)
-    #
-    # def test_detect_ship_events(self):
-    #     # just a smoke test to check if the function can run without errors
-    #     self.asa.detect_ship_events(0.1, 0.5)
+    def test_features(self):
+        self.asa.evolution_multiple(method_list=features, band_list=band_list)
+
+    def test_third_oct(self):
+        self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+
+    def test_detect_piling_events(self):
+        min_separation = 1
+        max_duration = 0.2
+        threshold = 20
+        dt = 2.0
+        detection_band = [500, 1000]
+
+        self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
+                                      threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
+                                      save_path=None)
+
+    def test_detect_ship_events(self):
+        # just a smoke test to check if the function can run without errors
+        self.asa.detect_ship_events(0.1, 0.5)
 
     def test_nmf(self):
-        self.asa.source_separation(1.0, 15)
+        self.asa.source_separation(1.0, 15, None, True)
 
 
 if __name__ == '__main__':
