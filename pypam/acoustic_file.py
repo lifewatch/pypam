@@ -107,9 +107,12 @@ class AcuFile:
         self.cal_freq = cal_freq
         self.max_cal_duration = max_cal_duration
         if calibration_time == 'auto':
-            _, self._start_frame = self.find_calibration_tone()
+            start_cal, self._start_frame = self.find_calibration_tone()
             if self._start_frame is None:
                 self._start_frame = 0
+            else:
+                calibration_signal, _ = sf.read(self.file_path, start=start_cal, stop=self._start_frame)
+                self.hydrophone.update_calibration(calibration_signal)
         else:
             self._start_frame = int(calibration_time * self.fs)
 
