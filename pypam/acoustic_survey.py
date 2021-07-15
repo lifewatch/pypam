@@ -131,10 +131,13 @@ class ASA:
         -------
         Object HydroFile
         """
-        return HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                         utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                         cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
-                         dc_subtract=self.dc_subtract)
+        hydro_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
+                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
+                               dc_subtract=self.dc_subtract)
+        # Update the hydrophone parameters in case thye have changed
+        self.hydrophone = hydro_file.hydrophone 
+        return hydro_file
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
