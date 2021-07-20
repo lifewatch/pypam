@@ -23,8 +23,9 @@ python setup.py install
 
 ## Usage
 
-```bash
+```python
 import pyhydrophone as pyhy
+from pypam import acoustic_survey
 
 # Soundtrap
 model = 'ST300HF'
@@ -35,9 +36,12 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 # Analysis parameters
 features = ['rms', 'sel', 'peak', 'aci']
 band_list = [[10,100], [500, 1000], [500, 100000]]
+third_octaves = [None, None]  # Calculate third octaves for the entire freq range
 
 asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='', binsize=60.0)
-df_output = asa.evolution_multiple(method_list=features, band_list=band_list)
+df_features = asa.evolution_multiple(method_list=features, band_list=band_list)
+
+df_3oct = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 ```
 
 The available methods and features are: 
@@ -56,11 +60,11 @@ The available methods and features are:
   - BN peaks 
 - Features: 
   - rms 
-  - dynamic range
+  - dynamic_range
   - sel
   - peak 
-  - rms envelope
-  - spectrum slope
+  - rms_envelope
+  - spectrum_slope
   - correlation coefficient
 - Frequency domain 
   - spectrogram (also octave bands spectrogram)
