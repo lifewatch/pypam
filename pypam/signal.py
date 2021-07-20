@@ -162,7 +162,7 @@ class Signal:
         """
         Filter and downsample the signal
         """
-        if (band is not None) and (band is not [None, None]):
+        if (band is not None) and (band[0] in [0, None] and band[1] in [self.fs, None]):
             # Filter the signal
             if band[0] == 0 or band[0] is None:
                 sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
