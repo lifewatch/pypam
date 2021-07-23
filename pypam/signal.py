@@ -85,6 +85,13 @@ class Signal:
         self.psd = None
         self.freq = None
         self.t = None
+    
+    def _band_is_broadband(self, band):
+        """
+        Return True if the selected band is "broaband", return False otherwise
+        :return: Bool
+        """
+        return (band is not None) and not (band[0] in [0, None] and band[1] in [self.fs, None])
 
     def set_band(self, band=None):
         """
@@ -162,7 +169,7 @@ class Signal:
         """
         Filter and downsample the signal
         """
-        if (band is not None) and (band[0] in [0, None] and band[1] in [self.fs, None]):
+        if not self._band_is_broadband(band):
             # Filter the signal
             if band[0] == 0 or band[0] is None:
                 sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
@@ -431,7 +438,7 @@ class Signal:
                 s = self.signal
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
-        if self.band is not None:
+        if not self._band_is_broadband(self.band):
             low_freq = np.argmax(freq, self.band[0])
         else:
             low_freq = 0

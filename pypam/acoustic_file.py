@@ -733,14 +733,13 @@ class AcuFile:
         spectra_df = pd.DataFrame(columns=columns)
         for _, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band)
-            fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
+            fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                               percentiles=percentiles)
             spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
 
             # Calculate the percentiles
-            if percentiles is not None:
-                spectra_df.at[time_bin,
-                              ('percentiles', percentiles)] = np.percentile(spectra, percentiles)
+            if percentiles_val is not None:
+                spectra_df.at[time_bin, ('percentiles', percentiles)] = percentiles_val
         self.file.seek(0)
         return spectra_df
 

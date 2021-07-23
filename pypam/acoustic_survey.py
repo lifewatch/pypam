@@ -250,7 +250,7 @@ class ASA:
 
         return rms_evolution['rms'].mean()
 
-    def spd(self, db=True, h=0.1, percentiles=None):
+    def spd(self, db=True, h=0.1, percentiles=None, min_val=None, max_val=None):
         """
         Return the empirical power density.
 
@@ -278,14 +278,18 @@ class ASA:
         p : numpy matrix
             Matrix with all the probabilities
         """
-        psd_evolution = self.evolution('psd', db=db, percentiles=percentiles)
+        psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
         fbands = psd_evolution['band_density'].columns
         pxx = psd_evolution['band_density'][fbands].to_numpy(dtype=np.float).T
         # Calculate the bins of the psd values and compute spd using numba
-        bin_edges = np.arange(start=pxx.min(), stop=pxx.max(), step=h)
+        if min_val is None:
+            min_val = pxx.min()
+        if max_val is None:
+            max_val = pxx.max()
+        bin_edges = np.arange(start=min_val, stop=max_val, step=h)
         if percentiles is None:
             percentiles = []
-        spd, p = utils.sxx2spd(Sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0,
+        spd, p = utils.sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0,
                                bin_edges=bin_edges)
 
         return fbands, bin_edges, spd, percentiles, p
@@ -718,7 +722,7 @@ class ASA:
         """
         fbands, bin_edges, spd, percentiles, p = self.spd(db=db, **kwargs)
         if db:
-            units = 'db re 1V %s uPa^2/Hz' % self.p_ref
+            units = 'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
         else:
             units = 'uPa^2/Hz'
 
