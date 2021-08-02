@@ -92,7 +92,11 @@ class Signal:
     def _band_is_broadband(self, band):
         """
         Return True if the selected band is "broaband", return False otherwise
-        :return: Bool
+
+        Parameters
+        ----------
+        band : list or tuple
+            [low_freq, high_freq] of the desired band
         """
         return (band is not None) and not (band[0] in [0, None] and band[1] in [self.fs, None])
 
@@ -162,10 +166,12 @@ class Signal:
 
     def _create_filter(self, band):
         """
-
+        Return the butterworth filter for the specified band. If the limits are set to None, 0 or the nyquist
+        frequency, only high-pass or low-pass filters are applied. Otherwise, a band-pass filter.
         Parameters
         ----------
-        band
+        band: tuple or list
+            [low_freq, high_freq], band to be filtered
         """
         if band[0] == 0 or band[0] is None:
             sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
@@ -177,14 +183,13 @@ class Signal:
 
     def downsample(self, new_fs, filt='iir'):
         """
-
+        Downsamples the signal to the new fs, firts applying a zero-phase low-pass FIR filter
         Parameters
         ----------
-        new_fs
-        filt
-
-        Returns
-        -------
+        new_fs: float
+            New sampling frequency
+        filt:
+            Filte type. Can be 'iir', 'fir' or a dlti object
 
         """
         # new_band = [band[0], 0.8 * new_fs/2.0]
@@ -213,6 +218,10 @@ class Signal:
     def filter(self, band):
         """
         Filter the signal
+        Parameters
+        ----------
+        band: tuple or list
+            [low_freq, high_freq], band to be filtered
         """
         if band[1] > self._fs / 2:
             raise ValueError('Frequency %s is higher than nyquist frequency %s, and can not be filtered' % 
