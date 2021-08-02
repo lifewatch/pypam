@@ -27,6 +27,9 @@ from pypam import utils
 sns.set_theme()
 
 
+FILTER_ORDER = 4
+
+
 class Signal:
     def __init__(self, signal, fs, channel=0):
         """
@@ -93,13 +96,21 @@ class Signal:
         """
         return (band is not None) and not (band[0] in [0, None] and band[1] in [self.fs, None])
 
-    def set_band(self, band=None):
+    def set_band(self, band=None, downsample=True):
         """
-        Process the signal to be working on the specified band
+        Process the signal to be working on the specified band.
+        If the upper limit band is higher than the nyquist frequency (fs/2), the band limit is set to the
+        nyquist frequency. In case downsample is set to True, the band is downsampled to the closest int to twice the
+        upper limit frequency. If the lower limit band is not None, it is after filtered with a high pass filter.
+        If downsample is set to False, the signal is filtered in the specified band. In case one of the boundaries is
+        None, 0 or fs/2, high-pass or low-pass (respectively) filters are used. Otherwise band-pass filter.
+        See self.filter for more information about the filtering process.
         Parameters
         ----------
         band : list or tuple
             [low_freq, high_freq] of the desired band
+        downsample: bool
+            Set to True if signal has to be downsampled for spectral resolution incrementation
         """
         if band != self.band:
             # Restart the signal to the original one
@@ -107,14 +118,17 @@ class Signal:
                 self.signal = self._signal.copy()
                 self.fs = self._fs
             else:
-                if band[1] > self._fs / 2:
-                    raise ValueError('Frequency %s is higher than nyquist frequency %s' % (band[1], self.fs / 2))
-                elif self.band is None or band[1] <= self.band[1]:
-                    self._filter_and_downsample(band)
-                elif band[1] > self.band[1]:
+                if band[1] > self.fs / 2:
+                    # Reset to the original data
                     self.signal = self._signal.copy()
                     self.fs = self._fs
-                    self._filter_and_downsample(band)
+                if band[1] > self._fs / 2:
+                    print('Band upper limit %s is too big, setting to maximum fs: new band' % (band[1], self._fs/2))
+                    band[1] = self._fs / 2
+                if downsample:
+                    self.downsample2band(band)
+                else:
+                    self.filter(band=band)
             self.band_n += 1
             self._processed[self.band_n] = []
             self.bands_list[self.band_n] = band
@@ -146,43 +160,68 @@ class Signal:
             self._processed[self.band_n].append('fill')
         return s
 
-    def _downsample(self, new_fs):
+    def _create_filter(self, band):
         """
-        Reduce the sampling frequency
+
+        Parameters
+        ----------
+        band
+        """
+        if band[0] == 0 or band[0] is None:
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
+        elif band[1] is None or band[1] == self.fs / 2:
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='highpass', Wn=band[0], analog=False, output='sos', fs=self.fs)
+        else:
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='bandpass', Wn=band, analog=False, output='sos', fs=self.fs)
+        return sosfilt
+
+    def downsample(self, new_fs, filt='iir'):
+        """
+
+        Parameters
+        ----------
+        new_fs
+        filt
+
+        Returns
+        -------
+
+        """
+        # new_band = [band[0], 0.8 * new_fs/2.0]
+        lcm = np.lcm(int(self.fs), int(new_fs))
+        ratio_up = int(lcm / self.fs)
+        ratio_down = int(lcm / new_fs)
+        self.signal = sig.resample_poly(self.signal, up=ratio_up, down=ratio_down)
+        self._processed[self.band_n].append('downsample')
+        self.fs = new_fs
+
+    def downsample2band(self, band):
+        """
+        Reduce the sampling frequency. It uses the decimate function of scipy.signal
+        In case the ratio is not an int, the closest int is chosen.
         Parameters
         ----------
         new_fs : int
             New sampling rate
         """
-        if new_fs > self.fs:
-            raise Exception('This is upsampling!')
-        ratio = (self.fs / new_fs)
-        if (ratio % 2) != 0:
-            new_length = int(self.signal.size * (new_fs / self.fs))
-            self.signal = sig.resample(self.signal, new_length)
-        else:
-            self.signal = sig.resample_poly(self.signal, up=1, down=int(ratio))
-        self._processed[self.band_n].append('downsample')
-        self.fs = new_fs
+        new_fs = band[1] * 2
+        if new_fs != self.fs:
+            if new_fs > self.fs:
+                raise Exception('This is upsampling, can not downsample %s to %s!' % (self.fs, new_fs))
+            self.downsample(new_fs, 'iir')
 
-    def _filter_and_downsample(self, band):
+    def filter(self, band):
         """
-        Filter and downsample the signal
+        Filter the signal
         """
+        if band[1] > self._fs / 2:
+            raise ValueError('Frequency %s is higher than nyquist frequency %s, and can not be filtered' % 
+                             (band[1], self.fs / 2))
         if not self._band_is_broadband(band):
             # Filter the signal
-            if band[0] == 0 or band[0] is None:
-                sosfilt = sig.butter(N=4, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
-            elif band[1] is None or band[1] == self.fs / 2:
-                sosfilt = sig.butter(N=4, btype='highpass', Wn=band[0], analog=False, output='sos', fs=self.fs)
-            else:
-                sosfilt = sig.butter(N=4, btype='bandpass', Wn=band, analog=False, output='sos', fs=self.fs)
+            sosfilt = self._create_filter(band)
             self.signal = sig.sosfilt(sosfilt, self.signal)
             self._processed[self.band_n].append('filter')
-
-            # Downsample if frequency analysis to get better resolution
-            if band[1] < self.fs / 2:
-                self._downsample(band[1] * 2)
 
     def remove_dc(self):
         """
@@ -425,17 +464,20 @@ class Signal:
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         """
-        if nfft > self.signal.size:
-            s = self._fill_or_crop(n_samples=nfft)
-        else:
-            if mode == 'fast':
-                # Choose the closest power of 2 to clocksize for faster computing
-                real_size = self.signal.size
-                optim_len = int(2 ** np.ceil(np.log2(real_size)))
-                # Fill the missing values with 0
-                s = self._fill_or_crop(n_samples=optim_len)
+        if nfft is not None:
+            if nfft > self.signal.size:
+                s = self._fill_or_crop(n_samples=nfft)
             else:
-                s = self.signal
+                if mode == 'fast':
+                    # Choose the closest power of 2 to clocksize for faster computing
+                    real_size = self.signal.size
+                    optim_len = int(2 ** np.ceil(np.log2(real_size)))
+                    # Fill the missing values with 0
+                    s = self._fill_or_crop(n_samples=optim_len)
+                else:
+                    s = self.signal
+        else:
+            s = self.signal
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
         if not self._band_is_broadband(self.band):
@@ -450,7 +492,7 @@ class Signal:
 
     # TODO implement stft!
 
-    def spectrum(self, scaling='density', nfft=512, db=True, percentiles=None, mode='fast',
+    def spectrum(self, scaling='density', window_t=1.0, nfft=512, db=True, percentiles=None, mode='fast',
                  force_calc=False, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
@@ -730,9 +772,9 @@ class Signal:
         """
         if isinstance(signal, Signal):
             if signal.fs > self.fs:
-                signal._downsample(self.fs)
+                signal.downsample(self.fs)
             elif signal.fs < self.fs:
-                self._downsample(signal.fs)
+                self.downsample(signal.fs)
         coeff = np.corrcoef(self.signal, signal.signal)
 
         return coeff

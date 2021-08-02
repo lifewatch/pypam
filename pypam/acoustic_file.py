@@ -155,6 +155,13 @@ class AcuFile:
                     signal.remove_dc()
                 yield i, time_bin, signal
 
+    def _get_fbands(self, band, nfft, downsample=True):
+        if downsample:
+            fs = band[1] * 2
+        else:
+            fs = self.fs
+        return sci.fft.rfftfreq(nfft) * fs
+
     def samples(self, bintime):
         """
         Return the samples according to the fs
@@ -470,7 +477,7 @@ class AcuFile:
 
         for i, time_bin, signal in self._bins(blocksize):
             for band in sorted_bands:
-                signal.set_band(band)
+                signal.set_band(band, downsample=False)
                 for method_name in method_list:
                     f = operator.methodcaller(method_name, **kwargs)
                     try:
@@ -639,7 +646,7 @@ class AcuFile:
         df[('start_sample', 'all')] = None
         df[('end_sample', 'all')] = None
         for i, time_bin, signal in self._bins(blocksize):
-            signal.set_band(band)
+            signal.set_band(band, downsample=True)
             _, levels = signal.octave_levels(db, fraction)
             df.at[time_bin, ('oct%s' % fraction, bands)] = levels
             df.at[time_bin, ('start_sample', 'all')] = i * blocksize
@@ -690,7 +697,7 @@ class AcuFile:
         # Window to use for the spectrogram
         freq, t, low_freq = None, None, None
         for _, time_bin, signal in self._bins(blocksize):
-            signal.set_band(self.band)
+            signal.set_band(self.band, downsample=True)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             sxx_list.append(sxx)
             time.append(time_bin)
@@ -726,17 +733,16 @@ class AcuFile:
         else:
             columns_df = pd.DataFrame()
 
-        fbands = sci.fft.rfftfreq(nfft) * self.fs
+        fbands = self._get_fbands(self.band, nfft, downsample=True)
         columns_df = pd.concat([columns_df, pd.DataFrame(
             {'variable': 'band_' + scaling, 'value': fbands})])
         columns = pd.MultiIndex.from_frame(columns_df)
         spectra_df = pd.DataFrame(columns=columns)
         for _, time_bin, signal in self._bins(blocksize):
-            signal.set_band(band=self.band)
+            signal.set_band(band=self.band, downsample=True)
             fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                               percentiles=percentiles)
             spectra_df.at[time_bin, ('band_' + scaling, fbands)] = spectra
-
             # Calculate the percentiles
             if percentiles_val is not None:
                 spectra_df.at[time_bin, ('percentiles', percentiles)] = percentiles_val
@@ -896,7 +902,7 @@ class AcuFile:
                                                    analysis_band=self.band)
         total_events = pd.DataFrame()
         for _, time_bin, signal in self._bins(blocksize):
-            signal.set_band(band=self.band)
+            signal.set_band(band=self.band, downsample=False)
             if save_path is not None:
                 if type(save_path) == str:
                     save_path = pathlib.Path(save_path)
@@ -1000,7 +1006,7 @@ class AcuFile:
         self.file.seek(0)
         first_part = self.file.read(frames=tone_samples)
         signal = Signal(first_part, self.fs, channel=self.channel)
-        signal.set_band(band=[low_freq, high_freq])
+        signal.set_band(band=[low_freq, high_freq], downsample=False)
         amplitude_envelope = signal.envelope()
         possible_points = np.zeros(amplitude_envelope.shape)
         possible_points[np.where(amplitude_envelope >= 0.05)] = 1
@@ -1014,8 +1020,8 @@ class AcuFile:
             start_points = start_points[0:end_points.size]
         select_idx = np.argmax(end_points - start_points)
         # Round to a second
-        start = int(int(start_points[select_idx] / signal.fs) * self.fs)
-        end = int(int(end_points[select_idx] / signal.fs) * self.fs)
+        start = int(start_points[select_idx] / signal.fs)
+        end = int(end_points[select_idx] / signal.fs)
 
         if (end - start) / self.fs < min_duration:
             return None, None
