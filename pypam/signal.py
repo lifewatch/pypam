@@ -98,7 +98,7 @@ class Signal:
         band : list or tuple
             [low_freq, high_freq] of the desired band
         """
-        return (band is not None) and not (band[0] in [0, None] and band[1] in [self.fs, None])
+        return (band is None) or (band[0] in [0, None] and band[1] in [self.fs, None])
 
     def set_band(self, band=None, downsample=True):
         """

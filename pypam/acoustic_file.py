@@ -906,9 +906,9 @@ class AcuFile:
             if save_path is not None:
                 if type(save_path) == str:
                     save_path = pathlib.Path(save_path)
-                save_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
+                file_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
             events_df = detector.detect_events(signal, method=method, verbose=verbose,
-                                               save_path=save_path)
+                                               save_path=file_path)
             events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')],
                                                     unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
