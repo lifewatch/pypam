@@ -164,7 +164,7 @@ class Signal:
             self._processed[self.band_n].append('fill')
         return s
 
-    def _create_filter(self, band):
+    def _create_filter(self, band, output='sos'):
         """
         Return the butterworth filter for the specified band. If the limits are set to None, 0 or the nyquist
         frequency, only high-pass or low-pass filters are applied. Otherwise, a band-pass filter.
@@ -174,28 +174,28 @@ class Signal:
             [low_freq, high_freq], band to be filtered
         """
         if band[0] == 0 or band[0] is None:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output='sos', fs=self.fs)
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output=output, fs=self.fs)
         elif band[1] is None or band[1] == self.fs / 2:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='highpass', Wn=band[0], analog=False, output='sos', fs=self.fs)
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='highpass', Wn=band[0], analog=False, output=output, fs=self.fs)
         else:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='bandpass', Wn=band, analog=False, output='sos', fs=self.fs)
+            sosfilt = sig.butter(N=FILTER_ORDER, btype='bandpass', Wn=band, analog=False, output=output, fs=self.fs)
         return sosfilt
 
-    def downsample(self, new_fs, filt='iir'):
+    def downsample(self, new_fs, filt=None):
         """
-        Downsamples the signal to the new fs, firts applying a zero-phase low-pass FIR filter
+        Downsamples the signal to the new fs. If the downsampling factor is an integer, performs resample_poly,
+        which applies a 
         Parameters
         ----------
         new_fs: float
             New sampling frequency
         filt:
-            Filte type. Can be 'iir', 'fir' or a dlti object
-
+            filter output of _create_filter(band). If None it will be set to [0, new_fs/2]
         """
-        # new_band = [band[0], 0.8 * new_fs/2.0]
         lcm = np.lcm(int(self.fs), int(new_fs))
         ratio_up = int(lcm / self.fs)
         ratio_down = int(lcm / new_fs)
+        self.signal = sig.sosfilt(filt, self.signal)
         self.signal = sig.resample_poly(self.signal, up=ratio_up, down=ratio_down)
         self._processed[self.band_n].append('downsample')
         self.fs = new_fs
@@ -213,7 +213,8 @@ class Signal:
         if new_fs != self.fs:
             if new_fs > self.fs:
                 raise Exception('This is upsampling, can not downsample %s to %s!' % (self.fs, new_fs))
-            self.downsample(new_fs, 'iir')
+            filt = self._create_filter([band[0], None])
+            self.downsample(new_fs, filt)
 
     def filter(self, band):
         """
