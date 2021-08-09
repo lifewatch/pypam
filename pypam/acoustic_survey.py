@@ -48,7 +48,7 @@ class ASA:
                  calibration_time=0.0,
                  max_cal_duration=60.0,
                  cal_freq=250,
-                 dc_substract=False):
+                 dc_subtract=False):
         """
         Init a AcousticSurveyAnalysis (ASA)
 
@@ -79,8 +79,8 @@ class ASA:
             Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
         cal_freq: float
             Frequency of the calibration tone (only applies if calibration_time is 'auto')
-        dc_substract: bool
-            Set to True to substract the dc noise (root mean squared value
+        dc_subtract: bool
+            Set to True to subtract the dc noise (root mean squared value
         """
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
@@ -106,7 +106,7 @@ class ASA:
         self.calibration_time = calibration_time
         self.cal_freq = cal_freq
         self.max_cal_duration = max_cal_duration
-        self.dc_substract = dc_substract
+        self.dc_subtract = dc_subtract
 
     def _files(self):
         """
@@ -134,7 +134,7 @@ class ASA:
         return HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
                          utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
                          cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
-                         dc_substract=self.dc_substract)
+                         dc_subtract=self.dc_subtract)
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
