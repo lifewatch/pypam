@@ -107,9 +107,11 @@ class AcuFile:
         self.cal_freq = cal_freq
         self.max_cal_duration = max_cal_duration
         if calibration_time == 'auto':
-            _, self._start_frame = self.find_calibration_tone()
+            start_cal, self._start_frame, calibration_signal = self.find_calibration_tone()
             if self._start_frame is None:
                 self._start_frame = 0
+            else:
+                self.hydrophone.update_calibration(calibration_signal)
         else:
             self._start_frame = int(calibration_time * self.fs)
 
@@ -974,9 +976,9 @@ class AcuFile:
             plt.close()
         return total_events
 
-    def source_separation(self, window_time=1.0, n_sources=15):
+    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
-        Perform non-negative Matrix Factorization
+        Perform non-negative Matrix Factorization to separate sources
 
         Parameters
         ----------
@@ -986,8 +988,9 @@ class AcuFile:
             Number of sources
         """
         separator = nmf.NMF(window_time=window_time, rank=n_sources)
-        for i, time_bin, signal in self._bins(None):
-            W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal)
+        for i, time_bin, signal in self._bins(self.file.frames):
+            signal.set_band(self.band)
+            W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal, verbose=verbose)
         return W, H, WH_prod, G_tf, C_tf, c_tf
 
     def find_calibration_tone(self, min_duration=10.0):
@@ -1013,7 +1016,7 @@ class AcuFile:
         start_points = np.where(np.diff(possible_points) == 1)[0]
         end_points = np.where(np.diff(possible_points) == -1)[0]
         if start_points.size == 0:
-            return None, None
+            return None, None, []
         if end_points[0] < start_points[0]:
             end_points = end_points[1:]
         if start_points.size != end_points.size:
@@ -1024,10 +1027,10 @@ class AcuFile:
         end = int(end_points[select_idx] / signal.fs)
 
         if (end - start) / self.fs < min_duration:
-            return None, None
+            return None, None, []
 
         self.file.seek(0)
-        return start, end
+        return start, end, signal.signal[start_points[select_idx]:end_points[select_idx]]
 
     def cut_calibration_tone(self, min_duration=10.0, save_path=None):
         """
@@ -1043,7 +1046,7 @@ class AcuFile:
         save_path : string or Path
             Path where to save the calibration tone
         """
-        start, stop = self.find_calibration_tone(min_duration=min_duration)
+        start, stop, calibration_signal = self.find_calibration_tone(min_duration=min_duration)
         if start is not None:
             new_datetime = self.date + datetime.timedelta(seconds=self.samples2time(stop))
             calibration_signal, _ = sf.read(self.file_path, start=start, stop=stop)
