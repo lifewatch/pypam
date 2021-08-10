@@ -1023,8 +1023,8 @@ class AcuFile:
             start_points = start_points[0:end_points.size]
         select_idx = np.argmax(end_points - start_points)
         # Round to a second
-        start = int(start_points[select_idx] / signal.fs)
-        end = int(end_points[select_idx] / signal.fs)
+        start = int(start_points[select_idx])
+        end = int(end_points[select_idx])
 
         if (end - start) / self.fs < min_duration:
             return None, None, []

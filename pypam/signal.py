@@ -173,7 +173,7 @@ class Signal:
         band: tuple or list
             [low_freq, high_freq], band to be filtered
         """
-        if band[0] == 0 or band[0] is None:
+        if band[0] is None or band[0] == 0:
             sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output=output, fs=self.fs)
         elif band[1] is None or band[1] == self.fs / 2:
             sosfilt = sig.butter(N=FILTER_ORDER, btype='highpass', Wn=band[0], analog=False, output=output, fs=self.fs)
@@ -213,7 +213,7 @@ class Signal:
         if new_fs != self.fs:
             if new_fs > self.fs:
                 raise Exception('This is upsampling, can not downsample %s to %s!' % (self.fs, new_fs))
-            filt = self._create_filter([band[0], None])
+            filt = self._create_filter(band)
             self.downsample(new_fs, filt)
 
     def filter(self, band):
