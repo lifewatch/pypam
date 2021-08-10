@@ -490,7 +490,7 @@ class Signal:
             s = self.signal
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
-        if not self._band_is_broadband(self.band):
+        if self.band[0] is not None:
             low_freq = np.argmax(freq, self.band[0])
         else:
             low_freq = 0
