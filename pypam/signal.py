@@ -418,7 +418,10 @@ class Signal:
         freq, t, sxx = sig.spectrogram(s, fs=self.fs, nfft=nfft,
                                        window=window, scaling=scaling)
         if self.band is not None:
-            low_freq = np.argmax(freq >= self.band[0])
+            if self.band[0] is None:
+                low_freq = 0
+            else:
+                low_freq = np.argmax(freq >= self.band[0])
         else:
             low_freq = 0
         self.freq = freq[low_freq:]
