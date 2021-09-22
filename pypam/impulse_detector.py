@@ -178,16 +178,15 @@ class ImpulseDetector:
             event
         """
         start_n = int(t * s.fs)
-        end_n = int((t + duration) * s.fs)
+        end_n = int((t + duration) * s.fs) + 1
         if removenoise:
             n1 = max(int((t - self.min_separation) * s.fs), 0)
             n2 = min(int((t + duration + self.min_separation) * s.fs), s.signal.shape[0])
-            event = Event(s.signal[n1:n2], s.fs)
-            noise_clip = np.concatenate((s.signal[n1:start_n], s.signal[end_n:n2]))
-            event.reduce_noise(noise_clip=noise_clip, nfft=512, verbose=False)
-            event.signal = event.signal[start_n - n1:end_n - n1]
+            event = Event(s.signal, s.fs, start=n1, end=n2)
+            event.reduce_noise(nfft=512, verbose=False)
+            event.cut(start_n - n1, end_n - n1)
         else:
-            event = Event(s.signal[start_n:end_n], s.fs)
+            event = Event(s.signal, s.fs, start_n, end_n)
 
         return event
 

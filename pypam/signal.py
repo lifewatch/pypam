@@ -70,8 +70,6 @@ class Signal:
                 band = -1
             else:
                 band = self.bands_list[self.band_n]
-                # if band is None:
-                #     band = [0, self.fs/2]
             return band
         elif item == 'duration':
             return len(self.signal) / self.fs
@@ -493,7 +491,7 @@ class Signal:
             s = self.signal
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
-        if self.band[0] is not None:
+        if self.band is not None and self.band[0] is not None:
             low_freq = np.argmax(freq, self.band[0])
         else:
             low_freq = 0
@@ -907,25 +905,18 @@ class Signal:
         f = getattr(acoustic_indices, 'compute_' + name)
         return f(**kwargs)
 
-    def reduce_noise(self, noise_clip, prop_decrease=1.0, nfft=512, verbose=False):
+    def reduce_noise(self, nfft=512, verbose=False):
         """
         Remove the noise of the signal using the noise clip
 
         Parameters
         ----------
-        noise_clip : np.array
-            Signal representing the noise to be removed
-        prop_decrease : float
-            0 to 1 amout of noise to be removed (0 None, 1 All)
         nfft : int
             Window size to compute the spectrum
         verbose : boolean
             Set to True to plot the signal before and after the reduction
         """
-        s = nr.reduce_noise(audio_clip=self.signal, noise_clip=noise_clip,
-                            prop_decrease=prop_decrease, n_fft=nfft, win_length=nfft,
-                            verbose=False, n_grad_freq=1, n_grad_time=1,
-                            hop_length=int(nfft * 0.2))
+        s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
         if verbose:
             _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
             fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
