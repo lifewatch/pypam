@@ -183,7 +183,7 @@ class ImpulseDetector:
             n1 = max(int((t - self.min_separation) * s.fs), 0)
             n2 = min(int((t + duration + self.min_separation) * s.fs), s.signal.shape[0])
             event = Event(s.signal, s.fs, start=n1, end=n2)
-            event.reduce_noise(nfft=512, verbose=False)
+            event.reduce_noise(nfft=512, verbose=True)
             event.cut(start_n - n1, end_n - n1)
         else:
             event = Event(s.signal, s.fs, start_n, end_n)

@@ -116,24 +116,24 @@ class Signal:
         """
         if band != self.band:
             # Restart the signal to the original one
+            self.band_n += 1
+            self._processed[self.band_n] = []
+            self.bands_list[self.band_n] = band
             if band is None:
                 self.signal = self._signal.copy()
                 self.fs = self._fs
             else:
-                if band[1] > self.fs / 2:
-                    # Reset to the original data
-                    self.signal = self._signal.copy()
-                    self.fs = self._fs
                 if band[1] > self._fs / 2:
                     print('Band upper limit %s is too big, setting to maximum fs: new band' % (band[1], self._fs/2))
                     band[1] = self._fs / 2
+                elif band[1] > self.fs / 2:
+                    # Reset to the original data
+                    self.signal = self._signal.copy()
+                    self.fs = self._fs
                 if downsample:
                     self.downsample2band(band)
                 else:
                     self.filter(band=band)
-            self.band_n += 1
-            self._processed[self.band_n] = []
-            self.bands_list[self.band_n] = band
         self._reset_spectro()
 
     def reset_original(self):
@@ -194,6 +194,7 @@ class Signal:
         ratio_up = int(lcm / self.fs)
         ratio_down = int(lcm / new_fs)
         self.signal = sig.sosfilt(filt, self.signal)
+        self._processed[self.band_n].append('filtered')
         self.signal = sig.resample_poly(self.signal, up=ratio_up, down=ratio_down)
         self._processed[self.band_n].append('downsample')
         self.fs = new_fs
