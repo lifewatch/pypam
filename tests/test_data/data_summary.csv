@@ -1,0 +1,2 @@
+deployment_name,instrument_name,instrument_sensitivity,instrument_amp,instrument_Vpp,folder_path,utc,include_dirs,calibration_time,cal_freq,max_cal_duration,dc_subtract,etn_id,method,instrument_depth
+station_1,SoundTrap,-172.8,0,2,./test_data,1,0,0,NA,NA,NA,etn_test,drift,4

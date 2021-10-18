@@ -138,7 +138,7 @@ class LoudEventDetector:
         n_end = n_start + duration_samples
         if n_end > s.signal.shape[0]:
             n_end = s.signal.shape[0]
-        event = Event(s.signal[n_start:n_end], s.fs)
+        event = Event(s.signal, s.fs, start=n_start, end=n_end)
         return event
 
 

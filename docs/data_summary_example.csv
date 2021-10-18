@@ -1,0 +1,2 @@
+deployment_name,instrument_name,instrument_sensitivity,instrument_amp,instrument_Vpp,folder_path,utc,include_dirs,calibration_time,cal_freq,max_cal_duration,dc_subtract,etn_id,method,instrument_depth
+station_1,SoundTrap, -170 (in dB re 1 uPa),0 (in dB),2 (in V),path_to_wavs,1,0,0,NA,NA,NA,0 (example of optional metadata),Drift (example of optional metadata),5 (in m)  (example of optional metadata)

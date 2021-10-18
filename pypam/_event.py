@@ -21,7 +21,7 @@ class Event(Signal):
 
         Parameters
         ----------
-        signal : 1D numpy array
+        total_signal : 1D numpy array
             Signal contaning the event
         start :
         fs : int

@@ -21,12 +21,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
+import xarray
 
 from pypam import loud_event_detector
 from pypam import utils
 from pypam.acoustic_file import HydroFile
 
-pd.plotting.register_matplotlib_converters()
 # Apply the default theme
 sns.set_theme()
 
@@ -42,7 +42,6 @@ class ASA:
                  nfft=1.0,
                  period=None,
                  band=None,
-                 freq_resolution='all',
                  utc=True,
                  channel=0,
                  calibration_time=0.0,
@@ -89,7 +88,6 @@ class ASA:
         self.binsize = binsize
         self.nfft = nfft
         self.band = band
-        self.freq_resolution = freq_resolution
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
@@ -135,14 +133,12 @@ class ASA:
                                utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
                                cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
                                dc_subtract=self.dc_subtract)
-        # Update the hydrophone parameters in case thye have changed
-        self.hydrophone = hydro_file.hydrophone 
         return hydro_file
 
     def evolution_multiple(self, method_list: list, **kwargs):
         """
         Compute the method in each file and output the evolution
-        Returns a DataFrame with datetime as index and one row for each bin of each file
+        Returns a xarray DataSet with datetime as index and one row for each bin of each file
 
         Parameters
         ----------
@@ -151,13 +147,13 @@ class ASA:
         **kwargs :
             Any accepted parameter for the method_name
         """
-        df = pd.DataFrame()
+        ds = xarray.Dataset()
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
                                   nfft=self.nfft, **kwargs)
         for sound_file in self._files():
-            df_output = f(sound_file)
-            df = df.append(df_output)
-        return df
+            ds_output = f(sound_file)
+            ds = ds.merge(ds_output)
+        return ds
 
     def evolution(self, method_name, **kwargs):
         """
@@ -174,25 +170,25 @@ class ASA:
             Name of the method of the acoustic_file class to compute
         Returns
         -------
-        A pandas DataFrame with a row per bin with the method name output
+        A xarray DataSet with a row per bin with the method name output
         """
-        df = pd.DataFrame()
+        ds = xarray.Dataset()
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
         for sound_file in self._files():
-            df_output = f(sound_file)
-            df = df.append(df_output)
-        return df
+            ds_output = f(sound_file)
+            ds = ds.merge(ds_output)
+        return ds
 
-    def timestamps_df(self):
+    def timestamps_array(self):
         """
-        Return a pandas dataframe with the timestamps of each bin.
+        Return an xarray DataSet with the timestamps of each bin.
         """
-        df = pd.DataFrame()
-        f = operator.methodcaller('timestamps_df', binsize=self.binsize)
+        ds = xarray.Dataset()
+        f = operator.methodcaller('timestamps_ds', binsize=self.binsize)
         for sound_file in self._files():
-            df_output = f(sound_file)
-            df = df.append(df_output)
-        return df
+            ds_output = f(sound_file)
+            ds = ds.merge(ds_output)
+        return ds
 
     def start_end_timestamp(self):
         """
@@ -273,8 +269,8 @@ class ASA:
             List of all the frequencies
         bin_edges : list
             List of the psd values of the distribution
-        spd : DataFrame
-            DataFrame with 'frequency' as index and a column for each psd bin and for
+        spd : xarray DataSet
+            xarray DataSet with 'frequency' as index and a column for each psd bin and for
             each percentile
         percentiles : array like
             List of the percentiles calculated
@@ -282,14 +278,14 @@ class ASA:
             Matrix with all the probabilities
         """
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
-        fbands = psd_evolution['band_density'].columns
-        pxx = psd_evolution['band_density'][fbands].to_numpy(dtype=np.float).T
+        fbands = psd_evolution.bands
+        pxx = psd_evolution['band_density'].to_numpy().T
         # Calculate the bins of the psd values and compute spd using numba
         if min_val is None:
             min_val = pxx.min()
         if max_val is None:
             max_val = pxx.max()
-        bin_edges = np.arange(start=min_val, stop=max_val, step=h)
+        bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
         if percentiles is None:
             percentiles = []
         spd, p = utils.sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0,
@@ -328,14 +324,14 @@ class ASA:
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
-                        df = pd.read_csv(metadata_file)
-                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
-                        df_first = df[df['datetime'] < start_date]
-                        df_second = df[df['datetime'] >= start_date]
-                        df_first.to_csv(metadata_file)
+                        ds = pd.read_csv(metadata_file)
+                        ds['datetime'] = pd.to_datetime(ds['unix time'] * 1e9)
+                        ds_first = ds[ds['datetime'] < start_date]
+                        ds_second = ds[ds['datetime'] >= start_date]
+                        ds_first.to_csv(metadata_file)
                         new_metadata_path = second.parent.joinpath(
                             second.name.replace('.wav', extensions[i]))
-                        df_second.to_csv(new_metadata_path)
+                        ds_second.to_csv(new_metadata_path)
                         # Move the file
                         move_file(new_metadata_path, folder_path)
                     else:
@@ -349,14 +345,14 @@ class ASA:
                 # Split the metadata files
                 for i, metadata_file in enumerate(file_list[1:]):
                     if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
-                        df = pd.read_csv(metadata_file)
-                        df['datetime'] = pd.to_datetime(df['unix time'] * 1e9)
-                        df_first = df[df['datetime'] < start_date]
-                        df_second = df[df['datetime'] >= start_date]
-                        df_first.to_csv(metadata_file)
+                        ds = pd.read_csv(metadata_file)
+                        ds['datetime'] = pd.to_datetime(ds['unix time'] * 1e9)
+                        ds_first = ds[ds['datetime'] < start_date]
+                        ds_second = ds[ds['datetime'] >= start_date]
+                        ds_first.to_csv(metadata_file)
                         new_metadata_path = second.parent.joinpath(
                             second.name.replace('.wav', extensions[i]))
-                        df_second.to_csv(new_metadata_path)
+                        ds_second.to_csv(new_metadata_path)
                     # Move the file (also if log)
                     move_file(metadata_file, folder_path)
 
@@ -373,7 +369,7 @@ class ASA:
 
     def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, **kwargs):
         """
-        Return a DataFrame with all the piling events and their rms, sel and peak values
+        Return a xarray DataSet with all the piling events and their rms, sel and peak values
 
         Parameters
         ----------
@@ -389,19 +385,19 @@ class ASA:
         verbose : boolean
             Set to True to plot the detected events per bin
         """
-        df = pd.DataFrame()
+        ds = xarray.Dataset()
         for sound_file in self._files():
-            df_output = sound_file.detect_piling_events(min_separation=min_separation,
+            ds_output = sound_file.detect_piling_events(min_separation=min_separation,
                                                         threshold=threshold,
                                                         max_duration=max_duration,
                                                         dt=dt, binsize=self.binsize,
                                                         verbose=verbose, **kwargs)
-            df = df.append(df_output)
-        return df
+            ds = ds.merge(ds_output)
+        return ds
 
     def detect_ship_events(self, min_duration, threshold):
         """
-        Return a DataFrame with all the piling events and their rms, sel and peak values
+        Return a xarray DataSet with all the piling events and their rms, sel and peak values
 
         Parameters
         ----------
@@ -410,7 +406,7 @@ class ASA:
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         """
-        df = pd.DataFrame()
+        ds = xarray.Dataset()
         last_end = None
         detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                     threshold=threshold)
@@ -425,12 +421,12 @@ class ASA:
                     detector.reset()
             last_end = end_datetime
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = sound_file.detect_ship_events(min_duration=min_duration,
+                ds_output = sound_file.detect_ship_events(min_duration=min_duration,
                                                           threshold=threshold,
                                                           binsize=self.binsize, detector=detector,
                                                           verbose=True)
-                df = df.append(df_output)
-        return df
+                ds = ds.merge(ds_output)
+        return ds
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
@@ -505,7 +501,7 @@ class ASA:
         rms_evolution['hour'] = rms_evolution.index.time
         dates = rms_evolution['dates'].unique()
         hours = rms_evolution['hours'].unique()
-        daily_patterns = pd.DataFrame()
+        daily_patterns = xarray.Dataset()
         for date in dates:
             for hour in hours:
                 rms = rms_evolution[(rms_evolution['date'] == date) and
@@ -552,7 +548,7 @@ class ASA:
         else:
             units = 'uPa^2'
 
-        return self._plot_spectrum_mean(df=power, units=units, col_name='spectrum',
+        return self._plot_spectrum_mean(ds=power, units=units, col_name='spectrum',
                                         output_name='SPLrms', save_path=save_path, log=log)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
@@ -575,16 +571,16 @@ class ASA:
         else:
             units = 'uPa^2'
 
-        return self._plot_spectrum_mean(df=psd, units=units, col_name='density',
+        return self._plot_spectrum_mean(ds=psd, units=units, col_name='density',
                                         output_name='PSD', save_path=save_path, log=log)
 
-    def _plot_spectrum_mean(self, df, units, col_name, output_name, save_path=None, log=True):
+    def _plot_spectrum_mean(self, ds, units, col_name, output_name, save_path=None, log=True):
         """
         Plot the mean spectrum
 
         Parameters
         ----------
-        df : DataFrame
+        ds : xarray DataSet
             Output of evolution
         units : string
             Units of the spectrum
@@ -597,9 +593,9 @@ class ASA:
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
-        fbands = df['band_' + col_name].columns
+        fbands = ds['band_' + col_name].columns
         plt.figure()
-        mean_spec = df['band_' + col_name][fbands].mean(axis=0)
+        mean_spec = ds['band_' + col_name][fbands].mean(axis=0)
         plt.plot(fbands, mean_spec)
         plt.title(col_name.capitalize())
         plt.xlabel('Frequency [Hz')
@@ -609,9 +605,9 @@ class ASA:
             plt.xscale('log')
 
         # Plot the percentile lines
-        percentiles = df['percentiles'].mean(axis=0).values
+        percentiles = ds['percentiles'].mean(axis=0).values
         plt.hlines(y=percentiles, xmin=fbands.min(), xmax=fbands.max(),
-                   label=df['percentiles'].columns)
+                   label=ds['percentiles'].columns)
 
         plt.tight_layout()
         if save_path is not None:
@@ -639,7 +635,7 @@ class ASA:
             units = 'db re 1V %s uPa^2' % self.p_ref
         else:
             units = 'uPa^2'
-        self._plot_ltsa(df=power_evolution, col_name='spectrum',
+        self._plot_ltsa(ds=power_evolution, col_name='spectrum',
                         output_name='SPLrms', units=units, save_path=save_path)
 
         return power_evolution
@@ -661,18 +657,18 @@ class ASA:
             units = 'db re 1V %s uPa^2/Hz' % self.p_ref
         else:
             units = 'uPa^2/Hz'
-        self._plot_ltsa(df=psd_evolution, col_name='density',
+        self._plot_ltsa(ds=psd_evolution, col_name='density',
                         output_name='PSD', units=units, save_path=save_path)
 
         return psd_evolution
 
-    def _plot_ltsa(self, df, col_name, output_name, units, save_path=None):
+    def _plot_ltsa(self, ds, col_name, output_name, units, save_path=None):
         """
-        Plot the evolution of the df containing percentiles and band values
+        Plot the evolution of the ds containing percentiles and band values
 
         Parameters
         ----------
-        df : DataFrame
+        ds : xarray DataSet
             Output of evolution
         units : string
             Units of the spectrum
@@ -686,9 +682,9 @@ class ASA:
         # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
         fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
-        fbands = df['band_' + col_name].columns
-        im = ax[0, 0].pcolormesh(df.index, fbands,
-                                 df['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
+        fbands = ds['band_' + col_name].columns
+        im = ax[0, 0].pcolormesh(ds.index, fbands,
+                                 ds['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
                                  shading='auto')
         ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
         ax[0, 0].set_xlabel('Time')
@@ -698,11 +694,11 @@ class ASA:
         # Remove the unused axes
         ax[1, 1].remove()
 
-        ax[1, 0].plot(df['percentiles'])
+        ax[1, 0].plot(ds['percentiles'])
         ax[1, 0].set_title('Percentiles evolution')
         ax[1, 0].set_xlabel('Time')
         ax[1, 0].set_ylabel('%s [%s]' % (output_name, units))
-        ax[1, 0].legend(df['percentiles'].columns.values)
+        ax[1, 0].legend(ds['percentiles'].columns.values)
 
         plt.tight_layout()
         if save_path is not None:
@@ -754,6 +750,14 @@ class ASA:
         plt.close()
 
         return fbands, bin_edges, spd, percentiles, p
+
+    def save(self, file_path):
+        """
+        Save the ASA with all the computed values
+        Returns
+        -------
+
+        """
 
 
 class AcousticFolder:

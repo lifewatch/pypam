@@ -214,7 +214,7 @@ class ImpulseDetector:
             start, duration, end = e
             event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
-            _, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
+            _, psd = event.spectrum(scaling='spectrum', nfft=128)
             events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
             events_df.at[i, ('psd', freq)] = psd
         return events_df

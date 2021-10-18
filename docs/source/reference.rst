@@ -19,13 +19,6 @@ Acoustic Survey
    :undoc-members:
    :show-inheritance:
 
-GeoLocation
-^^^^^^^^^^^
-
-.. automodule:: pypam.geolocation
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Event Detectors
 ^^^^^^^^^^^^^^^
@@ -41,7 +34,7 @@ Event
 Piling Detector
 ~~~~~~~~~~~~~~~
 
-.. automodule:: pypam.piling_detector
+.. automodule:: pypam.impulse_detector
    :members:
    :undoc-members:
    :show-inheritance:

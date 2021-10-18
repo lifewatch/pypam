@@ -124,7 +124,7 @@ class Signal:
                 self.fs = self._fs
             else:
                 if band[1] > self._fs / 2:
-                    print('Band upper limit %s is too big, setting to maximum fs: new band' % (band[1], self._fs/2))
+                    print('Band upper limit %s is too big, setting to maximum fs: new fs %s' % (band[1], self._fs/2))
                     band[1] = self._fs / 2
                 elif band[1] > self.fs / 2:
                     # Reset to the original data
@@ -205,8 +205,8 @@ class Signal:
         In case the ratio is not an int, the closest int is chosen.
         Parameters
         ----------
-        new_fs : int
-            New sampling rate
+        band : tuple
+            Band to downsample to (low_freq, high_freq)
         """
         new_fs = band[1] * 2
         if new_fs != self.fs:
@@ -504,8 +504,7 @@ class Signal:
 
     # TODO implement stft!
 
-    def spectrum(self, scaling='density', window_t=1.0, nfft=512, db=True, percentiles=None, mode='fast',
-                 force_calc=False, **kwargs):
+    def spectrum(self, scaling='density', nfft=512, db=True, mode='fast', force_calc=False, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and
@@ -519,29 +518,20 @@ class Signal:
             Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
-        percentiles : list
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
         mode : string
             If set to 'fast', the signal will be zero padded up to the closest power of 2
         force_calc : bool
             Set to True if the computation has to be forced
         Returns
         -------
-        Frequency array, psd values, percentiles values
+        Frequency array, psd values
         """
         if self.psd is None or force_calc:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, mode=mode)
 
-        if percentiles is not None:
-            percentiles_val = np.percentile(self.psd, percentiles)
-        else:
-            percentiles_val = None
+        return self.freq, self.psd
 
-        return self.freq, self.psd, percentiles_val
-
-    def spectrum_slope(self, scaling='density', nfft=512, db=True, mode='fast',
-                       **kwargs):
+    def spectrum_slope(self, scaling='density', nfft=512, db=True, mode='fast', **kwargs):
         """
         Return the slope of the spectrum
 
