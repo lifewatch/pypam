@@ -88,9 +88,14 @@ oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=T
 ### Acoustic Dataset
 To create an acoustic dataset made out of several deployments (with different metadata), first it is necessary to 
 create a csv file where each row is a deployment. You can find an example in docs/data_summary_example.csv. There is 
-also a test file in tests/test_data/data_summary.csv.
+also a test file in tests/test_data/data_summary.csv. 
 This metadata information will be at one point linked with the download output of ETN Underwater Acoustics 
 (https://www.lifewatch.be/etn/), but now the csv has to be manually created.
+
+So far, all the fields up to dc_subtract (see example) have to be present in the csv file (even if they are left blank). 
+If some extra metadata should be added per deployment, then columns can be added (in the example, etn_id, 
+instrument_depth and method).
+
 A Dataset is a conjunction of AcousticSurveys to be studied together. The output is always in a structured folder.
 * output_folder/
     * deployments/: contains one netcdf file per deployment processed
@@ -104,7 +109,6 @@ A Dataset is a conjunction of AcousticSurveys to be studied together. The output
 ```python 
 # Acoustic Data
 summary_path = pathlib.Path('./test_data/data_summary.csv')
-include_dirs = False
 
 # Output folder
 output_folder = summary_path.parent.joinpath('data_exploration')
