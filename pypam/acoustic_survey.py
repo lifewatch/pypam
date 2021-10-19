@@ -20,12 +20,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from tqdm import tqdm
 import xarray
+from tqdm import tqdm
 
 from pypam import loud_event_detector
 from pypam import utils
-from pypam.acoustic_file import HydroFile
+from pypam.acoustic_file import AcuFile
 
 # Apply the default theme
 sns.set_theme()
@@ -108,7 +108,7 @@ class ASA:
 
     def _files(self):
         """
-        Iterator that returns HydroFile for each wav file in the folder
+        Iterator that returns AcuFile for each wav file in the folder
         """
         for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
@@ -119,7 +119,7 @@ class ASA:
 
     def _hydro_file(self, wav_file):
         """
-        Return the HydroFile object from the wav_file
+        Return the AcuFile object from the wav_file
         Parameters
         ----------
         wav_file : str or Path
@@ -127,12 +127,12 @@ class ASA:
 
         Returns
         -------
-        Object HydroFile
+        Object AcuFile
         """
-        hydro_file = HydroFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                               utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                               cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
-                               dc_subtract=self.dc_subtract)
+        hydro_file = AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
+                             utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                             cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
+                             dc_subtract=self.dc_subtract)
         return hydro_file
 
     def evolution_multiple(self, method_list: list, **kwargs):
@@ -143,7 +143,7 @@ class ASA:
         Parameters
         ----------
         method_list : string
-            Method name present in HydroFile
+            Method name present in AcuFile
         **kwargs :
             Any accepted parameter for the method_name
         """
@@ -215,7 +215,7 @@ class ASA:
         Parameters
         ----------
         method_name : string
-            Method name present in HydroFile
+            Method name present in AcuFile
         **kwargs :
             Any accepted parameter for the method_name
 
@@ -262,16 +262,13 @@ class ASA:
         percentiles : list
             All the percentiles that have to be returned. If set to None, no percentiles
             is returned
+        min_val : float
+            Minimum value to compute the SPD histogram
+        max_val : float
+            Maximum value to compute the SPD histogram
 
         Returns
         -------
-        fbands : list
-            List of all the frequencies
-        bin_edges : list
-            List of the psd values of the distribution
-        spd : xarray DataSet
-            xarray DataSet with 'frequency' as index and a column for each psd bin and for
-            each percentile
         percentiles : array like
             List of the percentiles calculated
         p : numpy matrix
@@ -430,16 +427,17 @@ class ASA:
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
-
+        Separate the signal in n_sources sources, using non negative matrix factorization
         Parameters
         ----------
         window_time: float
             Duration of the window in seconds
         n_sources: int
             Number of sources to separate the sound in
-
-        Returns
-        -------
+        save_path: str or Path
+            Where to save the output
+        verbose: bool
+            Set to True to make plots of the process
 
         """
         for sound_file in self._files():
@@ -452,7 +450,7 @@ class ASA:
         Parameters
         ----------
         method_name : string
-            Plot method present in HydroFile
+            Plot method present in AcuFile
         **kwargs : Any accepted in the method_name
         """
         self.apply_to_all(method_name=method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
@@ -473,9 +471,9 @@ class ASA:
         plt.plot(rms_evolution['rms'])
         plt.xlabel('Time')
         if db:
-            units = 'db re 1V %s uPa' % self.p_ref
+            units = r'db re 1V %s $\mu Pa$' % self.p_ref
         else:
-            units = 'uPa'
+            units = r'$\mu Pa$'
         plt.title('Evolution of the broadband rms value')  # Careful when filter applied!
         plt.ylabel('rms [%s]' % units)
         plt.tight_layout()
@@ -497,8 +495,8 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db)
-        rms_evolution['date'] = rms_evolution.index.date.unique()
-        rms_evolution['hour'] = rms_evolution.index.time
+        rms_evolution['date'] = rms_evolution.datetime.date.unique()
+        rms_evolution['hour'] = rms_evolution.datetime.time
         dates = rms_evolution['dates'].unique()
         hours = rms_evolution['hours'].unique()
         daily_patterns = xarray.Dataset()
@@ -516,9 +514,9 @@ class ASA:
         plt.ylabel('Days')
 
         if db:
-            units = 'db re 1V %s uPa' % self.p_ref
+            units = r'db re 1V %s $\mu Pa $' % self.p_ref
         else:
-            units = 'uPa'
+            units = r'$\mu Pa $'
         cbar = plt.colorbar(im)
         cbar.set_label('rms [%s]' % units, rotation=270)
         plt.tight_layout()
@@ -544,9 +542,9 @@ class ASA:
         """
         power = self.evolution(method_name='power_spectrum', db=db, **kwargs)
         if db:
-            units = 'db re 1V %s uPa^2' % self.p_ref
+            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
-            units = 'uPa^2'
+            units = r'$\mu Pa^2$'
 
         return self._plot_spectrum_mean(ds=power, units=units, col_name='spectrum',
                                         output_name='SPLrms', save_path=save_path, log=log)
@@ -567,9 +565,9 @@ class ASA:
         """
         psd = self.evolution(method_name='psd', db=db, **kwargs)
         if db:
-            units = 'db re 1V %s uPa^2' % self.p_ref
+            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
-            units = 'uPa^2'
+            units = r'$\mu Pa^2$'
 
         return self._plot_spectrum_mean(ds=psd, units=units, col_name='density',
                                         output_name='PSD', save_path=save_path, log=log)
@@ -593,12 +591,11 @@ class ASA:
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
-        fbands = ds['band_' + col_name].columns
         plt.figure()
-        mean_spec = ds['band_' + col_name][fbands].mean(axis=0)
-        plt.plot(fbands, mean_spec)
+        mean_spec = ds[col_name].mean(axis=0)
+        plt.plot(ds.frequency, mean_spec)
         plt.title(col_name.capitalize())
-        plt.xlabel('Frequency [Hz')
+        plt.xlabel('Frequency [Hz]')
         plt.ylabel('%s [%s]' % (output_name, units))
 
         if log:
@@ -606,7 +603,7 @@ class ASA:
 
         # Plot the percentile lines
         percentiles = ds['percentiles'].mean(axis=0).values
-        plt.hlines(y=percentiles, xmin=fbands.min(), xmax=fbands.max(),
+        plt.hlines(y=percentiles, xmin=ds.frequency.min(), xmax=ds.frequency.max(),
                    label=ds['percentiles'].columns)
 
         plt.tight_layout()
@@ -616,7 +613,7 @@ class ASA:
             plt.show()
         plt.close()
 
-        return fbands, mean_spec, percentiles
+        return ds.frequency, mean_spec, percentiles
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
@@ -632,9 +629,9 @@ class ASA:
         """
         power_evolution = self.evolution('power_spectrum', db=db, **kwargs)
         if db:
-            units = 'db re 1V %s uPa^2' % self.p_ref
+            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
-            units = 'uPa^2'
+            units = r'$\mu Pa^2$'
         self._plot_ltsa(ds=power_evolution, col_name='spectrum',
                         output_name='SPLrms', units=units, save_path=save_path)
 
@@ -654,9 +651,9 @@ class ASA:
         """
         psd_evolution = self.evolution('psd', db=db, **kwargs)
         if db:
-            units = 'db re 1V %s uPa^2/Hz' % self.p_ref
+            units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
         else:
-            units = 'uPa^2/Hz'
+            units = r'$\mu Pa^2/Hz$'
         self._plot_ltsa(ds=psd_evolution, col_name='density',
                         output_name='PSD', units=units, save_path=save_path)
 
@@ -723,9 +720,9 @@ class ASA:
         """
         fbands, bin_edges, spd, percentiles, p = self.spd(db=db, **kwargs)
         if db:
-            units = 'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
+            units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
         else:
-            units = 'uPa^2/Hz'
+            units = r'$\mu Pa^2/Hz$'
 
         # Plot the EPD
         fig = plt.figure()

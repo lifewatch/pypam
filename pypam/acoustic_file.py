@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy as sci
-import scipy.integrate as integrate
 import seaborn as sns
 import soundfile as sf
 import xarray
@@ -56,7 +55,7 @@ class AcuFile:
         channel : int
             Channel to perform the calculations in
         calibration_time: float or str
-            If a float, the amount of seconds that are ignored at the beggning of the file. If 'auto' then
+            If a float, the amount of seconds that are ignored at the beginning of the file. If 'auto' then
             before the analysis, find_calibration_tone will be performed
         max_cal_duration: float
             Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
@@ -143,7 +142,7 @@ class AcuFile:
         Returns
         -------
         Iterates through all the bins, yields i, time_bin, signal
-        Where i is the index, time_bin is the datetime of the beggning of the block and signal is the signal object
+        Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
         of the bin
         """
         if blocksize is None:
@@ -209,7 +208,7 @@ class AcuFile:
         Parameters
         ----------
         calibration_time : float
-            Seconds to ignore at the beggining of the file
+            Seconds to ignore at the beginning of the file
         """
         self._start_frame = int(calibration_time * self.fs)
 
@@ -291,7 +290,7 @@ class AcuFile:
     def freq_resolution_window(self, freq_resolution):
         """
         Given the frequency resolution, window length needed to obtain it
-        Returns window lenght in samples
+        Returns window length in samples
 
         Parameters
         ----------
@@ -473,7 +472,7 @@ class AcuFile:
         band_list: list of tuples (or lists)
             List of all the bands to analyze. If set to None, broadband is analyzed
         binsize: float
-            Lenght in seconds of the bins to analyze
+            Length in seconds of the bins to analyze
         kwargs: any parameters that have to be passed to the methods
 
         Returns
@@ -616,7 +615,7 @@ class AcuFile:
         Parameters
         ----------
         binsize: float
-            Lenght in seconds of the bin to analyze
+            Length in seconds of the bin to analyze
         db: boolean
             Set to True if the result should be in decibels
         band: list or tuple
@@ -635,7 +634,7 @@ class AcuFile:
         Parameters
         ----------
         binsize: float
-            Lenght in seconds of the bin to analyze
+            Length in seconds of the bin to analyze
         db: boolean
             Set to True if the result should be in decibels
         band: list or tuple
@@ -656,7 +655,7 @@ class AcuFile:
         fraction: int
             Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
         binsize: float
-            Lenght in seconds of the bin to analyze
+            Length in seconds of the bin to analyze
         db: boolean
             Set to True if the result should be in decibels
         band: list or tuple
@@ -740,7 +739,7 @@ class AcuFile:
     def _spectrum(self, scaling='density', binsize=None, nfft=512, db=True, percentiles=None):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
-        Returns Dataframe with 'datetime' as index and a colum for each frequency and each
+        Returns Dataframe with 'datetime' as index and a column for each frequency and each
         percentile, and a frequency array
 
         Parameters
@@ -750,7 +749,7 @@ class AcuFile:
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
         nfft : int
-            Lenght of the fft window in samples. Power of 2.
+            Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         percentiles : list
@@ -771,12 +770,11 @@ class AcuFile:
         spectrum_ds = {spectrum_str: (['datetime', 'frequency'], np.zeros((n_blocks, len(fbands))))}
         for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band, downsample=downsample)
-            freq, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
-                                              percentiles=percentiles)
+            _, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db, percentiles=percentiles)
             spectrum_ds[spectrum_str][1][i, :] = spectra
 
         ds = self._create_dataset(data=spectrum_ds, blocksize=blocksize,
-                                  extra_coords={'frequency': freq},
+                                  extra_coords={'frequency': fbands},
                                   extra_attrs={'downsample': downsample})
 
         # TODO Add percentiles!
@@ -793,7 +791,7 @@ class AcuFile:
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
         nfft : int
-            Lenght of the fft window in samples. Power of 2.
+            Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         percentiles : list
@@ -815,7 +813,7 @@ class AcuFile:
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
         nfft : int
-            Lenght of the fft window in samples. Power of 2.
+            Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         percentiles : list
@@ -838,7 +836,7 @@ class AcuFile:
         h : float
             Histogram bin width (in the correspondent units, upa or db)
         nfft : int
-            Lenght of the fft window in samples. Power of 2.
+            Length of the fft window in samples. Power of 2.
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         percentiles : array_like
@@ -878,24 +876,6 @@ class AcuFile:
             edges_list.append(bin_edges)
 
         return time, fbands, percentiles, edges_list, spd_list, p_list
-
-    def correlation(self, signal, fs_signal, binsize=1.0):
-        """
-        Compute the correlation with the signal
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        signal : ndarray
-            Signal to be correlated with
-        fs_signal : int
-            Sampling frequency of the signal. It will be down/up sampled in case it does not match
-            with the file sampling frequency
-        """
-        # TODO
-        fs = 1
-        return fs
 
     def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None,
                              verbose=False, save_path=None, band=None, method=None):
@@ -949,7 +929,7 @@ class AcuFile:
             events_df = events_df.set_index('datetime')
             total_events = total_events.append(events_df)
         if save_path is not None:
-            csv_path = save_path.joinpath('%s.csv' %datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
+            csv_path = save_path.joinpath('%s.csv' % datetime.datetime.strftime(self.date, "%y%m%d_%H%M%S"))
             total_events.to_csv(csv_path)
         return total_events
 
@@ -1020,16 +1000,21 @@ class AcuFile:
             window time to consider in seconds
         n_sources : int
             Number of sources
+        save_path: str or Path
+            Where to save the output
+        verbose: bool
+            Set to True to make plots of the process
         """
         separator = nmf.NMF(window_time=window_time, rank=n_sources)
         for i, time_bin, signal in self._bins(self.file.frames):
             signal.set_band(self.band)
             W, H, WH_prod, G_tf, C_tf, c_tf = separator(signal, verbose=verbose)
-        return W, H, WH_prod, G_tf, C_tf, c_tf
+            # TODO decide how to return this output!
+            yield W, H, WH_prod, G_tf, C_tf, c_tf
 
     def find_calibration_tone(self, min_duration=10.0):
         """
-        Find the beggining and ending sample of the calibration tone
+        Find the beginning and ending sample of the calibration tone
         Returns start and end points, in seconds
 
         Parameters
@@ -1151,7 +1136,7 @@ class AcuFile:
             units = 'db %s upa^2' % self.p_ref
         else:
             units = 'upa^2'
-        self._plot_spectrum(df=power, col_name='spectrum', output_name='SPLrms', units=units,
+        self._plot_spectrum(ds=power, col_name='spectrum', output_name='SPLrms', units=units,
                             log=log, save_path=save_path)
 
     @staticmethod
@@ -1265,114 +1250,3 @@ class AcuFile:
             else:
                 plt.show()
             plt.close()
-
-
-class HydroFile(AcuFile):
-    def __init__(self, **kwargs):
-        """
-        Sound data recorded in a wav file with a hydrophone.
-
-        Parameters
-        ----------
-        sfile : Sound file
-            Can be a path or an file object
-        hydrophone : Object for the class hydrophone
-            Hydrophone used to record
-        band: tuple or list
-            Lowcut, Highcut. Frequency band to analyze
-        channel : int
-            Channel to perform the calculations in
-        calibration_time : float
-            Time to ignore at the beggining of the file
-        dc_subtract: bool
-            Set to True to subtract the dc noise (root mean squared value
-        """
-        super().__init__(**kwargs)
-
-
-class MEMSFile(AcuFile):
-    def __init__(self, sfile, hydrophone, acc_ref=1.0, band=None, utc=True, channel=0):
-        """
-        Acceleration data recorded in a wav file.
-
-        Parameters
-        ----------
-        sfile : Sound file
-            Can be a path or an file object
-        hydrophone : Object for the class hydrophone
-        acc_ref : float
-            Reference acceleration in um/s
-        band: tuple or list
-            Lowcut, Highcut. Frequency band to analyze
-        """
-        super().__init__(sfile, hydrophone, acc_ref, band, utc, channel)
-
-    def integrate_acceleration(self):
-        """
-        Integrate the acceleration to get the velocity of the particle.
-        The constant is NOT resolved
-        """
-        if self.instant:
-            raise Exception('This can only be implemented in average mode!')
-
-        velocity = integrate.cumtrapz(self.signal('acc'), dx=1 / self.fs)
-
-        return velocity
-
-
-class MEMS3axFile:
-    def __init__(self, hydrophone, xfile_path, yfile_path, zfile_path, acc_ref=1.0):
-        """
-        Class to treat the 3 axes together
-
-        Parameters
-        ----------
-        hydrophone : Object for the class hydrophone
-        xfile_path : string or Path
-            File where the X accelerometer data is
-        yfile_path : string or Path
-            File where the Y accelerometer data is
-        zfile_path : string or Path
-            File where the Z accelerometer data is
-        acc_ref : float
-            Reference acceleration in um/s
-        """
-        self.x_path = xfile_path
-        self.y_path = yfile_path
-        self.z_path = zfile_path
-
-        self.x = MEMSFile(hydrophone, xfile_path, acc_ref)
-        self.y = MEMSFile(hydrophone, yfile_path, acc_ref)
-        self.z = MEMSFile(hydrophone, zfile_path, acc_ref)
-
-    def acceleration_magnitude(self):
-        """
-        Calculate the magniture acceleration signal
-        """
-        x_acc = self.x.signal('acc')
-        y_acc = self.y.signal('acc')
-        z_acc = self.z.signal('acc')
-
-        return np.sqrt(x_acc ** 2 + y_acc ** 2 + z_acc ** 2)
-
-    def velocity_magnitude(self):
-        """
-        Get the start and the end velocity
-        """
-        vx = self.x.integrate_acceleration()
-        vy = self.y.integrate_acceleration()
-        vz = self.z.integrate_acceleration()
-
-        v = np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-
-        return v
-
-    def mean_velocity_increment(self):
-        """
-        Get the mean increment of the velocity
-        """
-        mean_acc = self.acceleration_magnitude().mean()
-        time = self.x._time_array()
-        t_inc = (time()[-1] - time()[0]).total_seconds()
-
-        return mean_acc * t_inc

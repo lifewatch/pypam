@@ -41,28 +41,28 @@ class TestASA(unittest.TestCase):
     def test_third_oct(self):
         self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 
-    # def test_detect_piling_events(self):
-    #     min_separation = 1
-    #     max_duration = 0.2
-    #     threshold = 20
-    #     dt = 2.0
-    #     detection_band = [500, 1000]
-    #
-    #     self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
-    #                                   threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
-    #                                   save_path=None)
+    def test_detect_piling_events(self):
+        min_separation = 1
+        max_duration = 0.2
+        threshold = 20
+        dt = 2.0
+        detection_band = [500, 1000]
+
+        self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
+                                      threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
+                                      save_path=None)
 
     def test_spd(self):
         h_db = 1
         percentiles = [1, 10, 50, 90, 95]
         fbands, bin_edges, spd_choco, _, p_choco = self.asa.spd(db=True, h=h_db, percentiles=percentiles)
 
-    # def test_detect_ship_events(self):
-    #     # just a smoke test to check if the function can run without errors
-    #     self.asa.detect_ship_events(0.1, 0.5)
+    def test_detect_ship_events(self):
+        # just a smoke test to check if the function can run without errors
+        self.asa.detect_ship_events(0.1, 0.5)
 
-    # def test_nmf(self):
-    #     self.asa.source_separation(1.0, 15, None, True)
+    def test_nmf(self):
+        self.asa.source_separation(1.0, 15, None, True)
 
 
 if __name__ == '__main__':

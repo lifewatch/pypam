@@ -83,6 +83,13 @@ class DataSet:
         self.metadata.to_csv(self.summary_path, index=False)
     
     def _deployments(self):
+        """
+        Iterates through all the deployments listed in the metadata file
+        Returns
+        -------
+        idx, deployment_name, deployment_path per iteration
+
+        """
         for idx in tqdm(self.metadata.index, total=len(self.metadata)):
             deployment_row = self.metadata.iloc[idx]
             deployment_path = self.output_folder.joinpath('deployments/%s_%s.netcdf' % (idx,
@@ -90,6 +97,17 @@ class DataSet:
             yield idx, deployment_row['deployment_name'], deployment_path
 
     def generate_deployment(self, idx):
+        """
+        Generate the deployment dataset for the index idx in the metadata file
+        Parameters
+        ----------
+        idx: int
+            Index of the deployment in the dataset
+
+        Returns
+        -------
+        ds: xarray Dataset
+        """
         hydrophone = self.instruments[self.metadata.loc[(idx, 'instrument_name')]]
         hydrophone.sensitivity = self.metadata.loc[(idx, 'instrument_sensitivity')]
         hydrophone.preamp_gain = self.metadata.loc[(idx, 'instrument_amp')]
@@ -190,24 +208,19 @@ class DataSet:
             plt.show()
             station_i += 1
 
-    def plot_third_octave_bands_avg(self, group_by='station_name'):
+    def plot_third_octave_bands_avg(self):
         """
-        Plot the average third octave bands
-        Parameters
-        ----------
-        group_by: string
-            Column in which to separate the plots. A figure will be generated for each group
+        Plot the average third octave bands per deployment
         """
         if self.third_octaves is False:
             raise Exception('This is only possible if third-octave bands have been computed!')
-        self.dataset.replace([np.inf, -np.inf], np.nan, inplace=True)
         station_i = 0
-        for station_name, deployment in self.dataset.groupby((group_by, 'all')):
+        for station_name, deployment in self.dataset.items():
             deployment['oct3'].mean(axis=0).plot()
             plt.title('1/3-octave bands average %s' % station_name)
             plt.xlabel('Frequency [Hz]')
             plt.xscale('log')
-            plt.ylabel('Average Sound Level [dB re 1 $\mu Pa$]')
+            plt.ylabel(r'Average Sound Level [dB re 1 $\mu Pa$]')
             plt.savefig(self.output_folder.joinpath('img/features_analysis/%s_%s_third_oct_avg.png' %
                                                     (station_i, station_name)))
             plt.show()
