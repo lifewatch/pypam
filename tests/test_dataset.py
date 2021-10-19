@@ -47,7 +47,7 @@ band_mf = [500, 2000]
 band_hf = [2000, 20000]
 band_list = [band_lf]
 features = ['rms', 'sel', 'aci']
-third_octaves = False
+third_octaves = None
 
 env_vars = ['shipping', 'time', 'shipwreck', 'habitat_suitability', 'seabed_habitat', 'sea_surface', 'sea_wave']
 
@@ -57,7 +57,7 @@ class TestDataset(unittest.TestCase):
         self.ds = dataset.DataSet(summary_path, output_folder, instruments, features, third_octaves, band_list, binsize,
                                   nfft)
 
-    def generate_dataset(self):
+    def test_generate_dataset(self):
         self.ds()
 
 

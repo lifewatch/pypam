@@ -446,10 +446,9 @@ class AcuFile:
 
         return metadata_attrs
 
-    def _create_dataset(self, data, freq, blocksize, extra_coords=None, extra_attrs=None):
+    def _create_dataset(self, data, blocksize, extra_coords=None, extra_attrs=None):
         time_array, start_sample, end_sample = self._time_array(blocksize)
         coords = {'datetime': time_array,
-                  'bands': np.arange(len(freq)),
                   'start_sample': ('datetime', start_sample),
                   'end_sample': ('datetime', end_sample)
                   }
@@ -524,9 +523,10 @@ class AcuFile:
                         output = None
                     methods_output[method_name][1][i, j] = output
 
-        ds = self._create_dataset(data=methods_output, freq=np.arange(len(sorted_bands)),
+        ds = self._create_dataset(data=methods_output,
                                   extra_coords={'band_lowfreq': ('bands', low_freqs),
-                                                'band_highfreq': ('bands', high_freqs)},
+                                                'band_highfreq': ('bands', high_freqs),
+                                                'bands': np.arange(len(sorted_bands))},
                                   blocksize=blocksize, extra_attrs={'downsample': downsample})
         return ds
 
@@ -678,13 +678,14 @@ class AcuFile:
         n_blocks = self._n_blocks(blocksize)
         oct_str = 'oct%s' % fraction
         # Define the array dimensions
-        methods_output = {oct_str: (['datetime', 'bands'], np.zeros((n_blocks, len(bands))))}
+        methods_output = {oct_str: (['datetime', 'frequency'], np.zeros((n_blocks, len(bands))))}
         for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(band, downsample=True)
             _, levels = signal.octave_levels(db, fraction)
             methods_output[oct_str][1][i, :] = levels
 
-        ds = self._create_dataset(data=methods_output, freq=bands, blocksize=blocksize,
+        ds = self._create_dataset(data=methods_output, blocksize=blocksize,
+                                  extra_coords={'frequency': bands},
                                   extra_attrs={'downsample': downsample})
         return ds
 
@@ -722,15 +723,16 @@ class AcuFile:
         else:
             blocksize = self.samples(binsize)
 
-        methods_output = {'spectrogram': (['datetime', 'bands'], [])}
+        methods_output = {'spectrogram': (['datetime', 'frequency'], [])}
         for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(self.band, downsample=downsample)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db, mode=mode)
             methods_output['spectrogram'][1].append = sxx
 
         methods_output['spectrogram'][1] = np.array(methods_output['spectrogram'][1])
-        ds = self._create_dataset(data=methods_output, freq=freq,
-                                  extra_coords={'bin_time': t},
+        ds = self._create_dataset(data=methods_output,
+                                  extra_coords={'bin_time': t,
+                                                'frequency': freq},
                                   blocksize=blocksize,
                                   extra_attrs={'downsample': downsample})
         return ds
@@ -766,14 +768,15 @@ class AcuFile:
         fbands = self._get_fbands(self.band, nfft, downsample=True)
         spectrum_str = 'band_' + scaling
         n_blocks = self._n_blocks(blocksize)
-        spectrum_ds = {spectrum_str: (['datetime', 'bands'], np.zeros((n_blocks, len(fbands))))}
+        spectrum_ds = {spectrum_str: (['datetime', 'frequency'], np.zeros((n_blocks, len(fbands))))}
         for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(band=self.band, downsample=downsample)
-            fbands, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
+            freq, spectra = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                               percentiles=percentiles)
             spectrum_ds[spectrum_str][1][i, :] = spectra
 
-        ds = self._create_dataset(data=spectrum_ds, freq=fbands, blocksize=blocksize,
+        ds = self._create_dataset(data=spectrum_ds, blocksize=blocksize,
+                                  extra_coords={'frequency': freq},
                                   extra_attrs={'downsample': downsample})
 
         # TODO Add percentiles!

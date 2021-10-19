@@ -9,4 +9,4 @@ docs/build/
 venv/
 .idea/
 *.wav
-data/
+tests/test_data/data_exploration

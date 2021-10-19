@@ -11,9 +11,8 @@ setuptools.setup(
     test_suite='tests',
     tests_require=['pypam'],
     packages=setuptools.find_packages(),
-    install_requires=['pandas', 'soundfile', 'numpy', 'pyhydrophone'],
+    install_requires=['pandas', 'soundfile', 'numpy'],
     extras_require={
-        "geolocation": ["geopandas", "contextily", "rtree", "Shapely"],
         "plotting": ["matplotlib", "seaborn"]
     },
     package_data={"pypam": ["data/*.*"]},
