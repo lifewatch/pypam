@@ -46,22 +46,6 @@ def cut_and_separate_files(folder, hydrophone):
                                        extensions=['.accel.csv', '.temp.csv', '.log.xml'])
 
 
-def separate_ref_signals(folder):
-    """
-    Run through all the data and cut and store the ref signals
-    """
-    metadata = pd.read_csv(folder.joinpath('metadata.csv'))
-    metadata = metadata.set_index('Location')
-    for shipwreck_path in folder.glob('**/*/'):
-        if shipwreck_path.is_dir():
-            shipwreck_name = shipwreck_path.parts[-1]
-            shipwreck_metadata = metadata.loc[shipwreck_name]
-            if shipwreck_metadata['Instrument'] != 'SoundTrap':
-                asa = acoustic_survey.ASA(bk, folder_path=shipwreck_path)
-                asa.apply_to_all('cut_calibration_tone', max_duration=120, freq=159.0, min_duration=10.0,
-                                 save_path=folder.joinpath(shipwreck_name + '_ref.wav'))
-
-
 if __name__ == "__main__":
     """
     Order the SoundTrap files in different folders

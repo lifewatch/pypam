@@ -7,7 +7,20 @@ folder where all the files are stored. The Dataset is a combination of different
 Then pypam allows to go through all the wav files from the deployments only with one line of code. 
 
 ## Installation
-1. Install pyhydrophone (follow the instructions): https://github.com/lifewatch/pyhydrophone
+### Requirements and Suggestions
+This installation process assumes you have ssh keys on github setup correctly. In case you don't know how to do it, 
+here is a nice tutorial:  https://www.inmotionhosting.com/support/server/ssh/how-to-add-ssh-keys-to-your-github-account/
+
+We strongly advise to use a proper python virtualenv environment to keep package dependencies nicely non conflicting
+
+If your ssh keys are set up correctly, you should be able to install the requirements by: 
+```
+    pip install -r requirements.txt 
+```
+(pyhydrophone will be automatically downloaded and installed using your ssh key)
+
+In case you can't set up your ssh keys working, don't panic! Try this way:
+1. Install FIRST pyhydrophone (follow the instructions): https://github.com/lifewatch/pyhydrophone
 
 2. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the remaining dependencies
     ```bash
@@ -72,15 +85,15 @@ from pypam import acoustic_survey
 # Soundtrap
 model = 'ST300HF'
 name = 'SoundTrap'
-serial_number = 0000
+serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
 
 # Analysis parameters
 features = ['rms', 'sel', 'peak', 'aci']
-band_list = [[10,100], [500, 1000], [500, 100000]]
+band_list = [[10, 100], [500, 1000], [500, 100000]]
 third_octaves = None  # Calculate third octaves for the entire freq range
 
-asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='./test_data', binsize=60.0)
+asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=60.0)
 features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
 oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 ```
@@ -107,8 +120,13 @@ A Dataset is a conjunction of AcousticSurveys to be studied together. The output
         * spatial_features/: spatial plots (in a map) of the features
 
 ```python 
+import pathlib
+
+import pyhydrophone as pyhy
+import pypam
+
 # Acoustic Data
-summary_path = pathlib.Path('./test_data/data_summary.csv')
+summary_path = pathlib.Path('./../tests/test_data/data_summary.csv')
 
 # Output folder
 output_folder = summary_path.parent.joinpath('data_exploration')
@@ -150,8 +168,9 @@ band_list = [band_lf]
 features = ['rms', 'sel', 'aci']
 third_octaves = None
 
-ds = dataset.DataSet(summary_path, output_folder, instruments, features, third_octaves, band_list, binsize,
-                                  nfft)
+# Create the dataset object
+ds = pypam.DataSet(summary_path, output_folder, instruments, features, third_octaves, band_list, binsize,
+                   nfft)
 # Call the dataset creation. Will create the files in the corresponding folder
 ds()
 ```

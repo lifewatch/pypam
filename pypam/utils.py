@@ -188,6 +188,22 @@ def to_db(wave, ref=1.0, square=False):
     return db
 
 
+@nb.jit
+def oct_fbands(min_freq, max_freq, fraction):
+    min_band_n = 0
+    max_band_n = 0
+    while 1000 * 2 ** (min_band_n / fraction) > min_freq:
+        min_band_n = min_band_n - 1
+    while 1000 * 2 ** (max_band_n / fraction) < max_freq:
+        max_band_n += 1
+    bands = np.arange(min_band_n, max_band_n)
+
+    # construct time and frequency arrays
+    f = 1000 * (2 ** (bands / fraction))
+
+    return bands, f
+
+
 def octdsgn(fc, fs, fraction=1, n=2):
     """
     Design of a octave band filter with center frequency fc for sampling frequency fs.

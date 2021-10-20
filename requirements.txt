@@ -4,7 +4,7 @@ ggplot==0.11.5
 jupyter==1.0.0
 pip-chill==1.0.1
 pydocstyle==5.1.1
-pyhydrophone==0.1
+-e git+ssh://git@github.com/lifewatch/pyhydrophone.git#egg=pyhydrophone
 rope==0.17.0
 seaborn==0.11.1
 sklearn==0.0

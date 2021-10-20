@@ -27,7 +27,7 @@ from pypam import impulse_detector
 from pypam import loud_event_detector
 from pypam import nmf
 from pypam import utils
-from pypam.signal import Signal
+from pypam import signal as sig
 
 pd.plotting.register_matplotlib_converters()
 
@@ -154,7 +154,7 @@ class AcuFile:
             time_bin = self.time_bin_i(blocksize, i)
             # Read the signal and prepare it for analysis
             signal_upa = self.wav2upa(wav=block)
-            signal = Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+            signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             if self.dc_subtract:
                 signal.remove_dc()
             yield i, time_bin, signal
@@ -672,19 +672,22 @@ class AcuFile:
         else:
             blocksize = int(binsize * self.fs)
 
-        bands = np.arange(-16, 11)
-        bands = 1000 * ((2 ** (1 / 3)) ** bands)
         n_blocks = self._n_blocks(blocksize)
+        if band is None:
+            max_freq = self.fs/2
+        else:
+            max_freq = band[1]
+        _, freq = utils.oct_fbands(sig.MIN_FREQ, max_freq, fraction)
         oct_str = 'oct%s' % fraction
         # Define the array dimensions
-        methods_output = {oct_str: (['datetime', 'frequency'], np.zeros((n_blocks, len(bands))))}
+        methods_output = {oct_str: (['datetime', 'frequency'], np.zeros((n_blocks, len(freq))))}
         for i, time_bin, signal in self._bins(blocksize):
             signal.set_band(band, downsample=True)
             _, levels = signal.octave_levels(db, fraction)
             methods_output[oct_str][1][i, :] = levels
 
         ds = self._create_dataset(data=methods_output, blocksize=blocksize,
-                                  extra_coords={'frequency': bands},
+                                  extra_coords={'frequency': freq},
                                   extra_attrs={'downsample': downsample})
         return ds
 
@@ -1027,7 +1030,7 @@ class AcuFile:
         tone_samples = self.samples(self.max_cal_duration)
         self.file.seek(0)
         first_part = self.file.read(frames=tone_samples)
-        signal = Signal(first_part, self.fs, channel=self.channel)
+        signal = sig.Signal(first_part, self.fs, channel=self.channel)
         signal.set_band(band=[low_freq, high_freq], downsample=False)
         amplitude_envelope = signal.envelope()
         possible_points = np.zeros(amplitude_envelope.shape)

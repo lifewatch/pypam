@@ -1,12 +1,8 @@
 __pycache__
 .vscode/
 .idea/
-csv
-*.m
-*.pkl
 pypam.egg-info/
 docs/build/
 venv/
 .idea/
-*.wav
 tests/test_data/data_exploration

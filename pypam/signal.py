@@ -28,6 +28,7 @@ sns.set_theme()
 
 
 FILTER_ORDER = 4
+MIN_FREQ = 25
 
 
 class Signal:
@@ -360,14 +361,12 @@ class Signal:
         fraction : int
             fraction of an octave to compute the bands (i.e. fraction=3 leads to 1/3 octave bands)
         """
+        bands, f = utils.oct_fbands(min_freq=MIN_FREQ, max_freq=self.fs/2, fraction=fraction)
+
         # construct filterbank
-        bands = np.arange(-16, 11)  # TODO make it an option for the user
         filterbank, fsnew, d = utils.octbankdsgn(self.fs, bands, fraction, 2)
+
         nx = d.max()  # number of downsampling steps
-
-        # construct time and frequency arrays
-        f = 1000 * ((2 ** (1 / 3)) ** bands)
-
         # calculate octave band levels
         spg = np.zeros(len(d))
         newx = {0: self.signal}
