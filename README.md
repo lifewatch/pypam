@@ -7,7 +7,12 @@ folder where all the files are stored. The Dataset is a combination of different
 Then pypam allows to go through all the wav files from the deployments only with one line of code. 
 
 ## Installation
-### Requirements and Suggestions
+# using pip distribution 
+```
+    pip install lifewatch-pypam
+```
+
+### Using cit clone
 This installation process assumes you have ssh keys on github setup correctly. In case you don't know how to do it, 
 here is a nice tutorial:  https://www.inmotionhosting.com/support/server/ssh/how-to-add-ssh-keys-to-your-github-account/
 
