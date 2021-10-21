@@ -1,5 +1,5 @@
 import pyhydrophone as pyhy
-from pypam import acoustic_survey
+import pypam
 
 # Soundtrap
 model = 'ST300HF'
@@ -7,12 +7,22 @@ name = 'SoundTrap'
 serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
 
-# Analysis parameters
-features = ['rms', 'sel', 'peak', 'aci']
-band_list = [[10, 100], [500, 1000], [500, 100000]]
-third_octaves = None  # Calculate third octaves for the entire freq range
+# SURVEY PARAMETERS
+nfft = 4096
+binsize = 30.0
+band_lf = [50, 500]
+band_hf = [500, 4000]
+band_list = [band_lf, band_hf]
+features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
+# features bi, nsdi ignored because of too low sampling frequency to compute them
+third_octaves = None
+dc_subtract = True
+
+include_dirs = False
+zipped_files = False
 
 if __name__ == "__main__":
-    asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=60.0)
+    asa = pypam.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=binsize, nfft=nfft, utc=True,
+                    include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
     features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
     oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)

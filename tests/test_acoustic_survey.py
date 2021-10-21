@@ -20,8 +20,7 @@ binsize = 60.0
 band_lf = [50, 500]
 band_hf = [500, 4000]
 band_list = [band_lf, band_hf]
-features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg',
-            'bn_peaks']
+features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg']
 third_octaves = None
 dc_subtract = True
 

@@ -151,13 +151,14 @@ class AcuFile:
             n_blocks = self._n_blocks(blocksize)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame)),
                              total=n_blocks, leave=False, position=0):
-            time_bin = self.time_bin_i(blocksize, i)
-            # Read the signal and prepare it for analysis
-            signal_upa = self.wav2upa(wav=block)
-            signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-            if self.dc_subtract:
-                signal.remove_dc()
-            yield i, time_bin, signal
+            if len(block) == blocksize:
+                time_bin = self.time_bin_i(blocksize, i)
+                # Read the signal and prepare it for analysis
+                signal_upa = self.wav2upa(wav=block)
+                signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+                if self.dc_subtract:
+                    signal.remove_dc()
+                yield i, time_bin, signal
         self.file.seek(0)
 
     def _get_fbands(self, band, nfft, downsample=True):

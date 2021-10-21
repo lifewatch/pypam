@@ -17,7 +17,7 @@ __credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
 __email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
 __status__ = "Development"
 
-import numba as nb
+from numba import njit
 import numpy as np
 from scipy import fftpack
 from scipy import signal as sig
@@ -52,7 +52,7 @@ from scipy import signal as sig
 #     return main_value, temporal_values
 
 
-@nb.jit
+@njit
 def compute_aci(sxx: np.ndarray):
     """
     Return the aci of the signal
@@ -80,7 +80,7 @@ def compute_aci(sxx: np.ndarray):
     return aci_val
 
 
-@nb.jit
+@njit
 def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     """
     Compute the Bioacoustic Index from the spectrogram of an audio signal.
@@ -136,7 +136,7 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     return area
 
 
-@nb.jit
+@njit
 def compute_sh(sxx):
     """
     Compute Spectral Entropy of Shannon from the spectrogram of an audio signal.
@@ -172,9 +172,8 @@ def compute_th(s):
     s: np.array
         Signal
     """
-    # env = abs(sig.hilbert(sig)) # Modulo of the Hilbert Envelope
-    env = np.abs(sig.hilbert(s, fftpack.helper.next_fast_len(len(s))))
     # Modulo of the Hilbert Envelope, computed with the next fast length window
+    env = np.abs(sig.hilbert(s, fftpack.helper.next_fast_len(len(s))))
 
     # Normalization
     env = env / np.sum(env)
@@ -247,7 +246,7 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
     return ndsi
 
 
-@nb.jit
+@njit
 def gini(values):
     """
     Compute the Gini index of values.
@@ -269,7 +268,7 @@ def gini(values):
     return g / n
 
 
-@nb.jit()
+@njit
 def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Evenness Index of an audio signal.
@@ -303,7 +302,7 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return gini(values)
 
 
-@nb.jit
+@njit
 def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Diversity Index.
@@ -357,7 +356,7 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return adi
 
 
-@nb.jit
+@njit
 def compute_zcr_avg(s, window_length=512, window_hop=256):
     """
     Compute the Zero Crossing Rate of an audio signal.
@@ -384,7 +383,7 @@ def compute_zcr_avg(s, window_length=512, window_hop=256):
     return np.mean(zcr_bins)
 
 
-@nb.jit
+@njit
 def compute_zcr(s):
     """
     Compute the Zero Crossing Rate of an audio signal.
@@ -398,62 +397,3 @@ def compute_zcr(s):
     A list of values (number of zero crossing for each window)
     """
     return len(np.where(np.diff(np.signbit(s)))[0]) / float(len(s))
-
-
-@nb.jit
-def compute_bn_peaks(sxx, frequencies, freqband=200, normalization=True, slopes=None):
-    """
-    Counts the number of major frequency peaks obtained on a mean spectrum.
-    Ref: Gasc, A., Sueur, J., Pavoine, S., Pellens, R., & Grandcolas, P. (2013). Biodiversity
-    sampling using a global acoustic approach: contrasting sites with microendemics in
-    New Caledonia. PloS one, 8(5), e65311.
-
-    Parameters
-    ----------
-    sxx: np.array 2D
-        Spectrogram of the audio signal
-    frequencies: np.array 1D
-        List of the frequencies of the spectrogram
-    freqband: int or float
-        frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
-        is less than this threshold, then the peak of highest amplitude will be kept only.
-        normalization: if set at True, the mean spectrum is scaled between 0 and 1
-    normalization : bool
-        Set to true if normalization is desired
-    slopes: tuple of length 2
-        Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
-        The first value is the left slope and the second value is the right slope. Only peaks with
-        higher slopes than threshold values will be kept. i.e (0.01, 0.01)
-    """
-    meanspec = np.array([np.mean(row) for row in sxx])
-
-    if normalization:
-        meanspec = meanspec / np.max(meanspec)
-
-    if slopes is not None:
-        # Find peaks (with slopes)
-        peaks_indices = np.r_[False,
-                              meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
-            meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
-        peaks_indices = peaks_indices.nonzero()[0].tolist()
-    else:
-        # scipy method (without slope)
-        peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
-
-    # Remove peaks with difference of frequency < freqband
-    # number of consecutive index
-    nb_bin = next(i for i, v in enumerate(frequencies) if v > freqband)
-    for consecutiveIndices in [np.arange(i, i + nb_bin) for i in peaks_indices]:
-        if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
-            # close values has been found
-            maxi, _, _ = np.intersect1d(consecutiveIndices, peaks_indices)
-            maxi = maxi[np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
-            peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
-            # remove all indices that are in consecutiveIndices
-            # append the max
-            peaks_indices.append(maxi)
-    peaks_indices.sort()
-
-    # Frequencies of the peaks
-    peak_freqs = [frequencies[p] for p in peaks_indices]
-    return len(peaks_indices), peak_freqs

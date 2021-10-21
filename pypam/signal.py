@@ -144,7 +144,7 @@ class Signal:
         original_band = self.bands_list[0]
         self.set_band(original_band)
 
-    def _fill_or_crop(self, n_samples):
+    def fill_or_crop(self, n_samples):
         """
         Crop the signal to the number specified or fill it with 0 values in case it is too short
 
@@ -154,14 +154,13 @@ class Signal:
             Number of desired samples
         """
         if self.signal.size >= n_samples:
-            s = self.signal[0:n_samples]
+            self.signal = self.signal[0:n_samples]
             self._processed[self.band_n].append('crop')
         else:
-            nan_array = np.full((n_samples,), 0)
-            nan_array[0:self.signal.size] = self.signal
-            s = nan_array
-            self._processed[self.band_n].append('fill')
-        return s
+            one_array = np.full((n_samples, ), 0)
+            one_array[0:self.signal.size] = self.signal
+            self.signal = one_array
+            self._processed[self.band_n].append('one-pad')
 
     def _create_filter(self, band, output='sos'):
         """
@@ -384,7 +383,7 @@ class Signal:
 
         return f, spg
 
-    def _spectrogram(self, nfft=512, scaling='density', mode='fast'):
+    def _spectrogram(self, nfft=512, scaling='density', overlap=0):
         """
         Computes the spectrogram of the signal and saves it in the attributes
 
@@ -394,8 +393,8 @@ class Signal:
             Length of the fft window in samples. Power of 2.
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
@@ -403,18 +402,10 @@ class Signal:
         """
         real_size = self.signal.size
         if self.signal.size < nfft:
-            s = self._fill_or_crop(n_samples=nfft)
-        else:
-            if mode == 'fast':
-                # Choose the closest power of 2 to clocksize for faster computing
-                optim_len = int(2 ** np.ceil(np.log2(real_size)))
-                # Fill the missing values with 0
-                s = self._fill_or_crop(n_samples=optim_len)
-            else:
-                s = self.signal
+            self.fill_or_crop(n_samples=nfft)
         window = sig.get_window('hann', nfft)
-        freq, t, sxx = sig.spectrogram(s, fs=self.fs, nfft=nfft,
-                                       window=window, scaling=scaling)
+        noverlap = overlap * nfft
+        freq, t, sxx = sig.spectrogram(self.signal, fs=self.fs, nfft=nfft, window=window, scaling=scaling, noverlap=noverlap)
         if self.band is not None:
             if self.band[0] is None:
                 low_freq = 0
@@ -427,7 +418,7 @@ class Signal:
         self.sxx = sxx[low_freq:, 0:n_bins]
         self.t = t[0:n_bins]
 
-    def spectrogram(self, nfft=512, scaling='density', db=True, mode='fast', force_calc=False):
+    def spectrogram(self, nfft=512, scaling='density', overlap=0, db=True, force_calc=False):
         """
         Return the spectrogram of the signal (entire file)
 
@@ -439,25 +430,24 @@ class Signal:
             Length of the fft window in samples. Power of 2.
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
         force_calc : bool
             Set to True if the computation has to be forced
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
         freq, t, sxx
         """
-        # TODO implement noverlap!
         if self.sxx is None or force_calc:
-            self._spectrogram(nfft=nfft, scaling=scaling, mode=mode)
+            self._spectrogram(nfft=nfft, scaling=scaling, overlap=overlap)
         if db:
             sxx = utils.to_db(self.sxx, ref=1.0, square=False)
         else:
             sxx = self.sxx
         return self.freq, self.t, sxx
 
-    def _spectrum(self, scaling='density', nfft=512, db=True, mode='fast'):
+    def _spectrum(self, scaling='density', nfft=512, db=True, overlap=0):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a colum for each frequency and each
@@ -472,25 +462,15 @@ class Signal:
             zero-padded
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
+
         """
-        if nfft is not None:
-            if nfft > self.signal.size:
-                s = self._fill_or_crop(n_samples=nfft)
-            else:
-                if mode == 'fast':
-                    # Choose the closest power of 2 to clocksize for faster computing
-                    real_size = self.signal.size
-                    optim_len = int(2 ** np.ceil(np.log2(real_size)))
-                    # Fill the missing values with 0
-                    s = self._fill_or_crop(n_samples=optim_len)
-                else:
-                    s = self.signal
-        else:
-            s = self.signal
+        noverlap = nfft * overlap
+        if nfft < self.signal.size:
+            self.fill_or_crop(n_samples=nfft)
         window = sig.get_window('boxcar', nfft)
-        freq, psd = sig.periodogram(s, fs=self.fs, window=window, nfft=nfft, scaling=scaling)
+        freq, psd = sig.periodogram(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap)
         if self.band is not None and self.band[0] is not None:
             low_freq = np.argmax(freq, self.band[0])
         else:
@@ -503,7 +483,7 @@ class Signal:
 
     # TODO implement stft!
 
-    def spectrum(self, scaling='density', nfft=512, db=True, mode='fast', force_calc=False, **kwargs):
+    def spectrum(self, scaling='density', nfft=512, db=True, overlap=0, force_calc=False, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and
@@ -515,10 +495,10 @@ class Signal:
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
             Length of the fft window in samples. Power of 2.
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
         force_calc : bool
             Set to True if the computation has to be forced
         Returns
@@ -526,11 +506,11 @@ class Signal:
         Frequency array, psd values
         """
         if self.psd is None or force_calc:
-            self._spectrum(scaling=scaling, nfft=nfft, db=db, mode=mode)
+            self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
 
         return self.freq, self.psd
 
-    def spectrum_slope(self, scaling='density', nfft=512, db=True, mode='fast', **kwargs):
+    def spectrum_slope(self, scaling='density', nfft=512, db=True, overlap=0, **kwargs):
         """
         Return the slope of the spectrum
 
@@ -540,24 +520,24 @@ class Signal:
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
             Length of the fft window in samples. Power of 2.
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
 
         Returns
         -------
         slope of the spectrum (float)
         """
         if self.psd is None:
-            self._spectrum(scaling=scaling, nfft=nfft, db=db, mode=mode)
+            self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
         regression = linear_model.LinearRegression().fit(np.log10(self.freq), np.log10(self.psd))
         slope = regression.coef_[0]
         y_pred = regression.predict(np.log10(self.freq))
         error = metrics.mean_squared_error(np.log10(self.psd), y_pred)
         return slope, error
 
-    def aci(self, nfft, mode='fast', **kwargs):
+    def aci(self, nfft, overlap=0, **kwargs):
         """
         Calculation of root mean squared value (rms) of the signal in uPa for each bin
         Returns Dataframe with 'datetime' as index and 'rms' value as a column
@@ -566,15 +546,15 @@ class Signal:
         ----------
         nfft : int
             Number of fft
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=True, mode=mode)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=True)
         aci_val = self.acoustic_index('aci', sxx=sxx)
 
         return aci_val
 
-    def bi(self, min_freq=2000, max_freq=8000, nfft=512, mode='fast', **kwargs):
+    def bi(self, min_freq=2000, max_freq=8000, nfft=512, overlap=0, **kwargs):
         """
         Calculate the Bioacoustic Index index
         Parameters
@@ -585,8 +565,8 @@ class Signal:
             Maximum frequency (in Hertz)
         nfft: int
             FFT number
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
@@ -597,26 +577,26 @@ class Signal:
                   'BI will be set to nan' % (self.band, min_freq, max_freq))
             return np.nan
         else:
-            _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+            _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
             bi_val = self.acoustic_index('bi', sxx=sxx, frequencies=self.freq, min_freq=min_freq,
                                          max_freq=max_freq)
             return bi_val
 
-    def sh(self, nfft=512, mode='fast', **kwargs):
+    def sh(self, nfft=512, overlap=0, **kwargs):
         """
         Return the Spectral Entropy of Shannon
         Parameters
         ----------
         nfft: int
             FFT number
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
         SH index
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
         sh_val = self.acoustic_index('sh', sxx=sxx)
         return sh_val
 
@@ -660,7 +640,7 @@ class Signal:
                                            anthrophony=anthrophony, biophony=biophony)
             return ndsi_val
 
-    def aei(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
+    def aei(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
         """
         Compute Acoustic Evenness Index
         Parameters
@@ -671,19 +651,19 @@ class Signal:
             Size of frequency bands to compute AEI (in Hertz)
         nfft: int
             FFT number
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
         AEI value
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
         aei_val = self.acoustic_index('aei', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
                                       min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
         return aei_val
 
-    def adi(self, db_threshold=-50, freq_step=100, nfft=512, mode='fast', **kwargs):
+    def adi(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
         """
         Compute Acoustic Diversity Index
         Parameters
@@ -693,14 +673,14 @@ class Signal:
             Size of frequency bands to compute AEI (in Hertz)
         nfft: int
             FFT number
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
         ADI value
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
         adi_val = self.acoustic_index('adi', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
                                       min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
         return adi_val
@@ -733,7 +713,7 @@ class Signal:
         zcr = self.acoustic_index('zcr_avg', s=self.signal, window_length=window_length, window_hop=window_hop)
         return zcr
 
-    def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, mode='fast', **kwargs):
+    def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, overlap=0, **kwargs):
         """
         Counts the number of major frequency peaks obtained on a mean spectrum.
         Parameters
@@ -750,17 +730,59 @@ class Signal:
             higher slopes than threshold values will be kept. i.e (0.01, 0.01)
         nfft: int
             FFT number
-        mode : string
-            If set to 'fast', the signal will be zero padded up to the closest power of 2
+        frequencies: np.array 1D
+            List of the frequencies of the spectrogram
+        freqband: int or float
+            frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
+            is less than this threshold, then the peak of highest amplitude will be kept only.
+            normalization: if set at True, the mean spectrum is scaled between 0 and 1
+        normalization : bool
+            Set to true if normalization is desired
+        slopes: tuple of length 2
+            Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
+            The first value is the left slope and the second value is the right slope. Only peaks with
+            higher slopes than threshold values will be kept. i.e (0.01, 0.01)
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
 
         Returns
         -------
         Int, number of BN peaks
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', db=False, mode=mode)
-        peak_indices, peak_freqs = self.acoustic_index('bn_peaks', sxx=sxx, frequencies=self.freq,
-                                                       freqband=freqband, normalization=normalization, slopes=slopes)
-        return peak_indices, peak_freqs
+        _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
+        frequencies = self.freq
+        meanspec = sxx.mean(axis=1)
+
+        if normalization:
+            meanspec = np.array(meanspec) / np.max(meanspec)
+
+        if slopes is not None:
+            # Find peaks (with slopes)
+            peaks_indices = np.r_[False,
+                                  meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
+                                meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
+            peaks_indices = peaks_indices.nonzero()[0].tolist()
+        else:
+            # scipy method (without slope)
+            peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
+
+        # Remove peaks with difference of frequency < freqband
+        # number of consecutive index
+        nb_bin = next(i for i, v in enumerate(frequencies) if v > freqband)
+        for consecutiveIndices in [np.arange(i, i + nb_bin) for i in peaks_indices]:
+            if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
+                # close values has been found
+                maxi, _, _ = np.intersect1d(consecutiveIndices, peaks_indices)
+                maxi = maxi[np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
+                peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
+                # remove all indices that are in consecutiveIndices
+                # append the max
+                peaks_indices.append(maxi)
+        peaks_indices.sort()
+
+        # Frequencies of the peaks
+        peak_freqs = [frequencies[p] for p in peaks_indices]
+        return len(peaks_indices), peak_freqs
 
     def total_correlation(self, signal):
         """
@@ -895,7 +917,7 @@ class Signal:
         f = getattr(acoustic_indices, 'compute_' + name)
         return f(**kwargs)
 
-    def reduce_noise(self, nfft=512, verbose=False):
+    def reduce_noise(self, nfft=512, overlap=0, verbose=False):
         """
         Remove the noise of the signal using the noise clip
 
@@ -903,12 +925,15 @@ class Signal:
         ----------
         nfft : int
             Window size to compute the spectrum
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
         verbose : boolean
             Set to True to plot the signal before and after the reduction
         """
-        s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
+        noverlap = overlap * nfft
+        s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft, hop_length=noverlap)
         if verbose:
-            _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
+            _, _, sxx0 = self.spectrogram(nfft, overlap=overlap, db=True, force_calc=True)
             fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
             ax[0, 0].plot(self.times, self.signal)
             ax[0, 0].set_title('Signal')
@@ -919,7 +944,7 @@ class Signal:
             ax[0, 1].set_title('Spectrogram')
 
             self.signal = s
-            _, _, sxx1 = self.spectrogram(nfft, db=True, force_calc=True)
+            _, _, sxx1 = self.spectrogram(nfft, overlap=overlap, db=True, force_calc=True)
             ax[1, 0].plot(self.times, s)
             ax[1, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
             ax[1, 0].set_xlabel('Time [s]')
@@ -934,7 +959,7 @@ class Signal:
 
         self._processed[self.band_n].append('noisereduction')
 
-    def plot(self, nfft=512, scaling='density', db=True, force_calc=False):
+    def plot(self, nfft=512, overlap=0, scaling='density', db=True, force_calc=False):
         """
         Plot the signal and its spectrogram
         Parameters
@@ -947,9 +972,11 @@ class Signal:
             Set to True for dB output
         force_calc : bool
             Set to True to force the re-calulation of the spectrogram
+        overlap : float [0, 1]
+            Percentage to overlap in windows for the plot
 
         """
-        _, _, sxx = self.spectrogram(nfft, scaling, db, force_calc=force_calc)
+        _, _, sxx = self.spectrogram(nfft, scaling, db, overlap=overlap, force_calc=force_calc)
         if scaling == 'density':
             label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
         elif scaling == 'spectrum':
