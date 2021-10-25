@@ -61,13 +61,14 @@ class Event(Signal):
 
     def sel(self, high_noise=False):
         """
-        Compute the SEL by finding the peak of the event and then finding the first argument where
-        the signal drops 10 or 5 db below the peak (set high_noise to True if 5 db is desired)
+        Compute the SEL by finding the peak of the event and then finding the first argument where the signal drops
+        10 or 5 db below the peak (set high_noise to True if 5 db is desired)
+
         Parameters
         ----------
         high_noise: bool
-            Set to True if the environment is noisy (SEL will be considered until when the signal drops
-            5 db below the peak)
+            Set to True if the environment is noisy (SEL will be considered until when the signal drops 5 db below
+            the peak)
         """
         # Choose the difference in db
         diff_db = 10

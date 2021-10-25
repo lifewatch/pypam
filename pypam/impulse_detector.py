@@ -174,8 +174,8 @@ class ImpulseDetector:
         duration : float
             Duration of the event, in seconds
         removenoise : bool
-            Set to True if noise calculated before and after the event can be removed from the
-            event
+            Set to True if noise calculated before and after the event can be removed from the event
+
         """
         start_n = int(t * s.fs)
         end_n = int((t + duration) * s.fs) + 1
