@@ -10,6 +10,8 @@ build:
   os: ubuntu-20.04
   tools:
     python: "3.7"
+  apt_packages:
+    - libsndfile-1
 
 # Optionally declare the Python requirements required to build your docs
 python:
