@@ -46,7 +46,7 @@ band_lf = [50, 500]
 band_mf = [500, 2000]
 band_hf = [2000, 20000]
 band_list = [band_lf]
-features = ['rms', 'sel', 'aci']
+features = ['rms', 'sel', 'aci', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
 third_octaves = None
 
 env_vars = ['shipping', 'time', 'shipwreck', 'habitat_suitability', 'seabed_habitat', 'sea_surface', 'sea_wave']

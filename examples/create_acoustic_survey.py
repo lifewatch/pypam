@@ -13,7 +13,7 @@ binsize = 30.0
 band_lf = [50, 500]
 band_hf = [500, 4000]
 band_list = [band_lf, band_hf]
-features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
+features = ['rms', 'peak', 'sel']
 # features bi, nsdi ignored because of too low sampling frequency to compute them
 third_octaves = None
 dc_subtract = True
