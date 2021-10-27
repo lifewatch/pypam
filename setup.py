@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='lifewatch-pypam',
-    version='0.1',
+    version='0.1.1',
     description='Facilitate acoustic processing from underwater acoustic recorders',
     author='Clea Parcerisas',
     author_email='cleap@vliz.be',
@@ -11,9 +11,9 @@ setuptools.setup(
     test_suite='tests',
     tests_require=['lifewatch-pypam'],
     packages=setuptools.find_packages(),
-    install_requires=['pandas', 'soundfile', 'numpy'],
+    install_requires=['noisereduce', 'xarray'],
     extras_require={
-        "plotting": ["matplotlib", "seaborn"]
+        "plotting": ["seaborn", "seaborn"]
     },
     package_data={"lifewatch-pypam": ["tests/test_data/*.*"]},
     include_package_data=True,
