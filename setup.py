@@ -15,6 +15,5 @@ setuptools.setup(
     extras_require={
         "plotting": ["seaborn", "seaborn"]
     },
-    package_data={"lifewatch-pypam": ["tests/test_data/*.*"]},
-    include_package_data=True,
+    package_data={"lifewatch-pypam": ["tests/test_data/*.*"]}
 )

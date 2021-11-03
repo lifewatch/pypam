@@ -172,7 +172,7 @@ class AcuFile:
         return sci.fft.rfftfreq(nfft) * fs
 
     def _n_blocks(self, blocksize):
-        return int(np.ceil((sf.SoundFile(self.file_path).frames - self._start_frame) / blocksize))
+        return int(np.floor((sf.SoundFile(self.file_path).frames - self._start_frame) / blocksize))
 
     def samples(self, bintime):
         """
@@ -337,10 +337,10 @@ class AcuFile:
         """
         Return a time array for each point of the signal
         """
-        blocks_samples = np.arange(start=self._start_frame, stop=self.file.frames, step=blocksize)
+        blocks_samples = np.arange(start=self._start_frame, stop=self.file.frames-blocksize, step=blocksize)
         start_samples = blocks_samples * blocksize
         end_samples = start_samples + blocksize
-        incr = pd.to_timedelta(blocks_samples * blocksize / self.fs, unit='seconds')
+        incr = pd.to_timedelta(blocks_samples / self.fs, unit='seconds')
         self.time = self.date + datetime.timedelta(seconds=self._start_frame / self.fs) + incr
         return self.time, start_samples.astype(int), end_samples.astype(int)
 

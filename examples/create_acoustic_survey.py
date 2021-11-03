@@ -1,11 +1,12 @@
 import pyhydrophone as pyhy
 import pypam
 
+
 # Soundtrap
 model = 'ST300HF'
 name = 'SoundTrap'
 serial_number = 67416073
-soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, sensitivity=-172.8, serial_number=serial_number)
 
 # SURVEY PARAMETERS
 nfft = 4096

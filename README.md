@@ -1,7 +1,7 @@
 # PyPam
 pypam is a python package to analyze underwater sound. 
 It is made to make easier the processing of underwater data stored in *.wav files. 
-The main classes are AcusticFile, AcousticSurvey and DataSet. The first one is a representation of a wav file together 
+The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a wav file together 
 with all the metadata needed to process the data (such as hydrophone used). The second one is the representation of a
 folder where all the files are stored. The Dataset is a combination of different AcousticSurveys in one dataset.
 Then pypam allows to go through all the wav files from the deployments only with one line of code. 
@@ -87,7 +87,7 @@ window. If set to None, the operations are performed along an entire file.
 import pyhydrophone as pyhy
 from pypam import acoustic_survey
 
-# Soundtrap
+# SoundTrap
 model = 'ST300HF'
 name = 'SoundTrap'
 serial_number = 67416073
