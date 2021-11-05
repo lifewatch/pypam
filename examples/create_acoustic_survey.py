@@ -22,6 +22,13 @@ dc_subtract = True
 include_dirs = False
 zipped_files = False
 
+min_separation = 1
+max_duration = 0.2
+threshold = 20
+dt = 2.0
+detection_band = [500, 1000]
+
+
 if __name__ == "__main__":
     asa = pypam.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=binsize, nfft=nfft, utc=True,
                     include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)

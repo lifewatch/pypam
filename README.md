@@ -6,27 +6,20 @@ with all the metadata needed to process the data (such as hydrophone used). The 
 folder where all the files are stored. The Dataset is a combination of different AcousticSurveys in one dataset.
 Then pypam allows to go through all the wav files from the deployments only with one line of code. 
 
+All the documentation can be found on [readthedocs](https://lifewatch-pypam.readthedocs.io)
+
 ## Installation
-# using pip distribution 
+# Using pip distribution 
 ```
     pip install lifewatch-pypam
 ```
 
 ### Using cit clone
-This installation process assumes you have ssh keys on github setup correctly. In case you don't know how to do it, 
-here is a nice tutorial:  https://www.inmotionhosting.com/support/server/ssh/how-to-add-ssh-keys-to-your-github-account/
 
-We strongly advise to use a proper python virtualenv environment to keep package dependencies nicely non conflicting
-
-If your ssh keys are set up correctly, you should be able to install the requirements by: 
-```
-    pip install -r requirements.txt 
-```
-(pyhydrophone will be automatically downloaded and installed using your ssh key)
-
-In case you can't set up your ssh keys working, don't panic! Try this way:
-1. Install FIRST pyhydrophone (follow the instructions): https://github.com/lifewatch/pyhydrophone
-
+1. Clone the package
+    ```bash
+    git clone https://github.com/lifewatch/pypam.git
+    ```
 2. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the remaining dependencies
     ```bash
     pip install -r requirements.txt 

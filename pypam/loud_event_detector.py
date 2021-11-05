@@ -1,9 +1,3 @@
-"""
-Module: loud_event_detector.py
-Authors: Clea Parcerisas
-Institution: VLIZ (Vlaams Institute voor de Zee)
-"""
-
 __author__ = "Clea Parcerisas"
 __version__ = "0.1"
 __credits__ = "Clea Parcerisas"
@@ -14,11 +8,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import xarray
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pypam import utils
 from pypam._event import Event
+from pypam import plots
 
 # Apply the default theme
+plt.rcParams.update({'pcolor.shading': 'auto'})
 sns.set_theme()
 
 
@@ -90,18 +88,25 @@ class LoudEventDetector:
                                    'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
 
         if verbose:
-            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True, mode='fast')
+            # Compute the spectrogram
+            fbands, t, sxx = signal.spectrogram(nfft=512, scaling='spectrum', db=True)
+            spectr_ds = xarray.DataArray(sxx, coords={'frequency': fbands, 'time': t}, dims=['frequency', 'time'])
+
+            # Create the plot
             fig, ax = plt.subplots(4, 1, sharex='col')
-            ax[0].pcolormesh(t, fbands, sxx)
-            ax[0].set_title('Spectrogram')
-            ax[0].set_ylabel('Frequency [Hz]')
-            ax[0].set_yscale('log')
+            divider = make_axes_locatable(ax[0])
+            cax = divider.append_axes("right", size="5%", pad=.05)
+            plots.plot_2d(spectr_ds, x='time', y='frequency', xlabel='', ylabel='Frequency [Hz]', ylog=True,
+                          title='Spectrogram', ax=ax[0], cbar_label='Sound Pressure', cbar_ax=cax)
             ax[1].plot(np.arange(len(signal.signal)) / signal.fs,
                        utils.to_db(signal.signal, ref=1.0, square=True), label='signal')
-            ax[1].plot(times_envelope, envelope, label='Average envelope window %s' % window)
+            ax[1].plot(times_envelope, envelope, label='Average envelope window %s s' % window)
             ax[1].set_title('Signal')
-            ax[1].set_ylabel('Lrms [dB]')
+            ax[1].set_ylabel('$L_rms$ [dB]')
             ax[1].legend(loc='right')
+            divider1 = make_axes_locatable(ax[1])
+            cax1 = divider1.append_axes("right", size="5%", pad=.05)
+            cax1.remove()
             ax[2].plot(times_envelope[1:], possible_points, color='green', label='loud events')
             for index in events_df.index:
                 row = events_df.loc[index]
@@ -109,9 +114,17 @@ class LoudEventDetector:
                 ax[2].axvline(x=row['end_seconds'], color='blue')
             ax[2].set_title('Detections')
             ax[2].legend(loc='right')
-            ax[2].set_xlabel('Time [s]')
+            divider2 = make_axes_locatable(ax[2])
+            cax2 = divider2.append_axes("right", size="5%", pad=.05)
+            cax2.remove()
             if len(events_df) > 0:
-                events_df[['rms', 'peak', 'sel']].plot(ax=ax[3])
+                for m in ['rms', 'peak', 'sel']:
+                    ax[3].scatter(x=events_df['start_seconds'], y=events_df[m], label=m)
+            ax[3].set_xlabel('Time [s]')
+            ax[3].set_ylabel('Sound Pressure')
+            divider3 = make_axes_locatable(ax[3])
+            cax3 = divider3.append_axes("right", size="5%", pad=.05)
+            cax3.remove()
             plt.tight_layout()
             plt.show()
             plt.close()

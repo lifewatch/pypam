@@ -39,26 +39,36 @@ class TestASA(unittest.TestCase):
     def test_third_oct(self):
         self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 
-    # def test_detect_piling_events(self):
-    #     min_separation = 1
-    #     max_duration = 0.2
-    #     threshold = 20
-    #     dt = 2.0
-    #     detection_band = [500, 1000]
-    #
-    #     self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
-    #                                   threshold=threshold, dt=dt, verbose=True, band=detection_band, method='snr',
-    #                                   save_path=None)
-    #
-    # def test_spd(self):
-    #     h_db = 1
-    #     percentiles = [1, 10, 50, 90, 95]
-    #     fbands, bin_edges, spd_choco, _, p_choco = self.asa.spd(db=True, h=h_db, percentiles=percentiles)
-    #
-    # def test_detect_ship_events(self):
-    #     # just a smoke test to check if the function can run without errors
-    #     self.asa.detect_ship_events(0.1, 0.5)
-    #
+    def test_spectrogram(self):
+        self.asa.apply_to_all('spectrogram')
+
+    def test_plots(self):
+        self.asa.apply_to_all('plot_spectrogram')
+        self.asa.apply_to_all('plot_psd')
+        self.asa.plot_mean_psd(percentiles=[10, 50, 90])
+
+    def test_spd(self):
+        h_db = 1
+        percentiles = [1, 10, 50, 90, 95]
+        min_val = 60
+        max_val = 140
+        self.asa.plot_spd(db=True, h=h_db, percentiles=percentiles, min_val=min_val, max_val=max_val)
+
+    def test_detect_piling_events(self):
+        min_separation = 1
+        max_duration = 0.2
+        threshold = 20
+        dt = 2.0
+        detection_band = [500, 1000]
+
+        self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
+                                      threshold=threshold, dt=dt, verbose=True, method='snr',
+                                      save_path=None, detection_band=detection_band, analysis_band=None)
+
+    def test_detect_ship_events(self):
+        # just a smoke test to check if the function can run without errors
+        self.asa.detect_ship_events(0.1, 0.5)
+
     # def test_nmf(self):
     #     self.asa.source_separation(1.0, 15, None, True)
 

@@ -1,8 +1,3 @@
-"""
-Module: acoustic_survey.py
-Authors: Clea Parcerisas
-Institution: VLIZ (Vlaams Institute voor de Zee)
-"""
 __author__ = "Clea Parcerisas"
 __version__ = "0.1"
 __credits__ = "Clea Parcerisas"
@@ -23,15 +18,49 @@ import seaborn as sns
 import xarray
 from tqdm import tqdm
 
+from pypam import acoustic_file
 from pypam import loud_event_detector
-from pypam import utils
-from pypam.acoustic_file import AcuFile
+from pypam import plots
 
 # Apply the default theme
 sns.set_theme()
 
 
 class ASA:
+    """
+    Init a AcousticSurveyAnalysis (ASA)
+
+    Parameters
+    ----------
+    hydrophone : Hydrophone class from pyhydrophone
+    folder_path : string or Path
+        Where all the sound files are
+    zipped : boolean
+        Set to True if the directory is zipped
+    include_dirs : boolean
+        Set to True if the folder contains other folders with sound files
+    p_ref : float
+        Reference pressure in uPa
+    binsize : float
+        Time window considered, in seconds. If set to None, only one value is returned
+    nfft : int
+        Samples of the fft bin used for the spectral analysis
+    period : tuple or list
+        Tuple or list with two elements: start and stop. Has to be a string in the
+        format YYYY-MM-DD HH:MM:SS
+    band : tuple or list
+        Tuple or list with two elements: low-cut and high-cut of the band to analyze
+    calibration_time: float or str
+        If a float, the amount of seconds that are ignored at the beginning of the file. If 'auto' then
+        before the analysis, find_calibration_tone will be performed
+    max_cal_duration: float
+        Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
+    cal_freq: float
+        Frequency of the calibration tone (only applies if calibration_time is 'auto')
+    dc_subtract: bool
+        Set to True to subtract the dc noise (root mean squared value
+    """
+
     def __init__(self,
                  hydrophone: object,
                  folder_path,
@@ -48,39 +77,7 @@ class ASA:
                  max_cal_duration=60.0,
                  cal_freq=250,
                  dc_subtract=False):
-        """
-        Init a AcousticSurveyAnalysis (ASA)
 
-        Parameters
-        ----------
-        hydrophone : Hydrophone class from pyhydrophone
-        folder_path : string or Path
-            Where all the sound files are
-        zipped : boolean
-            Set to True if the directory is zipped
-        include_dirs : boolean
-            Set to True if the folder contains other folders with sound files
-        p_ref : float
-            Reference pressure in uPa
-        binsize : float
-            Time window considered, in seconds. If set to None, only one value is returned
-        nfft : int
-            Samples of the fft bin used for the spectral analysis
-        period : tuple or list
-            Tuple or list with two elements: start and stop. Has to be a string in the
-            format YYYY-MM-DD HH:MM:SS
-        band : tuple or list
-            Tuple or list with two elements: low-cut and high-cut of the band to analyze
-        calibration_time: float or str
-            If a float, the amount of seconds that are ignored at the beginning of the file. If 'auto' then
-            before the analysis, find_calibration_tone will be performed
-        max_cal_duration: float
-            Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
-        cal_freq: float
-            Frequency of the calibration tone (only applies if calibration_time is 'auto')
-        dc_subtract: bool
-            Set to True to subtract the dc noise (root mean squared value
-        """
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
                                         include_dirs=include_dirs)
@@ -129,13 +126,13 @@ class ASA:
         -------
         Object AcuFile
         """
-        hydro_file = AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref, band=self.band,
-                             utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                             cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
-                             dc_subtract=self.dc_subtract)
+        hydro_file = acoustic_file.AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref,
+                                           utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
+                                           cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
+                                           dc_subtract=self.dc_subtract)
         return hydro_file
 
-    def evolution_multiple(self, method_list: list, **kwargs):
+    def evolution_multiple(self, method_list: list, band_list=None, **kwargs):
         """
         Compute the method in each file and output the evolution
         Returns a xarray DataSet with datetime as index and one row for each bin of each file
@@ -149,17 +146,27 @@ class ASA:
         """
         ds = xarray.Dataset()
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
-                                  nfft=self.nfft, **kwargs)
+                                  nfft=self.nfft, band_list=band_list, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = ds.merge(ds_output)
         return ds
 
-    def evolution(self, method_name, **kwargs):
+    def evolution(self, method_name, band_list=None, **kwargs):
         """
         Evolution of only one param name
+
+        Parameters
+        ----------
+        method_name : string
+            Method to compute the evolution of
+        band_list: list of tuples, tuple or None
+            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
+            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
+            frequency will be analyzed
+        **kwargs : any arguments to be passed to the method
         """
-        return self.evolution_multiple(method_list=[method_name], **kwargs)
+        return self.evolution_multiple(method_list=[method_name], band_list=band_list, **kwargs)
 
     def evolution_freq_dom(self, method_name, **kwargs):
         """
@@ -246,7 +253,6 @@ class ASA:
             Any accepted arguments for the rms function of the AcuFile
         """
         rms_evolution = self.evolution('rms', **kwargs)
-
         return rms_evolution['rms'].mean()
 
     def spd(self, db=True, h=0.1, percentiles=None, min_val=None, max_val=None):
@@ -275,20 +281,7 @@ class ASA:
             Matrix with all the probabilities
         """
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
-        fbands = psd_evolution.bands
-        pxx = psd_evolution['band_density'].to_numpy().T
-        # Calculate the bins of the psd values and compute spd using numba
-        if min_val is None:
-            min_val = pxx.min()
-        if max_val is None:
-            max_val = pxx.max()
-        bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
-        if percentiles is None:
-            percentiles = []
-        spd, p = utils.sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0,
-                               bin_edges=bin_edges)
-
-        return fbands, bin_edges, spd, percentiles, p
+        return acoustic_file.compute_spd(psd_evolution, h=h, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     def cut_and_place_files_period(self, period, folder_name, extensions=None):
         """
@@ -364,7 +357,8 @@ class ASA:
                     pass
         return 0
 
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, **kwargs):
+    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, detection_band=None,
+                             analysis_band=None, **kwargs):
         """
         Return a xarray DataSet with all the piling events and their rms, sel and peak values
 
@@ -376,6 +370,10 @@ class ASA:
             Maximum duration of the event, in seconds
         threshold : float
             Threshold above ref value which one it is considered piling, in db
+        detection_band : list or tuple
+            Band used to detect the pulses [low_freq, high_freq]
+        analysis_band : list or tuple
+            Band used to analyze the pulses [low_freq, high_freq]
         dt : float
             Window size in seconds for the analysis (time resolution). Has to be smaller
             than min_duration!
@@ -388,6 +386,8 @@ class ASA:
                                                         threshold=threshold,
                                                         max_duration=max_duration,
                                                         dt=dt, binsize=self.binsize,
+                                                        detection_band=detection_band,
+                                                        analysis_band=analysis_band,
                                                         verbose=verbose, **kwargs)
             ds = ds.merge(ds_output)
         return ds
@@ -403,7 +403,7 @@ class ASA:
         threshold : float
             Threshold above ref value which one it is considered piling, in db
         """
-        ds = xarray.Dataset()
+        df = pd.DataFrame()
         last_end = None
         detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                     threshold=threshold)
@@ -418,12 +418,12 @@ class ASA:
                     detector.reset()
             last_end = end_datetime
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                ds_output = sound_file.detect_ship_events(min_duration=min_duration,
+                df_output = sound_file.detect_ship_events(min_duration=min_duration,
                                                           threshold=threshold,
                                                           binsize=self.binsize, detector=detector,
                                                           verbose=True)
-                ds = ds.merge(ds_output)
-        return ds
+                df = df.append(df_output)
+        return df
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
         """
@@ -442,18 +442,6 @@ class ASA:
         """
         for sound_file in self._files():
             sound_file.source_separation(window_time, n_sources, band=self.band, save_path=save_path, verbose=verbose)
-
-    def plot_all_files(self, method_name, **kwargs):
-        """
-        Apply the plot method to all the files
-
-        Parameters
-        ----------
-        method_name : string
-            Plot method present in AcuFile
-        **kwargs : Any accepted in the method_name
-        """
-        self.apply_to_all(method_name=method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
 
     def plot_rms_evolution(self, db=True, save_path=None):
         """
@@ -540,13 +528,13 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the power_spectrum method
         """
-        power = self.evolution(method_name='power_spectrum', db=db, **kwargs)
+        power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
         if db:
             units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
             units = r'$\mu Pa^2$'
 
-        return self._plot_spectrum_mean(ds=power, units=units, col_name='spectrum',
+        return plots.plot_spectrum_mean(ds=power, units=units, col_name='band_power',
                                         output_name='SPLrms', save_path=save_path, log=log)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
@@ -563,57 +551,14 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the psd method
         """
-        psd = self.evolution(method_name='psd', db=db, **kwargs)
+        psd = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
         if db:
             units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
             units = r'$\mu Pa^2$'
 
-        return self._plot_spectrum_mean(ds=psd, units=units, col_name='density',
+        return plots.plot_spectrum_mean(ds=psd, units=units, col_name='band_density',
                                         output_name='PSD', save_path=save_path, log=log)
-
-    def _plot_spectrum_mean(self, ds, units, col_name, output_name, save_path=None, log=True):
-        """
-        Plot the mean spectrum
-
-        Parameters
-        ----------
-        ds : xarray DataSet
-            Output of evolution
-        units : string
-            Units of the spectrum
-        col_name : string
-            Column name of the value to plot. Can be 'density' or 'spectrum'
-        output_name : string
-            Name of the label. 'PSD' or 'SPLrms'
-        log : boolean
-            If set to True, y axis in logarithmic scale
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        """
-        plt.figure()
-        mean_spec = ds[col_name].mean(axis=0)
-        plt.plot(ds.frequency, mean_spec)
-        plt.title(col_name.capitalize())
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('%s [%s]' % (output_name, units))
-
-        if log:
-            plt.xscale('log')
-
-        # Plot the percentile lines
-        percentiles = ds['percentiles'].mean(axis=0).values
-        plt.hlines(y=percentiles, xmin=ds.frequency.min(), xmax=ds.frequency.max(),
-                   label=ds['percentiles'].columns)
-
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
-
-        return ds.frequency, mean_spec, percentiles
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
@@ -718,35 +663,8 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the spd method
         """
-        fbands, bin_edges, spd, percentiles, p = self.spd(db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2/Hz$'
-
-        # Plot the EPD
-        fig = plt.figure()
-        im = plt.pcolormesh(fbands, bin_edges, spd.T, cmap='BuPu', shading='auto')
-        if log:
-            plt.xscale('log')
-        plt.title('Spectral probability density')
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('PSD [%s]' % units)
-        cbar = fig.colorbar(im)
-        cbar.set_label('Empirical Probability Density', rotation=90)
-
-        # Plot the lines of the percentiles
-        if len(percentiles) != 0:
-            plt.plot(fbands, p, label=percentiles)
-
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
-
-        return fbands, bin_edges, spd, percentiles, p
+        spd_ds = self.spd(db=db, **kwargs)
+        plots.plot_spd(spd_ds, db=db, log=log, save_path=save_path, p_ref=self.p_ref)
 
     def save(self, file_path):
         """

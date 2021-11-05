@@ -1,9 +1,3 @@
-"""
-Module: _event.py
-Authors: Clea Parcerisas
-Institution: VLIZ (Vlaams Institute voor de Zee)
-"""
-
 __author__ = "Clea Parcerisas"
 __version__ = "0.1"
 __credits__ = "Clea Parcerisas"

@@ -1,9 +1,3 @@
-"""
-Module : signal.py
-Authors : Clea Parcerisas
-Institution : VLIZ (Vlaams Institute voor de Zee)
-"""
-
 __author__ = "Clea Parcerisas"
 __version__ = "0.1"
 __credits__ = "Clea Parcerisas"
@@ -24,11 +18,12 @@ from pypam import acoustic_indices
 from pypam import utils
 
 # Apply the default theme
+plt.rcParams.update({'pcolor.shading': 'auto'})
 sns.set_theme()
 
 
 FILTER_ORDER = 4
-MIN_FREQ = 25
+MIN_FREQ = 10
 
 
 class Signal:
@@ -97,7 +92,7 @@ class Signal:
         band : list or tuple
             [low_freq, high_freq] of the desired band
         """
-        return (band is None) or (band[0] in [0, None] and band[1] in [self.fs, None])
+        return (band is None) or (band[0] in [0, None] and band[1] in [self.fs/2, None])
 
     def set_band(self, band=None, downsample=True):
         """
@@ -115,19 +110,17 @@ class Signal:
         downsample: bool
             Set to True if signal has to be downsampled for spectral resolution incrementation
         """
+        if band is None:
+            band = [MIN_FREQ, self.fs / 2]
         if band != self.band:
-            # Restart the signal to the original one
-            self.band_n += 1
-            self._processed[self.band_n] = []
-            self.bands_list[self.band_n] = band
-            if band is None:
+            if self._band_is_broadband(band):
                 self.signal = self._signal.copy()
                 self.fs = self._fs
             else:
                 if band[1] > self._fs / 2:
                     print('Band upper limit %s is too big, setting to maximum fs: new fs %s' % (band[1], self._fs/2))
                     band[1] = self._fs / 2
-                elif band[1] > self.fs / 2:
+                if band[1] > self.fs / 2:
                     # Reset to the original data
                     self.signal = self._signal.copy()
                     self.fs = self._fs
@@ -135,6 +128,9 @@ class Signal:
                     self.downsample2band(band)
                 else:
                     self.filter(band=band)
+            self.band_n += 1
+            self._processed[self.band_n] = []
+            self.bands_list[self.band_n] = band
         self._reset_spectro()
 
     def reset_original(self):
@@ -383,7 +379,7 @@ class Signal:
 
         return f, spg
 
-    def _spectrogram(self, nfft=512, scaling='density', overlap=0):
+    def _spectrogram(self, nfft=512, scaling='density', overlap=0.2):
         """
         Computes the spectrogram of the signal and saves it in the attributes
 
@@ -408,13 +404,13 @@ class Signal:
         freq, t, sxx = sig.spectrogram(self.signal, fs=self.fs, nfft=nfft, window=window, scaling=scaling, noverlap=noverlap)
         if self.band is not None:
             if self.band[0] is None:
-                low_freq = 0
+                low_freq = MIN_FREQ
             else:
                 low_freq = np.argmax(freq >= self.band[0])
         else:
             low_freq = 0
         self.freq = freq[low_freq:]
-        n_bins = int(np.floor(real_size / (nfft * 7 / 8)))
+        n_bins = int(np.floor(real_size / (nfft - noverlap)))
         self.sxx = sxx[low_freq:, 0:n_bins]
         self.t = t[0:n_bins]
 
@@ -458,7 +454,7 @@ class Signal:
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
-            Lenght of the fft window in samples. Power of 2. If the signal is shorter it will be
+            Length of the fft window in samples. Power of 2. If the signal is shorter it will be
             zero-padded
         db : bool
             If set to True the result will be given in db, otherwise in uPa^2
@@ -470,11 +466,11 @@ class Signal:
         if nfft < self.signal.size:
             self.fill_or_crop(n_samples=nfft)
         window = sig.get_window('boxcar', nfft)
-        freq, psd = sig.periodogram(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap)
+        freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap)
         if self.band is not None and self.band[0] is not None:
-            low_freq = np.argmax(freq, self.band[0])
+            low_freq = np.argmax(freq > self.band[0])
         else:
-            low_freq = 0
+            low_freq = MIN_FREQ
         self.psd = psd[low_freq:]
         self.freq = freq[low_freq:]
 
@@ -483,7 +479,7 @@ class Signal:
 
     # TODO implement stft!
 
-    def spectrum(self, scaling='density', nfft=512, db=True, overlap=0, force_calc=False, **kwargs):
+    def spectrum(self, scaling='density', nfft=512, db=True, overlap=0, force_calc=False, percentiles=None, **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and
@@ -501,14 +497,21 @@ class Signal:
             If set to True the result will be given in db, otherwise in uPa^2
         force_calc : bool
             Set to True if the computation has to be forced
+        percentiles : list
+            List of all the percentiles that have to be returned. If set to empty list,
+            no percentiles is returned
         Returns
         -------
         Frequency array, psd values
         """
         if self.psd is None or force_calc:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
+        if percentiles is not None:
+            percentiles_val = np.percentile(self.psd, percentiles)
+        else:
+            percentiles_val = None
 
-        return self.freq, self.psd
+        return self.freq, self.psd, percentiles_val
 
     def spectrum_slope(self, scaling='density', nfft=512, db=True, overlap=0, **kwargs):
         """
@@ -917,7 +920,7 @@ class Signal:
         f = getattr(acoustic_indices, 'compute_' + name)
         return f(**kwargs)
 
-    def reduce_noise(self, nfft=512, overlap=0, verbose=False):
+    def reduce_noise(self, nfft=512, verbose=False):
         """
         Remove the noise of the signal using the noise clip
 
@@ -925,15 +928,12 @@ class Signal:
         ----------
         nfft : int
             Window size to compute the spectrum
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
         verbose : boolean
             Set to True to plot the signal before and after the reduction
         """
-        noverlap = overlap * nfft
-        s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft, hop_length=noverlap)
+        s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
         if verbose:
-            _, _, sxx0 = self.spectrogram(nfft, overlap=overlap, db=True, force_calc=True)
+            _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
             fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
             ax[0, 0].plot(self.times, self.signal)
             ax[0, 0].set_title('Signal')
@@ -944,7 +944,7 @@ class Signal:
             ax[0, 1].set_title('Spectrogram')
 
             self.signal = s
-            _, _, sxx1 = self.spectrogram(nfft, overlap=overlap, db=True, force_calc=True)
+            _, _, sxx1 = self.spectrogram(nfft, db=True, force_calc=True)
             ax[1, 0].plot(self.times, s)
             ax[1, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
             ax[1, 0].set_xlabel('Time [s]')

@@ -7,28 +7,33 @@ Description
 
 The goal of pypam is to allow easy reading and processing of acoustic
 underwater data. Pypam further depends on `pyhydrophone`_ for hydrophone 
-data management.
+metadata management and calibration.
 
 .. _pyhydrophone: https://github.com/lifewatch/pyhydrophone
 
 .. toctree::
   :maxdepth: 1
-  :caption: Getting Started
+  :caption: Home
+
+  About <about>
+
+
+.. toctree::
+  :maxdepth: 1
+  :caption: Getting started
 
   Installation <install>
+  Introduction to pypam <introduction>
   Examples <examples>
 
-.. toctree::
-  :maxdepth: 1
-  :caption: User Guide
-
-  Data Structures <data_structures>
 
 .. toctree::
-  :maxdepth: 1
-  :caption: Reference Guide
+  :maxdepth: 3
+  :caption: Documentation
 
-  Classes, Attributes and Methods <reference>
+  Documentation <references>
+
+
 
 Contact
 ------------

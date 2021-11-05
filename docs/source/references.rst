@@ -1,15 +1,7 @@
 .. currentmodule:: pypam
 
-Classes, Attributes and Methods
--------------------------------
-
-Acoustic File
-^^^^^^^^^^^^^
-
-.. automodule:: pypam.acoustic_file
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Main Classes
+------------
 
 Acoustic Survey
 ^^^^^^^^^^^^^^^
@@ -19,12 +11,28 @@ Acoustic Survey
    :undoc-members:
    :show-inheritance:
 
+Acoustic File
+^^^^^^^^^^^^^
+
+.. automodule:: pypam.acoustic_file
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Dataset
+^^^^^^^
+
+.. automodule:: pypam.dataset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Event Detectors
-^^^^^^^^^^^^^^^
+---------------
 
 Event
-~~~~~
+^^^^^
 .. automodule:: pypam._event
    :members:
    :undoc-members:
@@ -32,9 +40,18 @@ Event
 
 
 Piling Detector
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 .. automodule:: pypam.impulse_detector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Shipping Detector
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: pypam.loud_event_detector
    :members:
    :undoc-members:
    :show-inheritance:
