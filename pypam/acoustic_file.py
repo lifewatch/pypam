@@ -116,19 +116,19 @@ class AcuFile:
             return self.signal('upa')
         elif name == 'time':
             if self.__dict__[name] is None:
-                return self._time_array(blocksize=1)[0]
+                return self._time_array(blocksize=1/self.fs)[0]
             else:
                 return self.__dict__[name]
         else:
             return self.__dict__[name]
 
-    def _bins(self, blocksize=None):
+    def _bins(self, binsize=None):
         """
-        Yields the bins each blocksize
+        Yields the bins each binsize
         Parameters
         ----------
-        blocksize: int or None
-            Number of frames per bin to yield
+        binsize: float or None
+            Number of seconds per bin to yield. If set to None, a single bin is yield for the entire file
 
         Returns
         -------
@@ -136,17 +136,19 @@ class AcuFile:
         Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
         of the bin
         """
-        if blocksize is None:
-            n_blocks = 1
+        if binsize is None:
+            blocksize = self.file.frames - self._start_frame
         else:
-            n_blocks = self._n_blocks(blocksize)
+            blocksize = self.samples(binsize)
+        n_blocks = self._n_blocks(blocksize)
+        time_array, _, _ = self._time_array(binsize)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame,
                                                  always_2d=True)),
                              total=n_blocks, leave=False, position=0):
             # Select the desired channel
             block = block[:, self.channel]
             if len(block) == blocksize:
-                time_bin = self.time_bin_i(blocksize, i)
+                time_bin = time_array[i]
                 # Read the signal and prepare it for analysis
                 signal_upa = self.wav2upa(wav=block)
                 signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
@@ -168,23 +170,6 @@ class AcuFile:
             Seconds of bintime desired to convert to samples
         """
         return int(bintime * self.fs)
-
-    def time_bin_i(self, blocksize, i):
-        """
-        Return the datetime of the bin i with a bin size of blocksize samples
-
-        Parameters
-        ----------
-        blocksize : int
-            Number of samples in each bin
-        i : int
-            Index of the bin to get the time of
-
-        Returns
-        -------
-        datetime object
-        """
-        return self.date + datetime.timedelta(seconds=(((blocksize * i) + self._start_frame) / self.fs))
 
     def set_calibration_time(self, calibration_time):
         """
@@ -317,10 +302,14 @@ class AcuFile:
 
         return signal
 
-    def _time_array(self, blocksize=1):
+    def _time_array(self, binsize=None):
         """
         Return a time array for each point of the signal
         """
+        if binsize is None:
+            blocksize = self.file.frames - self._start_frame
+        else:
+            blocksize = self.samples(binsize)
         blocks_samples = np.arange(start=self._start_frame, stop=self.file.frames - blocksize + 1, step=blocksize)
         end_samples = blocks_samples + blocksize
         incr = pd.to_timedelta(blocks_samples / self.fs, unit='seconds')
@@ -428,8 +417,8 @@ class AcuFile:
 
         return metadata_attrs
 
-    def _empty_dataset(self, blocksize, var_name, extra_coords=None, extra_dims=None):
-        time_array, start_sample, end_sample = self._time_array(blocksize)
+    def _empty_dataset(self, binsize, var_name, extra_coords=None, extra_dims=None):
+        time_array, start_sample, end_sample = self._time_array(binsize)
         coords = {'datetime': time_array,
                   'start_sample': ('datetime', start_sample),
                   'end_sample': ('datetime', end_sample)
@@ -466,10 +455,6 @@ class AcuFile:
         """
         # TODO decide if it is downsampled or not
         downsample = False
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = int(binsize * self.fs)
 
         # Bands selected to study
         if band_list is None:
@@ -497,9 +482,9 @@ class AcuFile:
                        'band_highfreq': ('bands', high_freqs),
                        }
         for f in method_list:
-            ds = ds.merge(self._empty_dataset(blocksize, f, extra_coords=band_coords, extra_dims=['bands']))
+            ds = ds.merge(self._empty_dataset(binsize=binsize, var_name=f, extra_coords=band_coords, extra_dims=['bands']))
 
-        for _, time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(binsize):
             for j, band in enumerate(sorted_bands):
                 signal.set_band(band, downsample=downsample)
                 for method_name in method_list:
@@ -649,22 +634,18 @@ class AcuFile:
 
         """
         downsample = True
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = int(binsize * self.fs)
 
         if band is None:
             band = [None, self.fs / 2]
         oct_str = 'oct%s' % fraction
 
         # Create an empty dataset
-        ds = self._empty_dataset(blocksize=blocksize, var_name=oct_str)
-        for _, time_bin, signal in self._bins(blocksize):
+        ds = self._empty_dataset(binsize=binsize, var_name=oct_str)
+        for _, time_bin, signal in self._bins(binsize):
             signal.set_band(band, downsample=downsample)
             fbands, levels = signal.octave_levels(db, fraction)
             if len(ds.dims) == 1:
-                ds = self._empty_dataset(blocksize=blocksize, var_name=oct_str,
+                ds = self._empty_dataset(binsize=binsize, var_name=oct_str,
                                          extra_coords={'frequency': fbands},
                                          extra_dims=['frequency'])
             ds[oct_str].loc[time_bin, :] = levels
@@ -701,19 +682,15 @@ class AcuFile:
             Spectrogram list, one for each bin
         """
         downsample = True
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = self.samples(binsize)
         if band is None:
             band = [None, self.fs / 2]
 
-        ds = self._empty_dataset(blocksize=blocksize, var_name='spectrogram')
-        for i, time_bin, signal in self._bins(blocksize):
+        ds = self._empty_dataset(binsize=binsize, var_name='spectrogram')
+        for i, time_bin, signal in self._bins(binsize):
             signal.set_band(band, downsample=downsample)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db)
             if len(ds.dims) == 1:
-                ds = self._empty_dataset(blocksize=blocksize, var_name='spectrogram',
+                ds = self._empty_dataset(binsize=binsize, var_name='spectrogram',
                                          extra_coords={'frequency': freq, 'time': t},
                                          extra_dims=['frequency', 'time'])
             ds['spectrogram'].loc[time_bin, :, :] = sxx
@@ -740,25 +717,21 @@ class AcuFile:
             no percentiles is returned
         """
         downsample = True
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = int(binsize * self.fs)
         if percentiles is None:
             percentiles = []
         if band is None:
             band = [None, self.fs / 2]
 
         spectrum_str = 'band_' + scaling
-        ds = self._empty_dataset(blocksize=blocksize, var_name=spectrum_str)
-        for _, time_bin, signal in self._bins(blocksize):
+        ds = self._empty_dataset(binsize=binsize, var_name=spectrum_str)
+        for _, time_bin, signal in self._bins(binsize):
             signal.set_band(band, downsample=downsample)
             fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                                                percentiles=percentiles)
             if len(ds.dims) == 1:
-                ds = self._empty_dataset(blocksize=blocksize, var_name=spectrum_str, extra_coords={'frequency': fbands},
+                ds = self._empty_dataset(binsize=binsize, var_name=spectrum_str, extra_coords={'frequency': fbands},
                                          extra_dims=['frequency'])
-                ds_percentiles = self._empty_dataset(blocksize=blocksize, var_name='value_percentiles',
+                ds_percentiles = self._empty_dataset(binsize=binsize, var_name='value_percentiles',
                                                      extra_coords={'frequency': fbands, 'percentiles': percentiles},
                                                      extra_dims=['frequency', 'percentiles'])
                 ds = ds.merge(ds_percentiles)
@@ -885,17 +858,13 @@ class AcuFile:
         """
         if type(save_path) == str:
             save_path = pathlib.Path(save_path)
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = int(binsize * self.fs)
 
         detector = impulse_detector.PilingDetector(min_separation=min_separation,
                                                    max_duration=max_duration,
                                                    threshold=threshold, dt=dt, detection_band=detection_band,
                                                    analysis_band=analysis_band)
         total_events = pd.DataFrame()
-        for _, time_bin, signal in self._bins(blocksize):
+        for _, time_bin, signal in self._bins(binsize):
             signal.set_band(band=analysis_band, downsample=False)
             if save_path is not None:
                 file_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
@@ -928,20 +897,15 @@ class AcuFile:
         verbose : boolean
             Set to True to see the spectrograms of the detections
         """
-        if binsize is None:
-            blocksize = self.file.frames
-        else:
-            blocksize = int(binsize * self.fs)
-
         if detector is None:
             detector = loud_event_detector.ShipDetector(min_duration=min_duration,
                                                         threshold=threshold)
 
         total_events = pd.DataFrame()
-        for i, time_bin, signal in self._bins(blocksize):
+        for i, time_bin, signal in self._bins(binsize):
             events_df = detector.detect_events(signal, verbose=verbose)
             events_df['start_datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
-            seconds_start = blocksize * i / self.fs
+            seconds_start = binsize * i
             events_df['start_seconds'] = events_df['start_seconds'] + seconds_start
             events_df['end_seconds'] = events_df['end_seconds'] + seconds_start
             total_events = total_events.append(events_df)
