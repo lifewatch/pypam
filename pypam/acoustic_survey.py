@@ -21,6 +21,7 @@ from tqdm import tqdm
 from pypam import acoustic_file
 from pypam import loud_event_detector
 from pypam import plots
+from pypam import utils
 
 # Apply the default theme
 sns.set_theme()
@@ -45,20 +46,20 @@ class ASA:
         Time window considered, in seconds. If set to None, only one value is returned
     nfft : int
         Samples of the fft bin used for the spectral analysis
+    overlap : float [0 to 1]
+        Percentage to overlap the bin windows
     period : tuple or list
         Tuple or list with two elements: start and stop. Has to be a string in the
         format YYYY-MM-DD HH:MM:SS
     band : tuple or list
         Tuple or list with two elements: low-cut and high-cut of the band to analyze
-    calibration_time: float or str
-        If a float, the amount of seconds that are ignored at the beginning of the file. If 'auto' then
-        before the analysis, find_calibration_tone will be performed
-    max_cal_duration: float
-        Maximum time in seconds for the calibration tone (only applies if calibration_time is 'auto')
-    cal_freq: float
-        Frequency of the calibration tone (only applies if calibration_time is 'auto')
+    calibration: float, -1 or None
+        If float, it is the time ignored a the beginning of the file. If None, nothing is done. If negative,
+        the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
     dc_subtract: bool
         Set to True to subtract the dc noise (root mean squared value
+    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, or None
+        Timezone where the data was recorded in
     """
 
     def __init__(self,
@@ -69,14 +70,14 @@ class ASA:
                  p_ref=1.0,
                  binsize=None,
                  nfft=1.0,
+                 overlap=0,
                  period=None,
                  band=None,
-                 utc=True,
+                 timezone='UTC',
                  channel=0,
-                 calibration_time=0.0,
-                 max_cal_duration=60.0,
-                 cal_freq=250,
-                 dc_subtract=False):
+                 calibration=None,
+                 dc_subtract=False,
+                 extra_attrs=None):
 
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
@@ -84,24 +85,27 @@ class ASA:
         self.p_ref = p_ref
         self.binsize = binsize
         self.nfft = nfft
+        self.overlap = overlap
         self.band = band
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
                 start = parser.parse(period[0])
                 end = parser.parse(period[1])
-                self.period = [start, end]
-            else:
-                self.period = period
-        else:
-            self.period = None
+                period = [start, end]
+        self.period = period
 
-        self.utc = utc
+        self.timezone = timezone
         self.channel = channel
-        self.calibration_time = calibration_time
-        self.cal_freq = cal_freq
-        self.max_cal_duration = max_cal_duration
+        self.calibration = calibration
         self.dc_subtract = dc_subtract
+
+        if extra_attrs is None:
+            self.extra_attrs = {}
+        else:
+            self.extra_attrs = {}
+
+        self.file_dependent_attrs = ['hydrophone_sensitivity', 'hydrophone_preamp_gain', 'hydrophone_Vpp', 'file_path']
 
     def _files(self):
         """
@@ -127,10 +131,27 @@ class ASA:
         Object AcuFile
         """
         hydro_file = acoustic_file.AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref,
-                                           utc=self.utc, channel=self.channel, calibration_time=self.calibration_time,
-                                           cal_freq=self.cal_freq, max_cal_duration=self.max_cal_duration,
+                                           timezone=self.timezone, channel=self.channel, calibration=self.calibration,
                                            dc_subtract=self.dc_subtract)
         return hydro_file
+    
+    def _get_metadata_attrs(self):
+        metadata_keys = [
+            'binsize',
+            'nfft',
+            'timezone',
+            'p_ref'
+        ]
+        metadata_attrs = self.extra_attrs.copy()
+        for k in metadata_keys:
+            d = self
+            for sub_k in k.split('.'):
+                d = d.__dict__[sub_k]
+            if isinstance(d, pathlib.Path):
+                d = str(d)
+            metadata_attrs[k.replace('.', '_')] = d
+
+        return metadata_attrs
 
     def evolution_multiple(self, method_list: list, band_list=None, **kwargs):
         """
@@ -141,15 +162,20 @@ class ASA:
         ----------
         method_list : string
             Method name present in AcuFile
+        list of tuples, tuple or None
+            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
+            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
+            frequency will be analyzed
         **kwargs :
             Any accepted parameter for the method_name
         """
         ds = xarray.Dataset()
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
-                                  nfft=self.nfft, band_list=band_list, **kwargs)
+                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
-            ds = ds.merge(ds_output)
+            ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+        ds.attrs = ds.attrs.update(attrs=self._get_metadata_attrs())
         return ds
 
     def evolution(self, method_name, band_list=None, **kwargs):
@@ -179,22 +205,22 @@ class ASA:
         -------
         A xarray DataSet with a row per bin with the method name output
         """
-        ds = xarray.Dataset()
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
+        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
-            ds = ds.merge(ds_output)
+            ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
         return ds
 
     def timestamps_array(self):
         """
         Return an xarray DataSet with the timestamps of each bin.
         """
-        ds = xarray.Dataset()
+        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('timestamps_ds', binsize=self.binsize)
         for sound_file in self._files():
             ds_output = f(sound_file)
-            ds = ds.merge(ds_output)
+            ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
         return ds
 
     def start_end_timestamp(self):
@@ -227,7 +253,7 @@ class ASA:
             Any accepted parameter for the method_name
 
         """
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
         for sound_file in self._files():
             f(sound_file)
 
@@ -380,7 +406,7 @@ class ASA:
         verbose : boolean
             Set to True to plot the detected events per bin
         """
-        ds = xarray.Dataset()
+        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         for sound_file in self._files():
             ds_output = sound_file.detect_piling_events(min_separation=min_separation,
                                                         threshold=threshold,
@@ -389,7 +415,7 @@ class ASA:
                                                         detection_band=detection_band,
                                                         analysis_band=analysis_band,
                                                         verbose=verbose, **kwargs)
-            ds = ds.merge(ds_output)
+            ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
         return ds
 
     def detect_ship_events(self, min_duration, threshold):

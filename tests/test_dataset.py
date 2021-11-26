@@ -21,8 +21,10 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 
 bk_model = 'Nexus'
 bk_name = 'B&K'
-amplif0 = 10e-3
-bk = pyhy.BruelKjaer(name=bk_name, model=bk_model, amplif=amplif0, serial_number=1)
+preamp_gain = -170
+bk_Vpp = 2.0
+bk = pyhy.BruelKjaer(name=bk_name, model=bk_model, preamp_gain=preamp_gain, Vpp=bk_Vpp, serial_number=1,
+                     type_signal='ref')
 
 upam_model = 'uPam'
 upam_name = 'Seiche'
@@ -30,7 +32,7 @@ upam_serial_number = 'SM7213'
 upam_sensitivity = -196.0
 upam_preamp_gain = 0.0
 upam_Vpp = 20.0
-upam = pyhy.Seiche(name=upam_name, model=upam_name, serial_number=upam_serial_number, sensitivity=upam_sensitivity,
+upam = pyhy.uPam(name=upam_name, model=upam_name, serial_number=upam_serial_number, sensitivity=upam_sensitivity,
                    preamp_gain=upam_preamp_gain, Vpp=upam_Vpp)
 
 
@@ -42,20 +44,24 @@ REF_PRESSURE = 1e-6
 # SURVEY PARAMETERS
 nfft = 4096
 binsize = 60.0
+overlap = 0.5
+dc_subtract = False
 band_lf = [50, 500]
 band_mf = [500, 2000]
 band_hf = [2000, 20000]
 band_list = [band_lf]
-features = ['rms', 'sel', 'aci', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
-third_octaves = None
+# temporal_features = ['rms', 'sel', 'aci', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
+temporal_features = []
+frequency_features = ['third_octaves_levels']
 
 env_vars = ['shipping', 'time', 'shipwreck', 'habitat_suitability', 'seabed_habitat', 'sea_surface', 'sea_wave']
-
+n_join_bins = 3
 
 class TestDataset(unittest.TestCase):
     def setUp(self) -> None:
-        self.ds = dataset.DataSet(summary_path, output_folder, instruments, features, third_octaves, band_list, binsize,
-                                  nfft)
+        self.ds = dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
+                                  frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
+                                  nfft=nfft, overlap=overlap, dc_subtract=dc_subtract, n_join_bins=n_join_bins)
 
     def test_generate_dataset(self):
         self.ds()

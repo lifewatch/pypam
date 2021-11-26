@@ -7,21 +7,8 @@ __status__ = "Development"
 import numba as nb
 import numpy as np
 import scipy.signal as sig
+import xarray
 
-BANDS = ['25', '31.5', '40', '50', '63', '80', '100', '125', '160', '200', '250',
-         '315', '400', '500', '630', '800', '1000', '1250', '1600', '2000', '2500',
-         '3150', '4000', '5000', '6300', '8000', '10000', '12500']
-
-NOMINAL_OCTAVE_CENTER_FREQUENCIES = np.array([31.5, 63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0])
-"""Nominal octave center frequencies.
-"""
-
-NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES = np.array([
-    25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0, 200.0, 250.0, 315.0, 400.0, 500.0, 630.0, 800.0, 1000.0,
-    1250.0, 1600.0, 2000.0, 2500.0, 3150.0, 4000.0, 5000.0, 6300.0, 8000.0, 10000.0, 12500.0, 16000.0, 20000.0
-])
-"""Nominal third-octave center frequencies in the audio range.
-"""
 
 G = 10.0 ** (3.0 / 10.0)
 f_ref = 1000
@@ -307,3 +294,38 @@ def pcm2float(s, dtype='float64'):
     abs_max = 2 ** (i.bits - 1)
     offset = i.min + abs_max
     return (s.astype(dtype) - offset) / abs_max
+
+
+def merge_ds(ds, new_ds, attrs_to_vars):
+    """
+    Merges de new_ds into the ds, the attributes that are file depending are converted to another coordinate
+    depending on datetime.
+
+    Parameters
+    ----------
+    ds: xarray Dataset
+        Already existing dataset
+    new_ds : xarray Dataset
+        New dataset to merge
+
+    Returns
+    -------
+    ds : merged dataset
+    """
+    new_coords = {}
+    for attr in attrs_to_vars:
+        if attr in new_ds.attrs.keys():
+            new_coords[attr] = ('id', [new_ds.attrs[attr]] * new_ds.dims['id'])
+    if len(ds.dims) != 0:
+        start_value = ds['id'][-1].values + 1
+    else:
+        start_value = 0
+    new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
+    new_ds = new_ds.reset_index('id')
+    new_coords['id'] = new_ids
+    new_ds = new_ds.assign_coords(new_coords)
+    if len(ds.dims) == 0:
+        ds = ds.merge(new_ds)
+    else:
+        ds = xarray.concat((ds, new_ds), 'id')
+    return ds

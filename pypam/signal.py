@@ -276,9 +276,7 @@ class Signal:
         for block in self.blocks(blocksize=window):
             val = f(block)
             result.append(val)
-        result = np.array(result)
-        times = np.arange(len(result)) * window / self.fs
-        return times, result
+            yield block.time, result
 
     def rms(self, db=True, **kwargs):
         """

@@ -20,7 +20,8 @@ binsize = 60.0
 band_lf = [50, 500]
 band_hf = [500, 4000]
 band_list = [band_lf, band_hf]
-features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg']
+# features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg']
+fast_features = ['rms', 'peak', 'sel']
 third_octaves = None
 dc_subtract = True
 
@@ -34,10 +35,11 @@ class TestASA(unittest.TestCase):
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
     def test_features(self):
-        self.asa.evolution_multiple(method_list=features, band_list=band_list)
+        self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
 
     def test_third_oct(self):
-        self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+        ds = self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+        print(ds)
 
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')

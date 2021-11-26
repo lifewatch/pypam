@@ -7,6 +7,7 @@ import xarray
 from tqdm import tqdm
 
 from pypam import acoustic_survey
+from pypam import utils
 
 
 class DataSet:
@@ -15,43 +16,48 @@ class DataSet:
      It allows to calculate all the acoustic features from all the deployments and store them in a structured way
      in the output folder. The structure is as follows:
      output_folder
-       - deployments : a pkl file for each deployment
+       - deployments : a *.nc (netcdf) file for each deployment
        - detections : files resulting of the events detections. One folder per detection type
        - img : graphs and figures
          - temporal_features : temporal evolution of all features per deployment
          - data_overview : spatial and temporal coverage, and methods used
          - features_analysis : ??
          - spatial_features : spatial distribution of features
-       dataset.netCDF : pkl with all the datasets together
+
      Parameters
      ----------
      summary_path : string or Path
          Path to the csv file where all the metadata of the deployments is
      output_folder : string or Path
-         Where to save the output files (pkl) of the deployments with the processed data
+         Where to save the output files (nc) of the deployments with the processed data
      instruments : dictionary of (name,  instrument_object) entries
          A dictionary of all the instruments used in the deployments
-     features : list of strings
+     temporal_features : list of strings
          A list of all the features to be calculated
      bands_list : list of tuples
          A list of all the bands to consider (low_freq, high_freq)
-     third_octaves : False or band
-         If False, no octave bands are calculated. Otherwise the parameter is passed to the pypam as a band
+     frequency_features : list of strings
+         List of all the frequency features to compute
      binsize : float
          In seconds, duration of windows to consider
      nfft : int
          Number of samples of window to use for frequency analysis
      """
-    def __init__(self, summary_path, output_folder, instruments, features, third_octaves=None,
-                 bands_list=None, binsize=60.0, nfft=512):
+    def __init__(self, summary_path, output_folder, instruments, temporal_features=None, frequency_features=None,
+                 bands_list=None, binsize=60.0, nfft=512, n_join_bins=1, overlap=0, dc_subtract=False):
         self.metadata = pd.read_csv(summary_path)
+        if 'end_to_end_calibration' not in self.metadata.columns:
+            self.metadata['end_to_end_calibration'] = np.nan
         self.summary_path = summary_path
         self.instruments = instruments
-        self.features = features
-        self.third_octaves = third_octaves
+        self.temporal_features = temporal_features
+        self.frequency_features = frequency_features
         self.band_list = bands_list
         self.binsize = binsize
         self.nfft = nfft
+        self.n_join_bins = n_join_bins
+        self.overlap = overlap
+        self.dc_subtract = dc_subtract
 
         if not isinstance(output_folder, pathlib.Path):
             output_folder = pathlib.Path(output_folder)
@@ -63,8 +69,11 @@ class DataSet:
         self.output_folder.joinpath('deployments').mkdir(parents=True, exist_ok=True)
         self.output_folder.joinpath('detections').mkdir(parents=True, exist_ok=True)
 
-        self.deployments_created = list(self.output_folder.joinpath('deployments').glob("*.netcdf"))
+        self.deployments_created = list(self.output_folder.joinpath('deployments').glob("*.nc"))
         self.dataset = {}
+
+        self.survey_dependent_attrs = ['hydrophone_name', 'hydrophone_model', 'hydrophone_Vpp',
+                                       'hydrophone_preamp_gain', 'hydrophone_sensitivity']
         
     def __call__(self):
         """
@@ -73,16 +82,37 @@ class DataSet:
         Also adds all the deployment data to the self object in the general dataset,
         and the path to each deployment's pickle in the list of deployments
         """
-        for idx, name, deployment_path, in self._deployments():
-            if deployment_path.exists():
-                ds = xarray.open_dataset(deployment_path)
-            else:
-                ds = self.generate_deployment(idx=idx)
-                ds.to_netcdf(deployment_path)
-            self.dataset[name] = ds
+        for idx, name, deployment_path, in self.deployments():
+            self[idx]
         self.metadata.to_csv(self.summary_path, index=False)
-    
-    def _deployments(self):
+
+    def __getitem__(self, i):
+        if i not in self.dataset.keys():
+            idx, deployment_name, deployment_path = self._deployment(i)
+            if deployment_path.exists():
+                deployment = xarray.open_dataset(deployment_path)
+            else:
+                deployment = self.generate_deployment(idx=idx)
+                deployment.to_netcdf(deployment_path)
+            self.dataset[idx] = deployment
+        else:
+            deployment = self.dataset[i]
+        return deployment
+
+    def _deployment(self, idx):
+        deployment_row = self.metadata.iloc[idx]
+        deployment_path = self.output_folder.joinpath('deployments/%s_%s.nc' %
+                                                      (idx, deployment_row.deployment_name))
+        return idx, deployment_row['deployment_name'], deployment_path
+
+    def join_dataset(self):
+        ds = xarray.Dataset()
+        for idx, name, deployment_path, in self.deployments():
+            deployment = self[idx]
+            ds = utils.merge_ds(ds, deployment, self.survey_dependent_attrs)
+        return ds
+
+    def deployments(self):
         """
         Iterates through all the deployments listed in the metadata file
         Returns
@@ -91,10 +121,7 @@ class DataSet:
 
         """
         for idx in tqdm(self.metadata.index, total=len(self.metadata)):
-            deployment_row = self.metadata.iloc[idx]
-            deployment_path = self.output_folder.joinpath('deployments/%s_%s.netcdf' % (idx,
-                                                                                        deployment_row.deployment_name))
-            yield idx, deployment_row['deployment_name'], deployment_path
+            yield self._deployment(idx)
 
     def generate_deployment(self, idx):
         """
@@ -112,23 +139,45 @@ class DataSet:
         hydrophone.sensitivity = self.metadata.loc[(idx, 'instrument_sensitivity')]
         hydrophone.preamp_gain = self.metadata.loc[(idx, 'instrument_amp')]
         hydrophone.Vpp = self.metadata.loc[(idx, 'instrument_Vpp')]
-        asa = acoustic_survey.ASA(hydrophone, **self.metadata.loc[(idx, ['folder_path',
-                                                                         'utc',
-                                                                         'include_dirs',
-                                                                         'calibration_time',
-                                                                         'cal_freq',
-                                                                         'max_cal_duration',
-                                                                         'dc_subtract'])].to_dict())
+        survey_columns = ['folder_path', 'timezone', 'include_dirs', 'calibration']
+        extra_attrs = self.metadata.loc[(idx, self.metadata.columns[9::])].to_dict()
+        asa = acoustic_survey.ASA(hydrophone,
+                                  dc_subtract=self.dc_subtract,
+                                  binsize=self.binsize,
+                                  nfft=self.nfft,
+                                  overlap=self.overlap,
+                                  extra_attrs=extra_attrs,
+                                  **self.metadata.loc[(idx, survey_columns)].to_dict())
         ds = xarray.Dataset()
-        if self.third_octaves is not False:
-            freq_evo = asa.evolution_freq_dom('third_octaves_levels', band=self.third_octaves, db=True)
-            ds = ds.merge(freq_evo['oct3'])
-        if self.features is not None or len(self.features) != 0:
-            temporal_evo = asa.evolution_multiple(method_list=self.features, band_list=self.band_list)
-            for f in self.features:
+        if self.frequency_features not in [[], None]:
+            for f in self.frequency_features:
+                freq_evo = asa.evolution_freq_dom(f, band=None, db=True)
+                for data_var in freq_evo.data_vars:
+                    ds = ds.merge(freq_evo[data_var])
+        if self.temporal_features not in [[], None]:
+            temporal_evo = asa.evolution_multiple(method_list=self.temporal_features, band_list=self.band_list)
+            for f in self.temporal_features:
                 ds = ds.merge(temporal_evo[f])
+        if self.n_join_bins != 1:
+            i = 0
+            ds_averaged = xarray.Dataset()
+            while i < ds.dims['id'] / self.n_join_bins:
+                start_id = i * self.n_join_bins
+                bin_ids = ds.id[start_id: start_id+self.n_join_bins]
+                ds_bin = ds.isel(id=bin_ids.values)
+                bin_time = np.arange(0, ds_bin.dims['id']) * self.binsize
+                ds_bin = ds_bin.assign_coords({'bin_time': ('id', bin_time)})
+                ds_bin = ds_bin.swap_dims(id='bin_time')
+                ds_bin = ds_bin.expand_dims(bin_id=[i])
+                if i == 0:
+                    ds_averaged = ds_bin
+                else:
+                    ds_averaged = xarray.concat([ds_averaged, ds_bin], 'bin_id')
+                i += 1
+            ds = ds_averaged
         # Update the metadata in case the calibration changed the sensitivity
-        self.metadata.loc[idx, 'instrument_sensitivity'] = hydrophone.sensitivity
+        self.metadata.loc[idx, 'end_to_end_calibration'] = hydrophone.end_to_end_calibration(p_ref=1.0)
+        self.metadata.to_csv(self.summary_path, index=False)
         return ds
 
     def add_deployment_metadata(self, idx):
@@ -149,7 +198,7 @@ class DataSet:
         metadata_params = ['start_datetime', 'end_datetime', 'duration']
         for m_p in metadata_params:
             self.metadata[m_p] = None
-        for idx, _, _, in self._deployments():
+        for idx, _, _, in self.deployments():
             self.add_deployment_metadata(idx)
         return self.metadata
 
@@ -159,7 +208,7 @@ class DataSet:
         """
         i = 0
         for station_name, deployment in self.dataset.items():
-            for feature in self.features:
+            for feature in self.temporal_features:
                 deployment[feature].plot()
                 plt.title('%s %s evolution' % (station_name, feature))
                 plt.savefig(
@@ -212,8 +261,6 @@ class DataSet:
         """
         Plot the average third octave bands per deployment
         """
-        if self.third_octaves is False:
-            raise Exception('This is only possible if third-octave bands have been computed!')
         station_i = 0
         for station_name, deployment in self.dataset.items():
             deployment['oct3'].mean(axis=0).plot()

@@ -17,11 +17,13 @@ pypam allows to choose  "time window" per AcousticSurvey, which will be the time
 Then each feature will be computed on that time window (independently of the file duration and sampling frequency).
 The output is an xarray dataset. The dimensions of these arrays are always:
 
-* *datetime*: bin start timestamp of the "time window"
+* *id*: id of the bin (increasing integer)
 extra coordinates (metadata)
 
+* *datetime*: bin start timestamp of the "time window"
 * *start_sample*: start sample of the bin respect to the file
 * *end_sample*: end sample of the bin respect to the file
+* *id_*: id with respect to the file (changes when multiple files per deployment)
 
 
 Temporal (features) analysis
