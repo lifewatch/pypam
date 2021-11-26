@@ -1,36 +1,82 @@
+affine==2.3.0
+appdirs==1.4.4
+attrs==21.2.0
+audioread==2.1.9
+bpnsdata @ file:///C:/Users/cleap/Documents/code/bpnsdata/dist/bpnsdata-0.1.5.tar.gz
+certifi==2021.10.8
+cffi==1.15.0
+cftime==1.5.1.1
+charset-normalizer==2.0.7
+click==7.1.2
+click-plugins==1.1.1
+cligj==0.7.2
+colorama==0.4.4
+contextily==1.2.0
+cycler==0.11.0
+data==0.4
+decorator==5.1.0
+erddapy==1.2.0
+Fiona @ file:///C:/Users/cleap/Downloads/Installation%20Programs/Fiona-1.8.19-cp37-cp37m-win_amd64.whl
+funcsigs==1.0.2
+future==0.18.2
+GDAL @ file:///C:/Users/cleap/Downloads/Installation%20Programs/GDAL-3.2.3-cp37-cp37m-win_amd64.whl
+geographiclib==1.52
+geopandas==0.10.2
+geopy==2.2.0
+idna==3.3
+importlib-metadata==4.8.1
+importlib-resources==5.4.0
+joblib==1.1.0
+jplephem==2.16
+kiwisolver==1.3.2
+librosa==0.8.1
+lifewatch-pypam @ file:///C:/Users/cleap/Documents/code/pypam/dist/lifewatch-pypam-0.1.5.tar.gz
+llvmlite==0.37.0
+matplotlib==3.4.3
+mercantile==1.2.1
+monstru @ file:///C:/Users/cleap/Documents/code/monstru
+munch==2.5.0
+netCDF4==1.5.7
 noisereduce==2.0.0
-seaborn==0.11.2
-xarray==0.19.0
+numba==0.54.1
 numpy==1.19.0
-# appdirs==1.4.4 # Installed as dependency for pooch
-# audioread==2.1.9 # Installed as dependency for librosa
-# certifi==2021.10.8 # Installed as dependency for requests
-# cffi==1.15.0 # Installed as dependency for soundfile
-# charset-normalizer==2.0.7 # Installed as dependency for requests
-# colorama==0.4.4 # Installed as dependency for tqdm
-# cycler==0.10.0 # Installed as dependency for matplotlib
-# decorator==5.1.0 # Installed as dependency for librosa
-# idna==3.3 # Installed as dependency for requests
-# joblib==1.1.0 # Installed as dependency for scikit-learn, librosa, noisereduce
-# kiwisolver==1.3.2 # Installed as dependency for matplotlib
-# librosa==0.8.1 # Installed as dependency for noisereduce
-# llvmlite==0.37.0 # Installed as dependency for numba
-# matplotlib==3.4.3 # Installed as dependency for seaborn, noisereduce
-# numba==0.54.1 # Installed as dependency for resampy, librosa
-# packaging==21.0 # Installed as dependency for pooch, librosa
-# pandas==1.3.4 # Installed as dependency for xarray, seaborn
-# pillow==8.4.0 # Installed as dependency for matplotlib
-# pooch==1.5.2 # Installed as dependency for librosa
-# pycparser==2.20 # Installed as dependency for cffi
-# pyparsing==3.0.1 # Installed as dependency for packaging, matplotlib
-# python-dateutil==2.8.2 # Installed as dependency for pandas, matplotlib
-# pytz==2021.3 # Installed as dependency for pandas
-# requests==2.26.0 # Installed as dependency for pooch
-# resampy==0.2.2 # Installed as dependency for librosa
-# scikit-learn==1.0.1 # Installed as dependency for librosa
-# scipy==1.7.1 # Installed as dependency for scikit-learn, resampy, seaborn, librosa, noisereduce
-# six==1.16.0 # Installed as dependency for resampy, python-dateutil, cycler
-# soundfile==0.10.3.post1 # Installed as dependency for librosa
-# threadpoolctl==3.0.0 # Installed as dependency for scikit-learn
-# tqdm==4.62.3 # Installed as dependency for noisereduce
-# urllib3==1.26.7 # Installed as dependency for requests
+OWSLib==0.25.0
+packaging==21.2
+pandas==1.3.4
+patsy==0.5.2
+Pillow==8.4.0
+pooch==1.5.2
+pyarrow==6.0.0
+pycparser==2.20
+pygeos==0.11.1
+pyhydrophone @ file:///C:/Users/cleap/Documents/code/pyhydrophone/dist/pyhydrophone-0.1.1.tar.gz
+pymongo==3.12.1
+pyparsing==2.4.7
+pyproj==3.2.1
+python-dateutil==2.8.2
+pytz==2021.3
+PyYAML==6.0
+rasterio @ file:///C:/Users/cleap/Downloads/Installation%20Programs/rasterio-1.2.3-cp37-cp37m-win_amd64.whl
+requests==2.26.0
+resampy==0.2.2
+Rtree==0.9.7
+scikit-learn==1.0.1
+scipy==1.7.1
+seaborn==0.11.2
+sgp4==2.20
+Shapely==1.8.0
+shutilwhich==1.1.0
+six==1.16.0
+sklearn==0.0
+skyfield==1.39
+snuggs==1.4.7
+SoundFile==0.10.3.post1
+statsmodels==0.13.0
+tempdir==0.7.1
+threadpoolctl==3.0.0
+tqdm==4.62.3
+typing-extensions==3.10.0.2
+urllib3==1.26.7
+xarray==0.19.0
+xyzservices==2021.10.0
+zipp==3.6.0
