@@ -31,14 +31,17 @@ zipped_files = False
 
 class TestASA(unittest.TestCase):
     def setUp(self) -> None:
-        self.asa = ASA(hydrophone=soundtrap, folder_path='./test_data', binsize=binsize, nfft=nfft, utc=True,
+        self.asa = ASA(hydrophone=soundtrap, folder_path='./test_data', binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
+
+    def test_nmf(self):
+        self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=True)
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
 
     def test_third_oct(self):
-        ds = self.asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+        ds = self.asa.evolution_freq_dom('spectrogram', band=third_octaves, db=True)
         print(ds)
 
     def test_spectrogram(self):
@@ -71,8 +74,6 @@ class TestASA(unittest.TestCase):
         # just a smoke test to check if the function can run without errors
         self.asa.detect_ship_events(0.1, 0.5)
 
-    # def test_nmf(self):
-    #     self.asa.source_separation(1.0, 15, None, True)
 
 
 if __name__ == '__main__':

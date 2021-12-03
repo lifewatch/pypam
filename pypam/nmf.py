@@ -46,7 +46,7 @@ class NMF:
         # The STFT will be needed to do the filtering with the time-freq. mask.
         # The STFT function is used since it will take into account the COLA constraints so that an iSTFT can be done.
         # The STFT has a length (time dimension) longer than the spectrogram because it does some extra padding.
-        f_sg, t_sg, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, mode='fast')  # TODO noverlap to 50%!
+        f_sg, t_sg, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, overlap=0.5)
 
         f, t, Z_stft = sig.stft(s.signal, fs=s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
         Z_mag = np.abs(Z_stft)      # Magnitude of STFT

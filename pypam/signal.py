@@ -273,10 +273,17 @@ class Signal:
         """
         f = operator.methodcaller(method_name, **kwargs)
         result = []
+        time = []
         for block in self.blocks(blocksize=window):
-            val = f(block)
-            result.append(val)
-            yield block.time, result
+            try:
+                output = f(block)
+            except Exception as e:
+                print('There was an error in feature %s. Setting to None. '
+                      'Error: %s' % (method_name, e))
+                output = None
+            result.append(output)
+            time.append(block.time)
+        return time, output
 
     def rms(self, db=True, **kwargs):
         """

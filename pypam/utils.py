@@ -307,6 +307,8 @@ def merge_ds(ds, new_ds, attrs_to_vars):
         Already existing dataset
     new_ds : xarray Dataset
         New dataset to merge
+    attrs_to_vars: list
+        List of all the attributes to convert to coordinates (not dimensions)
 
     Returns
     -------
@@ -327,5 +329,5 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     if len(ds.dims) == 0:
         ds = ds.merge(new_ds)
     else:
-        ds = xarray.concat((ds, new_ds), 'id')
+        ds = xarray.concat((ds, new_ds), 'id', combine_attrs="drop_conflicts")
     return ds

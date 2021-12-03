@@ -73,6 +73,7 @@ class ASA:
                  overlap=0,
                  period=None,
                  band=None,
+                 n_join_bins=1,
                  timezone='UTC',
                  channel=0,
                  calibration=None,
@@ -87,6 +88,7 @@ class ASA:
         self.nfft = nfft
         self.overlap = overlap
         self.band = band
+        self.n_join_bins = n_join_bins
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
@@ -105,7 +107,8 @@ class ASA:
         else:
             self.extra_attrs = {}
 
-        self.file_dependent_attrs = ['hydrophone_sensitivity', 'hydrophone_preamp_gain', 'hydrophone_Vpp', 'file_path']
+        self.file_dependent_attrs = ['hydrophone_sensitivity', 'hydrophone_preamp_gain', 'hydrophone_Vpp', 'file_path',
+                                     '_start_frame']
 
     def _files(self):
         """
@@ -139,8 +142,14 @@ class ASA:
         metadata_keys = [
             'binsize',
             'nfft',
+            'overlap',
+            'n_join_bins',
             'timezone',
-            'p_ref'
+            'p_ref',
+            'hydrophone.name',
+            'hydrophone.model',
+            'channel',
+            'dc_subtract'
         ]
         metadata_attrs = self.extra_attrs.copy()
         for k in metadata_keys:
@@ -169,13 +178,13 @@ class ASA:
         **kwargs :
             Any accepted parameter for the method_name
         """
-        ds = xarray.Dataset()
+        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
-                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list, **kwargs)
+                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list,
+                                  n_join_bins=self.n_join_bins, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
-        ds.attrs = ds.attrs.update(attrs=self._get_metadata_attrs())
         return ds
 
     def evolution(self, method_name, band_list=None, **kwargs):
@@ -206,7 +215,8 @@ class ASA:
         A xarray DataSet with a row per bin with the method name output
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap,
+                                  n_join_bins=self.n_join_bins, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -253,7 +263,8 @@ class ASA:
             Any accepted parameter for the method_name
 
         """
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap,
+                                  n_join_bins=self.n_join_bins, **kwargs)
         for sound_file in self._files():
             f(sound_file)
 
@@ -467,7 +478,8 @@ class ASA:
 
         """
         for sound_file in self._files():
-            sound_file.source_separation(window_time, n_sources, band=self.band, save_path=save_path, verbose=verbose)
+            sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=self.band, 
+                                         save_path=save_path, verbose=verbose)
 
     def plot_rms_evolution(self, db=True, save_path=None):
         """

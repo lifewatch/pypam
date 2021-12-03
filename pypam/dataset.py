@@ -146,6 +146,7 @@ class DataSet:
                                   binsize=self.binsize,
                                   nfft=self.nfft,
                                   overlap=self.overlap,
+                                  n_join_bins=self.n_join_bins,
                                   extra_attrs=extra_attrs,
                                   **self.metadata.loc[(idx, survey_columns)].to_dict())
         ds = xarray.Dataset()
@@ -159,22 +160,26 @@ class DataSet:
             for f in self.temporal_features:
                 ds = ds.merge(temporal_evo[f])
         if self.n_join_bins != 1:
-            i = 0
-            ds_averaged = xarray.Dataset()
-            while i < ds.dims['id'] / self.n_join_bins:
-                start_id = i * self.n_join_bins
-                bin_ids = ds.id[start_id: start_id+self.n_join_bins]
-                ds_bin = ds.isel(id=bin_ids.values)
-                bin_time = np.arange(0, ds_bin.dims['id']) * self.binsize
-                ds_bin = ds_bin.assign_coords({'bin_time': ('id', bin_time)})
-                ds_bin = ds_bin.swap_dims(id='bin_time')
-                ds_bin = ds_bin.expand_dims(bin_id=[i])
-                if i == 0:
-                    ds_averaged = ds_bin
+            time_window = (np.arange(0, self.n_join_bins)) * self.binsize
+            bin_id = np.repeat(np.arange(0, int(np.ceil(ds.dims['id'] / self.n_join_bins))),
+                               self.n_join_bins)[:ds.dims['id']]
+            ds = ds.assign_coords({'temporal_grouped_id': ('id', bin_id)})
+            new_ds = xarray.Dataset()
+            for t, small_window in ds.groupby('temporal_grouped_id'):
+                small_window = small_window.assign_coords({'time_window': ('id', time_window[:small_window.dims['id']]),
+                                                           'grouped_id': t})
+                small_window = small_window.swap_dims(id='time_window')
+                small_window = small_window.drop_vars('temporal_grouped_id')
+                small_window = small_window.expand_dims('grouped_id')
+                small_window = small_window.assign_coords({'grouped_datetime':
+                                                               ('grouped_id',
+                                                                [small_window.datetime.sel(time_window=0).values])})
+                if t == 0:
+                    new_ds = small_window
                 else:
-                    ds_averaged = xarray.concat([ds_averaged, ds_bin], 'bin_id')
-                i += 1
-            ds = ds_averaged
+                    new_ds = xarray.concat((new_ds, small_window), 'grouped_id')
+            ds = new_ds
+
         # Update the metadata in case the calibration changed the sensitivity
         self.metadata.loc[idx, 'end_to_end_calibration'] = hydrophone.end_to_end_calibration(p_ref=1.0)
         self.metadata.to_csv(self.summary_path, index=False)
