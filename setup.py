@@ -11,6 +11,6 @@ setuptools.setup(
     test_suite='tests',
     tests_require=['lifewatch-pypam'],
     packages=setuptools.find_packages(),
-    install_requires=['pyhydrophone', 'noisereduce', 'xarray', 'seaborn', 'numpy==1.19.0'],
+    install_requires=['pyhydrophone', 'noisereduce', 'xarray', 'seaborn', 'numpy==1.21.0'],
     package_data={"lifewatch-pypam": ["tests/test_data/*.*"]}
 )
