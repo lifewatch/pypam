@@ -468,7 +468,7 @@ class Signal:
 
         """
         noverlap = nfft * overlap
-        if nfft < self.signal.size:
+        if nfft > self.signal.size:
             self.fill_or_crop(n_samples=nfft)
         window = sig.get_window('boxcar', nfft)
         freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap)

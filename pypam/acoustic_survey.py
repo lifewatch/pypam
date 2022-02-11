@@ -397,7 +397,7 @@ class ASA:
     def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, detection_band=None,
                              analysis_band=None, **kwargs):
         """
-        Return a xarray DataSet with all the piling events and their rms, sel and peak values
+        Return a DataFrame with all the piling events and their rms, sel and peak values
 
         Parameters
         ----------
@@ -417,17 +417,17 @@ class ASA:
         verbose : boolean
             Set to True to plot the detected events per bin
         """
-        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
+        df = pd.DataFrame()
         for sound_file in self._files():
-            ds_output = sound_file.detect_piling_events(min_separation=min_separation,
+            df_output = sound_file.detect_piling_events(min_separation=min_separation,
                                                         threshold=threshold,
                                                         max_duration=max_duration,
                                                         dt=dt, binsize=self.binsize,
                                                         detection_band=detection_band,
                                                         analysis_band=analysis_band,
                                                         verbose=verbose, **kwargs)
-            ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
-        return ds
+            df = df.append(df_output)
+        return df
 
     def detect_ship_events(self, min_duration, threshold):
         """

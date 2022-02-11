@@ -18,7 +18,9 @@ from pypam._event import Event
 from pypam import plots
 
 # Apply the default theme
-sns.set_theme()
+sns.set_theme('paper')
+sns.set_style('ticks')
+sns.set_palette('colorblind')
 
 
 class ImpulseDetector:
@@ -142,9 +144,9 @@ class ImpulseDetector:
         save_path : string or Path
             Where to save the image. Set to None if it should not be saved
         """
-        blocksize = int(self.dt * signal.fs)
         signal.set_band(band=self.detection_band)
         envelope = signal.envelope()
+        blocksize = int(self.dt * signal.fs)
         times_events = events_times_snr(signal=envelope, blocksize=blocksize, fs=signal.fs,
                                         threshold=self.threshold, max_duration=self.max_duration,
                                         min_separation=self.min_separation)
@@ -234,28 +236,27 @@ class ImpulseDetector:
         spectr_ds = xarray.DataArray(sxx, coords={'frequency': fbands, 'time': t}, dims=['frequency', 'time'])
 
         # Create plot
+        sns.set_theme('paper')
+        sns.set_style('ticks')
+        sns.set_palette('colorblind')
         fig, ax = plt.subplots(3, 1, sharex='col')
         divider = make_axes_locatable(ax[0])
         cax = divider.append_axes("right", size="5%", pad=.05)
         plots.plot_2d(spectr_ds, x='time', y='frequency', xlabel='', ylabel='Frequency [Hz]', ylog=True,
                       title='Spectrogram', ax=ax[0], cbar_label='$L_{rms} [dB]$', cbar_ax=cax)
-        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal', zorder=1)
-        ylims = ax[1].get_ylim()
-        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1],
-                     color='red', label='Detections', zorder=2)
-        ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
-        ax[1].set_title('Detections')
-        ax[1].set_ylabel('[dB]')
-        divider1 = make_axes_locatable(ax[1])
-        cax1 = divider1.append_axes("right", size="5%", pad=.05)
-        cax1.remove()
+
         if len(events_df) > 0:
-            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
+            l0 = ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
                           marker='.', label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
-            ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
+            l1 = ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
                           marker='x', label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'sel')],
                           marker='+', label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
+            color0 = l0.get_facecolors()[0]
+            color1 = l1.get_facecolors()[0]
+        else:
+            color0 = 'blue'
+            color1 = 'orange'
         ax[2].legend(bbox_to_anchor=(1, 0), loc="lower left")
         ax[2].set_title('Pulses detected')
         ax[2].set_xlabel('Time [s]')
@@ -263,6 +264,16 @@ class ImpulseDetector:
         divider2 = make_axes_locatable(ax[2])
         cax2 = divider2.append_axes("right", size="5%", pad=.05)
         cax2.remove()
+        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal', color=color0, zorder=2)
+        ylims = ax[1].get_ylim()
+        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1],
+                     color=color1, label='Detections', zorder=1)
+        ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
+        ax[1].set_title('Detections')
+        ax[1].set_ylabel('[dB]')
+        divider1 = make_axes_locatable(ax[1])
+        cax1 = divider1.append_axes("right", size="5%", pad=.05)
+        cax1.remove()
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
@@ -333,36 +344,46 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
 
 @nb.jit
 def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation):
+    """
+    Signal must be an envelope
+
+    :param signal:
+    :param fs:
+    :param blocksize:
+    :param threshold:
+    :param max_duration:
+    :param min_separation:
+    :return:
+    """
+    signal_db = 10 * np.log10(signal**2)
     times_events = []
     min_separation_samples = int(min_separation * fs)
     event_on = False
     event_start = 0
     event_end = 0
     j = 0
-    threshold_upa = 10 ** (threshold/20.0)
     while j < len(signal):
         if j + blocksize > len(signal):
             blocksize = len(signal) - j
-        noise = np.sqrt(np.mean(signal[j:j + blocksize]**2))
+        noise = 10 * np.log10(np.mean(signal[j:j + blocksize] ** 2))
         max_value = noise
         for i in np.arange(blocksize - 1) + j:
-            xi = signal[i]
+            xi = signal_db[i]
             if event_on:
                 duration = (i - event_start) / fs
-                if duration >= max_duration or (xi - noise) < 10**(6.0/20.0):
+                if duration >= max_duration or (xi - noise) < 3.0:
                     # Event finished, too long! Or event detected!
                     event_on = False
                     event_end = i
                     times_events.append([event_start / fs, duration, event_end / fs])
-
                 if xi > max_value:
                     max_value = xi
             else:
-                if (xi - noise) >= threshold_upa:
+                if (xi - noise) >= threshold:
                     if len(times_events) == 0 or (i - event_end) >= min_separation_samples:
                         event_on = True
                         event_start = i
                         max_value = xi
         j += blocksize
-            
+
     return times_events

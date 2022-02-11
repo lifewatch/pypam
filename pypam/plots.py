@@ -3,6 +3,9 @@ import xarray
 import seaborn as sns
 
 plt.rcParams.update({'text.usetex': True})
+sns.set_theme('paper')
+sns.set_style('ticks')
+sns.set_palette('colorblind')
 
 
 def plot_spd(spd, db, p_ref, log=True, save_path=None):
@@ -162,7 +165,8 @@ def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, xlog=False, ylog=False,
     if ax is None:
         _, ax = plt.subplots()
     xarray.plot.pcolormesh(ds, x=x, y=y, add_colorbar=True, xscale=xscale, yscale=yscale,
-                           cbar_kwargs={'label': cbar_label}, robust=True, ax=ax, **kwargs)
+                           cbar_kwargs={'label': cbar_label}, robust=True, ax=ax,
+                           extend='neither', cmap='YlGnBu_r', **kwargs)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
