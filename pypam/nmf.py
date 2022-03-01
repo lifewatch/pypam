@@ -12,14 +12,15 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from scipy import signal as sig
+import xarray
 
-from pypam import utils
+from pypam import utils, plots
 
 SEED = 10
 
 
 class NMF:
-    def __init__(self, window_time=0.1, rank=15):
+    def __init__(self, window_time=0.1, rank=15, save_path=None):
         """
         window_time: Frame length in seconds
         """
@@ -27,6 +28,7 @@ class NMF:
         self.R = rank
         self.nfft = None
         self.noverlap = None
+        self.save_path = save_path
 
     def __call__(self, s, V_type='Z_mag', normalize=True, verbose=False):
         """
@@ -46,26 +48,38 @@ class NMF:
         # The STFT will be needed to do the filtering with the time-freq. mask.
         # The STFT function is used since it will take into account the COLA constraints so that an iSTFT can be done.
         # The STFT has a length (time dimension) longer than the spectrogram because it does some extra padding.
-        f_sg, t_sg, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, overlap=0.5)
-
-        f, t, Z_stft = sig.stft(s.signal, fs=s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
-        Z_mag = np.abs(Z_stft)      # Magnitude of STFT
-        Z_phase = np.angle(Z_stft)  # Phase of STFT
-
-        if verbose:
-            self.plot_z_mag(f, t, Z_mag)
 
         # Apply the NMF Algorithm
-        if V_type == 'Z_mag':
-            V = Z_mag
-        elif V_type == 'Z_phase':
-            V = Z_phase
-        elif V_type == 'Gxx':
+        if V_type == 'Gxx':
+            f, t, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, overlap=0.5)
             V = Gxx
+
+        elif V_type == 'Z_mag' or V_type == 'Z_phase':
+            f, t, Z_stft = sig.stft(s.signal, fs=s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
+            Z_mag = np.abs(Z_stft)
+            Z_phase = np.angle(Z_stft)
+            # Magnitude of STFT
+            z_mag = xarray.DataArray(data=Z_mag,
+                                     coords={'frequency': f, 'time': t},
+                                     dims=['frequency', 'time'])
+            # Phase of STFT
+            z_phase = xarray.DataArray(data=Z_phase,
+                                       coords={'frequency': f, 'time': t},
+                                       dims=['frequency', 'time'])
+            z_ds = xarray.Dataset(data_vars={'magnitude': z_mag, 'phase': z_phase})
+            if verbose:
+                plots.plot_2d(z_ds['magnitude'], x='time', y='frequency', cbar_label='Magnitude', xlabel='Time',
+                              ylabel='Frequency [Hz]', title='Z magnitude')
+                plt.show()
+
+            if V_type == 'Z_phase':
+                V = Z_phase
+            else:
+                V = Z_mag
         else:
             raise Exception('This approach is not implemented!')
 
-        W, H, ErrConv = self.NMF_hals(V, init_type="rand_norm", max_iter=1000, tol=1e-9)
+        W, H, ErrConv = self.NMF_hals(V, init_type="rand_norm", max_iter=1000, tol=1e-9, verbose=verbose)
         V_approx = W @ H  # approximated V
         Residual = V - V_approx
         Residual_norm = np.linalg.norm(V - (W @ H))
@@ -84,17 +98,37 @@ class NMF:
             W = W @ Dw_inv
             H = Dw @ H @ Dv_inv
 
-        # Error convergence
-        if verbose:
-            self.plot_error_conv(ErrConv, Residual)
-            self.plot_decomposition(s, f_sg, V, V_approx, W, H)
-
         # Step 5: Creation of time-frequency masks to obtain the individual components.
         WH_prod, G_tf, C_tf, c_tf = self.time_freq_masks(s, Z_stft, V, W, H)
 
-        return W, H, WH_prod, G_tf, C_tf, c_tf
+        sources = np.arange(self.R)
+        w_arr = xarray.DataArray(data=W, coords={'frequency': f, 'sources': sources},
+                                 dims=['frequency', 'sources'])
+        h_arr = xarray.DataArray(data=H, coords={'sources': sources, 'time': t},
+                                 dims=['sources', 'time'])
+        wh_prod = xarray.DataArray(data=WH_prod, coords={'frequency': f, 'time': t},
+                                   dims=['frequency', 'time'])
+        gtf_arr = xarray.DataArray(data=G_tf, coords={'frequency': f, 'time': t, 'sources': sources},
+                                   dims=['frequency', 'time', 'sources'])
+        ctf_arr = xarray.DataArray(data=C_tf, coords={'frequency': f, 'time': t, 'sources': sources},
+                                   dims=['frequency', 'time', 'sources'])
+        nmf_ds = xarray.Dataset({'W': w_arr, 'H': h_arr, 'WH_prod': wh_prod,
+                                 'G_tf': gtf_arr, 'C_tf': ctf_arr})
 
-    def NMF_hals(self, V, init_type, max_iter, tol):
+        # Error convergence and decomposition
+        if verbose:
+            # Decomposition Plots
+            Vlg = utils.to_db(V, square=True, ref=1.0)
+            Vlg_ap = utils.to_db(V_approx, square=True, ref=1.0)
+            v = xarray.DataArray(data=Vlg, coords={'frequency': f, 'time': t}, dims=['frequency', 'time'])
+            v_approx = xarray.DataArray(data=Vlg_ap, coords={'frequency': f, 'time': t}, dims=['frequency', 'time'])
+
+            self.plot_error_conv(ErrConv, Residual)
+            self.plot_decomposition(s, f, v, v_approx, w_arr, h_arr)
+
+        return nmf_ds
+
+    def NMF_hals(self, V, init_type, max_iter, tol, verbose=False):
         """
         Non-negative matrix factorisation (NMF) implementation using the
         Hierarchical Alternating Least Squares (HALS) algorithm, which was firstly described in:
@@ -180,10 +214,12 @@ class NMF:
             ErrConv.append(err)
 
             if (l % 10) == 0:  # condition to display convergence.
-                print('Iteration: ' + str(l) + ', Error: ' + str(err))
+                if verbose:
+                    print('Iteration: ' + str(l) + ', Error: ' + str(err))
 
             if l > max_iter:  # In case it gets stuck or takes too long, break earlier
-                print('Algorithm stopped after ' + str(max_iter) + ' iterations')
+                if verbose:
+                    print('Algorithm stopped after ' + str(max_iter) + ' iterations')
                 break
 
         return W, H, ErrConv
@@ -213,22 +249,6 @@ class NMF:
         return WH_prod, G_tf, C_tf, c_tf
 
     @staticmethod
-    # TODO implement in signal 
-    def plot_z_mag(f, t, Z_mag):
-        # pad_xextent = t[2] - t[1]  # get time frame interval
-        # xextent = np.min(t) - pad_xextent, np.max(t) + pad_xextent  # pad the beginning and end
-        # tmin, tmax = xextent
-        # extent = tmin / 60, tmax / 60, f[0], f[-1]  # this defines the 4 corners of the "image"
-        # cmin, cmax = np.min(Z_mag), np.max(Z_mag)
-
-        fig, ax = plt.subplots()
-        sp = ax.pcolormesh(t, f, Z_mag, shading='auto')
-        ax.set_xlabel('Time (mins)')
-        ax.set_ylabel('Frequency (Hz)')
-        plt.colorbar(sp, ax=[ax], location='right')
-        plt.show()
-
-    @staticmethod
     def plot_error_conv(ErrConv, Residual):
         ErrConv = np.array(ErrConv)
         plt.plot(np.log(ErrConv))
@@ -237,39 +257,21 @@ class NMF:
         plt.show()
         
     def plot_decomposition(self, s, f_sg, V, V_approx, W, H):
-        # Decomposition Plots
-        Vlg = utils.to_db(V, square=True, ref=1.0)
-        Vlg_ap = utils.to_db(V_approx, square=True, ref=1.0)
-        W_sklg = np.log10(W)
-        H_sklg = (H)
+        W_log = np.log10(W)
+        fig, ax = plt.subplots(2, 2, figsize=(12, 6), sharex=False)
 
-        fig, axes = plt.subplots(2, 2, figsize=(12, 4))
-        fig.subplots_adjust(hspace=0.5)  # horizontal spacing
+        plots.plot_2d(V, x='time', y='frequency', xlabel='Time [mins]', ylabel='Frequency [Hz]',
+                      cbar_label='SPL', title='Original spectrogram', ax=ax[0, 0])
+        plots.plot_2d(W_log, x='sources', y='frequency', xlabel='Number of basis vectors', ylabel='Frequency [Hz]',
+                      cbar_label='SPL', title='W = basis vectors', ax=ax[1, 0])
+        plots.plot_2d(H, x='time', y='sources', xlabel='Time [mins]', ylabel='Number of basis vectors',
+                      cbar_label='Activation', title='H = activations', ax=ax[1, 1])
+        plots.plot_2d(V_approx, x='time', y='frequency', xlabel='Time [mins]', ylabel='Frequency [Hz]',
+                      cbar_label='SPL', title='V approximation (WH)', ax=ax[0, 1])
 
-        sp = axes[0, 0].pcolormesh(Vlg, shading='auto')
-        axes[0, 0].set_xlabel('Time (mins)')
-        axes[0, 0].set_ylabel('Frequency (Hz)')
-        plt.colorbar(sp, ax=[axes[0, 0]], location='right')
-
-        sp2 = axes[1, 0].pcolormesh(W_sklg, shading='auto')
-        axes[1, 0].set_title('W = basis vectors')
-        axes[1, 0].set_xticks(np.arange(0, self.R, 5))
-        axes[1, 0].set_xlabel('Number of basis vectors')
-        axes[1, 0].set_ylabel('Frequency (Hz)')
-        plt.colorbar(sp2, ax=[axes[1, 0]], location='right')
-
-        sp3 = axes[1, 1].pcolormesh(H_sklg, shading='auto')
-        axes[1, 1].set_title('H = activations')
-        axes[1, 1].set_xlabel('Time (mins)')
-        axes[1, 1].set_ylabel('Number of basis vectors')
-        axes[1, 1].set_yticks(np.arange(0, self.R, 5))
-        plt.colorbar(sp3, ax=[axes[1, 1]], location='right')
-
-        sp4 = axes[0, 1].pcolormesh(Vlg_ap, shading='auto')
-        axes[0, 1].set_title('V approximation (WH)')
-        axes[0, 1].set_xlabel('Time (mins)')
-        axes[0, 1].set_ylabel('Frequency (Hz)')
-        plt.colorbar(sp4, ax=[axes[0, 1]], location='right')
+        if self.save_path is not None:
+            plt.savefig(self.save_path.joinpath('decomposition.png'))
+        plt.show()
 
         # Basis Vector plots
         fig, axes = plt.subplots(1, self.R)
@@ -288,4 +290,6 @@ class NMF:
 
         fig.text(0.5, 0.04, 'Amplitudes (x $10^{-3}$)', ha='center')
 
+        if self.save_path is not None:
+            plt.savefig(self.save_path.joinpath('sources.png'))
         plt.show()

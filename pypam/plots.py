@@ -45,7 +45,7 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None):
     plt.close()
 
 
-def plot_spectrograms(ds_spectrogram, log, db, p_ref, save_path):
+def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
     """
     Plot the the SPD graph of the bin
 

@@ -144,18 +144,17 @@ class AcuFile:
         n_blocks = self._n_blocks(blocksize, noverlap=noverlap)
         time_array, _, _ = self._time_array(binsize, overlap=overlap)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame,
-                                                 overlap=noverlap, always_2d=True)),
+                                                 overlap=noverlap, always_2d=True, fill_value=0.0)),
                              total=n_blocks, leave=False, position=0):
             # Select the desired channel
             block = block[:, self.channel]
-            if len(block) == blocksize:
-                time_bin = time_array[i]
-                # Read the signal and prepare it for analysis
-                signal_upa = self.wav2upa(wav=block)
-                signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-                if self.dc_subtract:
-                    signal.remove_dc()
-                yield i, time_bin, signal
+            time_bin = time_array[i]
+            # Read the signal and prepare it for analysis
+            signal_upa = self.wav2upa(wav=block)
+            signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
+            if self.dc_subtract:
+                signal.remove_dc()
+            yield i, time_bin, signal
         self.file.seek(0)
 
     def _n_blocks(self, blocksize, noverlap):
@@ -312,13 +311,21 @@ class AcuFile:
         else:
             total_block = self.samples(binsize)
         blocksize = total_block - int(total_block) * overlap
-        blocks_samples = np.arange(start=self._start_frame, stop=self.file.frames - blocksize, step=blocksize)
+        blocks_samples = np.arange(start=self._start_frame, stop=self.file.frames - 1, step=blocksize)
         end_samples = blocks_samples + blocksize
         incr = pd.to_timedelta(blocks_samples / self.fs, unit='seconds')
         self.time = self.date + datetime.timedelta(seconds=self._start_frame / self.fs) + incr
         if self.timezone != 'UTC':
             self.time = pd.to_datetime(self.time).tz_localize(self.timezone).tz_convert('UTC').tz_convert(None)
         return self.time, blocks_samples.astype(int), end_samples.astype(int)
+
+    def timestamp_da(self, binsize=None, overlap=0):
+        time_array, start_samples, end_samples = self._time_array(binsize, overlap)
+        ds = xarray.Dataset(coords={'id': np.arange(len(time_array)),
+                                    'datetime': ('id', time_array.values),
+                                    'start_sample': ('id', start_samples),
+                                    'end_sample': ('id', end_samples)})
+        return ds
 
     def wav2upa(self, wav=None):
         """
@@ -409,7 +416,8 @@ class AcuFile:
                          'channel',
                          '_start_frame',
                          'calibration',
-                         'dc_subtract'
+                         'dc_subtract',
+                         'fs'
                          ]
         metadata_attrs = {}
         for k in metadata_keys:
@@ -987,7 +995,8 @@ class AcuFile:
             window time to consider in seconds
         n_sources : int
             Number of sources
-        binsize : # TODO
+        binsize : float
+            Time window considered, in seconds. If set to None, only one value is returned
         save_path: str or Path
             Where to save the output
         verbose: bool
@@ -998,12 +1007,17 @@ class AcuFile:
         """
         if band is None:
             band = [None, self.fs / 2]
-        separator = nmf.NMF(window_time=window_time, rank=n_sources)
-        for i, time_bin, signal in self._bins(binsize, overlap=0):
+        separator = nmf.NMF(window_time=window_time, rank=n_sources, save_path=save_path)
+        ds = xarray.Dataset()
+        for i, time_bin, signal in self._bins(binsize, overlap=0.0):
             signal.set_band(band)
-            w, h, wh_prod, g_tf, c_tf, c_tf_i = separator(signal, verbose=verbose)
-            # TODO decide how to return this output!
-            print(w, h, wh_prod, g_tf, c_tf, c_tf_i)
+            separation_ds = separator(signal, verbose=verbose)
+            separation_ds = separation_ds.assign_coords({'id': [i], 'datetime': ('id', [time_bin])})
+            if i == 0:
+                ds = separation_ds
+            else:
+                ds = xarray.concat((ds, separation_ds), 'id')
+        return ds
 
     def plot_psd(self, db=True, log=True, save_path=None, **kwargs):
         """

@@ -34,8 +34,11 @@ class TestASA(unittest.TestCase):
         self.asa = ASA(hydrophone=soundtrap, folder_path='./test_data', binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
+    def test_timestamp_array(self):
+        self.asa.timestamps_array()
+
     def test_nmf(self):
-        self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=True)
+        ds = self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=False)
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)

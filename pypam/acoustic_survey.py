@@ -227,7 +227,7 @@ class ASA:
         Return an xarray DataSet with the timestamps of each bin.
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        f = operator.methodcaller('timestamps_ds', binsize=self.binsize)
+        f = operator.methodcaller('timestamp_da', binsize=self.binsize, overlap=self.overlap)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -477,9 +477,13 @@ class ASA:
             Set to True to make plots of the process
 
         """
+        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         for sound_file in self._files():
-            sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=self.band, 
-                                         save_path=save_path, verbose=verbose)
+            nmf_ds = sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=self.band,
+                                                  save_path=save_path, verbose=verbose)
+            ds = utils.merge_ds(ds, nmf_ds, self.file_dependent_attrs)
+
+        return ds
 
     def plot_rms_evolution(self, db=True, save_path=None):
         """
