@@ -51,8 +51,6 @@ class ASA:
     period : tuple or list
         Tuple or list with two elements: start and stop. Has to be a string in the
         format YYYY-MM-DD HH:MM:SS
-    band : tuple or list
-        Tuple or list with two elements: low-cut and high-cut of the band to analyze
     calibration: float, -1 or None
         If float, it is the time ignored a the beginning of the file. If None, nothing is done. If negative,
         the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
@@ -72,7 +70,6 @@ class ASA:
                  nfft=1.0,
                  overlap=0,
                  period=None,
-                 band=None,
                  n_join_bins=1,
                  timezone='UTC',
                  channel=0,
@@ -87,7 +84,6 @@ class ASA:
         self.binsize = binsize
         self.nfft = nfft
         self.overlap = overlap
-        self.band = band
         self.n_join_bins = n_join_bins
 
         if period is not None:
@@ -462,7 +458,7 @@ class ASA:
                 df = df.append(df_output)
         return df
 
-    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False):
+    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
         """
         Separate the signal in n_sources sources, using non negative matrix factorization
         Parameters
@@ -475,11 +471,12 @@ class ASA:
             Where to save the output
         verbose: bool
             Set to True to make plots of the process
-
+        band : tuple or list
+            Tuple or list with two elements: low-cut and high-cut of the band to analyze
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         for sound_file in self._files():
-            nmf_ds = sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=self.band,
+            nmf_ds = sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=band,
                                                   save_path=save_path, verbose=verbose)
             ds = utils.merge_ds(ds, nmf_ds, self.file_dependent_attrs)
 
