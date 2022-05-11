@@ -82,7 +82,7 @@ class DataSet:
         Also adds all the deployment data to the self object in the general dataset,
         and the path to each deployment's pickle in the list of deployments
         """
-        for idx, name, deployment_path, in self.deployments():
+        for idx, name, deployment_path in self.deployments():
             self[idx]
         self.metadata.to_csv(self.summary_path, index=False)
 
@@ -120,6 +120,7 @@ class DataSet:
         idx, deployment_name, deployment_path per iteration
 
         """
+        print('Reading dataset...')
         for idx in tqdm(self.metadata.index, total=len(self.metadata)):
             yield self._deployment(idx)
 
