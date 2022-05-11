@@ -132,7 +132,7 @@ class AcuFile:
 
         Returns
         -------
-        Iterates through all the bins, yields i, time_bin, signal
+        Iterates through all the bins, yields i, time_bin, signal, start_sample, end_sample
         Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
         of the bin
         """
@@ -154,7 +154,9 @@ class AcuFile:
             signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             if self.dc_subtract:
                 signal.remove_dc()
-            yield i, time_bin, signal
+            start_sample = i*blocksize + self._start_frame
+            end_sample = start_sample + len(signal_upa)
+            yield i, time_bin, signal, start_sample, end_sample
         self.file.seek(0)
 
     def _n_blocks(self, blocksize, noverlap):
@@ -430,7 +432,7 @@ class AcuFile:
 
         return metadata_attrs
 
-    def _apply_multiple(self, method_list, binsize=None, band_list=None, overlap=0, n_join_bins=1, **kwargs):
+    def _apply_multiple(self, method_list, binsize=None, band_list=None, overlap=0, **kwargs):
         """
         Apply multiple methods per bin to save computational time
 
@@ -446,8 +448,6 @@ class AcuFile:
             Length in seconds of the bins to analyze
         overlap : float [0 to 1]
             Percentage to overlap the bin windows
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
         kwargs: any parameters that have to be passed to the methods
 
         Returns
@@ -474,7 +474,7 @@ class AcuFile:
 
         # Define an empty dataset
         ds = xarray.Dataset()
-        for i, time_bin, signal in self._bins(binsize, overlap=overlap):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, overlap=overlap):
             ds_bands = xarray.Dataset()
             for j, band in enumerate(sorted_bands):
                 signal.set_band(band, downsample=downsample)
@@ -489,6 +489,9 @@ class AcuFile:
                         output = None
                     methods_output[method_name] = xarray.DataArray([[output]], coords={'id': [i],
                                                                                        'datetime': ('id', [time_bin]),
+                                                                                       'start_sample': ('id',
+                                                                                                        [start_sample]),
+                                                                                       'end_sample': ('id', [end_sample]),
                                                                                        'band': [j],
                                                                                        'low_freq': ('band', [band[0]]),
                                                                                        'high_freq': (
@@ -595,7 +598,7 @@ class AcuFile:
         cumdr['cumsum_dr'] = cumdr.dr.cumsum()
         return cumdr
 
-    def octaves_levels(self, binsize=None, overlap=0, db=True, band=None, n_join_bins=1, **kwargs):
+    def octaves_levels(self, binsize=None, overlap=0, db=True, band=None, **kwargs):
         """
         Return the octave levels
         Parameters
@@ -608,8 +611,6 @@ class AcuFile:
             Set to True if the result should be in decibels
         band: list or tuple
             List or tuple of [low_frequency, high_frequency]
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
 
         Returns
         -------
@@ -618,7 +619,7 @@ class AcuFile:
         """
         return self._octaves_levels(fraction=1, binsize=binsize, overlap=overlap, db=db, band=band)
 
-    def third_octaves_levels(self, binsize=None, overlap=0, db=True, band=None, n_join_bins=1, **kwargs):
+    def third_octaves_levels(self, binsize=None, overlap=0, db=True, band=None, **kwargs):
         """
         Return the octave levels
         Parameters
@@ -631,8 +632,6 @@ class AcuFile:
             Set to True if the result should be in decibels
         band: list or tuple
             List or tuple of [low_frequency, high_frequency]
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
 
         Returns
         -------
@@ -641,7 +640,7 @@ class AcuFile:
         """
         return self._octaves_levels(fraction=3, binsize=binsize, overlap=overlap, db=db, band=band)
 
-    def _octaves_levels(self, fraction=1, binsize=None, overlap=0, db=True, band=None, n_join_bins=1):
+    def _octaves_levels(self, fraction=1, binsize=None, overlap=0, db=True, band=None):
         """
         Return the octave levels
         Parameters
@@ -654,8 +653,6 @@ class AcuFile:
             Percentage to overlap the bin windows
         db: boolean
             Set to True if the result should be in decibels
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
 
         Returns
         -------
@@ -670,11 +667,13 @@ class AcuFile:
 
         # Create an empty dataset
         da = xarray.DataArray()
-        for i, time_bin, signal in self._bins(binsize, overlap=overlap):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, overlap=overlap):
             signal.set_band(band, downsample=downsample)
             fbands, levels = signal.octave_levels(db, fraction)
             da_levels = xarray.DataArray(data=[levels],
-                                         coords={'id': [i], 'datetime': ('id', [time_bin]), 'frequency': fbands},
+                                         coords={'id': [i], 'start_sample': ('id', [start_sample]),
+                                                 'end_sample': ('id', [end_sample]), 'datetime': ('id', [time_bin]),
+                                                 'frequency': fbands},
                                          dims=['id', 'frequency'])
             if i == 0:
                 da = da_levels
@@ -684,7 +683,7 @@ class AcuFile:
         ds = xarray.Dataset(data_vars={oct_str: da}, attrs=self._get_metadata_attrs())
         return ds
 
-    def spectrogram(self, binsize=None, overlap=0, nfft=512, scaling='density', db=True, band=None, n_join_bins=1):
+    def spectrogram(self, binsize=None, overlap=0, nfft=512, scaling='density', db=True, band=None):
         """
         Return the spectrogram of the signal (entire file)
 
@@ -703,8 +702,6 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
 
         Returns
         -------
@@ -722,10 +719,12 @@ class AcuFile:
             band = [None, self.fs / 2]
 
         da = xarray.DataArray()
-        for i, time_bin, signal in self._bins(binsize, overlap=overlap):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, overlap=overlap):
             signal.set_band(band, downsample=downsample)
             freq, t, sxx = signal.spectrogram(nfft=nfft, scaling=scaling, db=db)
             da_sxx = xarray.DataArray([sxx], coords={'id': [i],
+                                                     'start_sample': ('id', [start_sample]),
+                                                     'end_sample': ('id', [end_sample]),
                                                      'datetime': ('id', [time_bin]),
                                                      'frequency': freq, 'time': t},
                                       dims=['id', 'frequency', 'time'])
@@ -736,8 +735,7 @@ class AcuFile:
         ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
         return ds
 
-    def _spectrum(self, scaling='density', binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None,
-                  n_join_bins=1):
+    def _spectrum(self, scaling='density', binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None):
         """
         Return the spectrum : frequency distribution of every bin (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and each
@@ -761,8 +759,6 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
         """
         downsample = True
         if percentiles is None:
@@ -772,7 +768,7 @@ class AcuFile:
 
         spectrum_str = 'band_' + scaling
         ds = xarray.DataArray()
-        for i, time_bin, signal in self._bins(binsize, overlap=overlap):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, overlap=overlap):
             signal.set_band(band, downsample=downsample)
             fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
                                                                percentiles=percentiles)
@@ -793,7 +789,7 @@ class AcuFile:
         ds.attrs = self._get_metadata_attrs()
         return ds
 
-    def psd(self, binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None, n_join_bins=1):
+    def psd(self, binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None):
         """
         Return the power spectrum density (PSD) of all the file (units^2 / Hz) re 1 V 1 upa
         Returns a Dataframe with 'datetime' as index and a column for each frequency and each
@@ -815,14 +811,12 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
         """
         psd_ds = self._spectrum(scaling='density', binsize=binsize, nfft=nfft, db=db, overlap=overlap,
                                 percentiles=percentiles, band=band)
         return psd_ds
 
-    def power_spectrum(self, binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None, n_join_bins=1):
+    def power_spectrum(self, binsize=None, overlap=0, nfft=512, db=True, percentiles=None, band=None):
         """
         Return the power spectrum of all the file (units^2 / Hz) re 1 V 1 upa
         Returns a Dataframe with 'datetime' as index and a column for each frequency and
@@ -844,8 +838,6 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        n_join_bins : int
-            Number of bins to join on a third dimension "bin_time"
         """
 
         spectrum_ds = self._spectrum(scaling='spectrum', binsize=binsize, nfft=nfft, db=db, overlap=overlap,
@@ -937,7 +929,7 @@ class AcuFile:
                                                    threshold=threshold, dt=dt, detection_band=detection_band,
                                                    analysis_band=analysis_band)
         total_events = pd.DataFrame()
-        for _, time_bin, signal in self._bins(binsize):
+        for _, time_bin, signal, start_sample, end_sample in self._bins(binsize):
             signal.set_band(band=analysis_band, downsample=False)
             if save_path is not None:
                 file_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
@@ -975,7 +967,7 @@ class AcuFile:
                                                         threshold=threshold)
 
         total_events = pd.DataFrame()
-        for i, time_bin, signal in self._bins(binsize):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize):
             events_df = detector.detect_events(signal, verbose=verbose)
             events_df['start_datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
             seconds_start = binsize * i
@@ -1009,7 +1001,7 @@ class AcuFile:
             band = [None, self.fs / 2]
         separator = nmf.NMF(window_time=window_time, rank=n_sources, save_path=save_path)
         ds = xarray.Dataset()
-        for i, time_bin, signal in self._bins(binsize, overlap=0.0):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, overlap=0.0):
             signal.set_band(band)
             separation_ds = separator(signal, verbose=verbose)
             separation_ds = separation_ds.assign_coords({'id': [i], 'datetime': ('id', [time_bin])})

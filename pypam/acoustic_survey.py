@@ -70,7 +70,6 @@ class ASA:
                  nfft=1.0,
                  overlap=0,
                  period=None,
-                 n_join_bins=1,
                  timezone='UTC',
                  channel=0,
                  calibration=None,
@@ -84,7 +83,6 @@ class ASA:
         self.binsize = binsize
         self.nfft = nfft
         self.overlap = overlap
-        self.n_join_bins = n_join_bins
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
@@ -139,7 +137,6 @@ class ASA:
             'binsize',
             'nfft',
             'overlap',
-            'n_join_bins',
             'timezone',
             'p_ref',
             'hydrophone.name',
@@ -176,8 +173,7 @@ class ASA:
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
-                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list,
-                                  n_join_bins=self.n_join_bins, **kwargs)
+                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -211,8 +207,7 @@ class ASA:
         A xarray DataSet with a row per bin with the method name output
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap,
-                                  n_join_bins=self.n_join_bins, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -259,8 +254,7 @@ class ASA:
             Any accepted parameter for the method_name
 
         """
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap,
-                                  n_join_bins=self.n_join_bins, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
         for sound_file in self._files():
             f(sound_file)
 

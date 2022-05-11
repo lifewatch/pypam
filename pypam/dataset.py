@@ -43,8 +43,9 @@ class DataSet:
      nfft : int
          Number of samples of window to use for frequency analysis
      """
+
     def __init__(self, summary_path, output_folder, instruments, temporal_features=None, frequency_features=None,
-                 bands_list=None, binsize=60.0, nfft=512, n_join_bins=1, overlap=0, dc_subtract=False):
+                 bands_list=None, binsize=60.0, nfft=512, overlap=0, dc_subtract=False):
         self.metadata = pd.read_csv(summary_path)
         if 'end_to_end_calibration' not in self.metadata.columns:
             self.metadata['end_to_end_calibration'] = np.nan
@@ -55,7 +56,6 @@ class DataSet:
         self.band_list = bands_list
         self.binsize = binsize
         self.nfft = nfft
-        self.n_join_bins = n_join_bins
         self.overlap = overlap
         self.dc_subtract = dc_subtract
 
@@ -74,7 +74,7 @@ class DataSet:
 
         self.survey_dependent_attrs = ['hydrophone_name', 'hydrophone_model', 'hydrophone_Vpp',
                                        'hydrophone_preamp_gain', 'hydrophone_sensitivity']
-        
+
     def __call__(self):
         """
         Calculates the acoustic features of every deployment and saves them as a pickle in the deployments folder with
@@ -146,7 +146,6 @@ class DataSet:
                                   binsize=self.binsize,
                                   nfft=self.nfft,
                                   overlap=self.overlap,
-                                  n_join_bins=self.n_join_bins,
                                   extra_attrs=extra_attrs,
                                   **self.metadata.loc[(idx, survey_columns)].to_dict())
         ds = xarray.Dataset()
@@ -159,26 +158,6 @@ class DataSet:
             temporal_evo = asa.evolution_multiple(method_list=self.temporal_features, band_list=self.band_list)
             for f in self.temporal_features:
                 ds = ds.merge(temporal_evo[f])
-        if self.n_join_bins != 1:
-            time_window = (np.arange(0, self.n_join_bins)) * self.binsize
-            bin_id = np.repeat(np.arange(0, int(np.ceil(ds.dims['id'] / self.n_join_bins))),
-                               self.n_join_bins)[:ds.dims['id']]
-            ds = ds.assign_coords({'temporal_grouped_id': ('id', bin_id)})
-            new_ds = xarray.Dataset()
-            for t, small_window in ds.groupby('temporal_grouped_id'):
-                small_window = small_window.assign_coords({'time_window': ('id', time_window[:small_window.dims['id']]),
-                                                           'grouped_id': t})
-                small_window = small_window.swap_dims(id='time_window')
-                small_window = small_window.drop_vars('temporal_grouped_id')
-                small_window = small_window.expand_dims('grouped_id')
-                small_window = small_window.assign_coords({'grouped_datetime':
-                                                               ('grouped_id',
-                                                                [small_window.datetime.sel(time_window=0).values])})
-                if t == 0:
-                    new_ds = small_window
-                else:
-                    new_ds = xarray.concat((new_ds, small_window), 'grouped_id')
-            ds = new_ds
 
         # Update the metadata in case the calibration changed the sensitivity
         self.metadata.loc[idx, 'end_to_end_calibration'] = hydrophone.end_to_end_calibration(p_ref=1.0)
