@@ -21,7 +21,7 @@ class DataSet:
        - img : graphs and figures
          - temporal_features : temporal evolution of all features per deployment
          - data_overview : spatial and temporal coverage, and methods used
-         - features_analysis : ??
+         - features_analysis : still to be discussed
          - spatial_features : spatial distribution of features
 
      Parameters

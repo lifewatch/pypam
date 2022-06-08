@@ -61,7 +61,7 @@ class TestDataset(unittest.TestCase):
     def setUp(self) -> None:
         self.ds = dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
                                   frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                                  nfft=nfft, overlap=overlap, dc_subtract=dc_subtract, n_join_bins=n_join_bins)
+                                  nfft=nfft, overlap=overlap, dc_subtract=dc_subtract)
 
     def test_generate_dataset(self):
         self.ds()
