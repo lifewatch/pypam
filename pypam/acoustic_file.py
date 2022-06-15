@@ -8,6 +8,7 @@ import datetime
 import operator
 import os
 import pathlib
+import zipfile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -62,6 +63,8 @@ class AcuFile:
             file_name = os.path.split(sfile)[-1]
         elif issubclass(sfile.__class__, pathlib.Path):
             file_name = sfile.name
+        elif issubclass(sfile.__class__, zipfile.ZipExtFile):
+            file_name = sfile.name
         else:
             raise Exception('The filename has to be either a Path object or a string')
 
@@ -74,7 +77,7 @@ class AcuFile:
 
         # Signal
         self.file_path = sfile
-        self.file = sf.SoundFile(self.file_path)
+        self.file = sf.SoundFile(self.file_path, 'r')
         self.fs = self.file.samplerate
 
         # Reference pressure in upa
@@ -143,7 +146,8 @@ class AcuFile:
         noverlap = int(overlap * blocksize)
         n_blocks = self._n_blocks(blocksize, noverlap=noverlap)
         time_array, _, _ = self._time_array(binsize, overlap=overlap)
-        for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame,
+        self.file.seek(self._start_frame)
+        for i, block in tqdm(enumerate(self.file.blocks(blocksize=blocksize,
                                                  overlap=noverlap, always_2d=True, fill_value=0.0)),
                              total=n_blocks, leave=False, position=0):
             # Select the desired channel
@@ -160,7 +164,7 @@ class AcuFile:
         self.file.seek(0)
 
     def _n_blocks(self, blocksize, noverlap):
-        return int(np.floor((sf.SoundFile(self.file_path).frames - self._start_frame) / (blocksize - noverlap)))
+        return int(np.floor(self.file.frames - self._start_frame) / (blocksize - noverlap))
 
     def samples(self, bintime):
         """
@@ -242,6 +246,8 @@ class AcuFile:
         date : datetime object
             Datetime where to split the file
         """
+        if issubclass(self.file_path, zipfile.ZipExtFile): 
+            raise Exception('The split method is not implemented for zipped files')
         if not self.contains_date(date):
             raise Exception('This date is not included in the file!')
         else:
