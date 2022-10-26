@@ -1,7 +1,12 @@
 import unittest
+import pathlib
 
 from pypam.acoustic_survey import ASA
 import pyhydrophone as pyhy
+
+
+# Data information
+data_path = pathlib.Path('./../data')
 
 
 # Hydrophone Setup
@@ -39,6 +44,8 @@ class TestASA(unittest.TestCase):
 
     def test_nmf(self):
         ds = self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=False)
+        self.asa = ASA(hydrophone=soundtrap, folder_path='./../data', binsize=binsize, nfft=nfft, utc=True,
+                       include_dirs=include_dirs, zipped=zipped_files)
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
