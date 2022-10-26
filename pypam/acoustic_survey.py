@@ -294,7 +294,7 @@ class ASA:
             Histogram bin (in the correspondent units, uPa or db)
         percentiles : list
             All the percentiles that have to be returned. If set to None, no percentiles
-            is returned
+            is returned (in 100 per cent)
         min_val : float
             Minimum value to compute the SPD histogram
         max_val : float
@@ -515,37 +515,38 @@ class ASA:
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
-        rms_evolution = self.evolution('rms', db=db)
-        rms_evolution['date'] = rms_evolution.datetime.date.unique()
-        rms_evolution['hour'] = rms_evolution.datetime.time
-        dates = rms_evolution['dates'].unique()
-        hours = rms_evolution['hours'].unique()
-        daily_patterns = xarray.Dataset()
-        for date in dates:
-            for hour in hours:
-                rms = rms_evolution[(rms_evolution['date'] == date) and
-                                    (rms_evolution['hour'] == hour)]['rms']
-                daily_patterns.loc[date, hour] = rms
+        rms_evolution = self.evolution('rms', db=db).sel(band=0)
+        hours_array = np.arange(24)
+        daily_patterns = pd.DataFrame(columns=hours_array)
+        for d, date_rms in rms_evolution.groupby(rms_evolution.datetime.dt.date, squeeze=False):
+            # Average the rms per hour
+            hour_rms = date_rms.groupby(date_rms.datetime.dt.hour).mean()
+            daily_patterns.loc[d, hour_rms.hour.values] = hour_rms['rms'].values
 
-        # Plot the patterns
-        plt.figure()
-        im = plt.pcolormesh(daily_patterns.values)
-        plt.title('Daily patterns')
-        plt.xlabel('Hours of the day')
-        plt.ylabel('Days')
-
-        if db:
-            units = r'db re 1V %s $\mu Pa $' % self.p_ref
+        if len(daily_patterns) <= 1:
+            print('This function does not work with less than 1 day of data. Please run again with more than 1 day')
         else:
-            units = r'$\mu Pa $'
-        cbar = plt.colorbar(im)
-        cbar.set_label('rms [%s]' % units, rotation=270)
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
+            daily_patterns.index = pd.to_datetime(daily_patterns.index)
+            daily_xr = xarray.DataArray(daily_patterns.astype(float).values,
+                                        coords={'id': np.arange(len(daily_patterns)),
+                                                'hour': daily_patterns.columns,
+                                                'date': ('id', daily_patterns.index)},
+                                        dims=['id', 'hour'])
+            # Plot the patterns
+            if db:
+                units = r'db re 1V %s $\mu Pa $' % self.p_ref
+            else:
+                units = r'$\mu Pa $'
+            xarray.plot.pcolormesh(daily_xr, x='date', y='hour', robust=True, cbar_kwargs={'label': units})
+            plt.title('Daily patterns')
+            plt.ylabel('Hours of the day')
+            plt.xlabel('Days')
+            plt.tight_layout()
+            if save_path is not None:
+                plt.savefig(save_path)
+            else:
+                plt.show()
+            plt.close()
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -567,7 +568,7 @@ class ASA:
         else:
             units = r'$\mu Pa^2$'
 
-        return plots.plot_spectrum_mean(ds=power, units=units, col_name='band_power',
+        return plots.plot_spectrum_mean(ds=power, units=units, col_name='band_spectrum',
                                         output_name='SPLrms', save_path=save_path, log=log)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
@@ -605,7 +606,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the power spectrum method
         """
-        power_evolution = self.evolution('power_spectrum', db=db, **kwargs)
+        power_evolution = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
         if db:
             units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
         else:
@@ -627,7 +628,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the psd method
         """
-        psd_evolution = self.evolution('psd', db=db, **kwargs)
+        psd_evolution = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
         if db:
             units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
         else:
@@ -656,25 +657,8 @@ class ASA:
         """
         # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
-        fig, ax = plt.subplots(2, 2, sharex='col', gridspec_kw={'width_ratios': (15, 1)})
-        fbands = ds['band_' + col_name].columns
-        im = ax[0, 0].pcolormesh(ds.index, fbands,
-                                 ds['band_' + col_name][fbands].T.to_numpy(dtype=np.float),
-                                 shading='auto')
-        ax[0, 0].set_title('%s evolution' % (col_name.capitalize()))
-        ax[0, 0].set_xlabel('Time')
-        ax[0, 0].set_ylabel('Frequency [Hz]')
-        cbar = fig.colorbar(im, cax=ax[0, 1])
-        cbar.set_label('%s [%s]' % (output_name, units), rotation=90)
-        # Remove the unused axes
-        ax[1, 1].remove()
-
-        ax[1, 0].plot(ds['percentiles'])
-        ax[1, 0].set_title('Percentiles evolution')
-        ax[1, 0].set_xlabel('Time')
-        ax[1, 0].set_ylabel('%s [%s]' % (output_name, units))
-        ax[1, 0].legend(ds['percentiles'].columns.values)
-
+        plots.plot_2d(ds['band_' + col_name], x='id', y='frequency', title='Long Term Spectrogram',
+                      cbar_label='%s [%s]' % (output_name, units), xlabel='Time', ylabel='Frequency [Hz]')
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)

@@ -32,7 +32,8 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None):
     # Plot the EPD
     fig, ax = plt.subplots()
     plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r', cbar_label='Empirical Probability Density', ax=ax,
-            ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)')
+            ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0,
+            robust=False)
     ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
             label=spd['value_percentiles'].percentiles.values)
     if log:
@@ -137,10 +138,10 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     save_path : string or Path
         Where to save the output graph. If None, it is not saved
     """
-    ds[col_name].mean(dim='datetime').plot.line(x='frequency')
+    ds[col_name].mean(dim='id').plot.line(x='frequency')
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
-        ds['value_percentiles'].mean(dim='datetime').plot.line(hue='percentiles')
+        ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles')
 
     plt.title(col_name.replace('_', ' ').capitalize())
     plt.xlabel('Frequency [Hz]')
@@ -164,9 +165,14 @@ def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, xlog=False, ylog=False,
         yscale = 'log'
     if ax is None:
         _, ax = plt.subplots()
+
+    if 'cmap' not in kwargs.keys():
+        kwargs['cmap'] = 'YlGnBu_r'
+    if 'robust' not in kwargs.keys():
+        kwargs['robust'] = True
     xarray.plot.pcolormesh(ds, x=x, y=y, add_colorbar=True, xscale=xscale, yscale=yscale,
-                           cbar_kwargs={'label': cbar_label}, robust=True, ax=ax,
-                           extend='neither', cmap='YlGnBu_r', **kwargs)
+                           cbar_kwargs={'label': cbar_label}, ax=ax,
+                           extend='neither', **kwargs)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
