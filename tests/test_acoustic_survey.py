@@ -25,7 +25,7 @@ fast_features = ['rms', 'peak', 'sel']
 third_octaves = None
 dc_subtract = True
 
-include_dirs = False
+include_dirs = True
 zipped_files = False
 
 
@@ -50,10 +50,9 @@ class TestASA(unittest.TestCase):
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')
 
-    def test_plots(self):
+    def test_apply_to_all(self):
         self.asa.apply_to_all('plot_spectrogram')
         self.asa.apply_to_all('plot_psd')
-        self.asa.plot_mean_psd(percentiles=[10, 50, 90])
 
     def test_spd(self):
         h_db = 1
@@ -77,6 +76,22 @@ class TestASA(unittest.TestCase):
         # just a smoke test to check if the function can run without errors
         self.asa.detect_ship_events(0.1, 0.5)
 
+    def test_plot_spd(self):
+        self.asa.plot_spd(percentiles=[1, 5, 10, 50, 90, 95, 99])
+
+    def test_plot_mean_spectrum(self):
+        self.asa.plot_mean_power_spectrum()
+        self.asa.plot_mean_psd(percentiles=[10, 50, 90])
+
+    def test_plot_ltsa(self):
+        self.asa.plot_power_ltsa(percentiles=[1, 5, 10, 50, 90, 95, 99])
+        self.asa.plot_psd_ltsa()
+
+    def test_plot_rms_evolution(self):
+        self.asa.plot_rms_evolution()
+
+    def test_plot_daily_patterns(self):
+        self.asa.plot_rms_daily_patterns()
 
 
 if __name__ == '__main__':
