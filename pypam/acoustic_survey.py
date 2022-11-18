@@ -657,7 +657,7 @@ class ASA:
         """
         # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
-        plots.plot_2d(ds['band_' + col_name], x='id', y='frequency', title='Long Term Spectrogram',
+        plots.plot_2d(ds['band_' + col_name], x='datetime', y='frequency', title='Long Term Spectrogram',
                       cbar_label='%s [%s]' % (output_name, units), xlabel='Time', ylabel='Frequency [Hz]')
         plt.tight_layout()
         if save_path is not None:

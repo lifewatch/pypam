@@ -138,11 +138,13 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     save_path : string or Path
         Where to save the output graph. If None, it is not saved
     """
-    ds[col_name].mean(dim='id').plot.line(x='frequency')
+    fig, ax = plt.subplots()
+    ds[col_name].mean(dim='id').plot.line(x='frequency', ax=ax)
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
-        ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles')
+        ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)
 
+    ax.set_facecolor('white')
     plt.title(col_name.replace('_', ' ').capitalize())
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('%s [%s]' % (output_name, units))
