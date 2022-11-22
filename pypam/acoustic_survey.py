@@ -46,7 +46,7 @@ class ASA:
         Time window considered, in seconds. If set to None, only one value is returned
     nfft : int
         Samples of the fft bin used for the spectral analysis
-    overlap : float [0 to 1]
+    bin_overlap : float [0 to 1]
         Percentage to overlap the bin windows
     period : tuple or list
         Tuple or list with two elements: start and stop. Has to be a string in the
@@ -67,8 +67,9 @@ class ASA:
                  include_dirs=False,
                  p_ref=1.0,
                  binsize=None,
+                 bin_overlap=0,
                  nfft=1.0,
-                 overlap=0,
+                 fft_overlap=0.5,
                  period=None,
                  timezone='UTC',
                  channel=0,
@@ -82,7 +83,8 @@ class ASA:
         self.p_ref = p_ref
         self.binsize = binsize
         self.nfft = nfft
-        self.overlap = overlap
+        self.bin_overlap = bin_overlap
+        self.fft_overlap = fft_overlap
 
         if period is not None:
             if not isinstance(period[0], datetime.datetime):
@@ -136,7 +138,7 @@ class ASA:
         metadata_keys = [
             'binsize',
             'nfft',
-            'overlap',
+            'bin_overlap',
             'timezone',
             'p_ref',
             'hydrophone.name',
@@ -173,7 +175,8 @@ class ASA:
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
-                                  nfft=self.nfft, overlap=self.overlap, band_list=band_list, **kwargs)
+                                  nfft=self.nfft, fft_overlap=self.fft_overlap, bin_overlap=self.bin_overlap,
+                                  band_list=band_list, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -207,7 +210,8 @@ class ASA:
         A xarray DataSet with a row per bin with the method name output
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, fft_overlap=self.fft_overlap,
+                                  bin_overlap=self.bin_overlap, **kwargs)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -218,7 +222,7 @@ class ASA:
         Return an xarray DataSet with the timestamps of each bin.
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        f = operator.methodcaller('timestamp_da', binsize=self.binsize, overlap=self.overlap)
+        f = operator.methodcaller('timestamp_da', binsize=self.binsize, bin_overlap=self.bin_overlap)
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
@@ -254,7 +258,8 @@ class ASA:
             Any accepted parameter for the method_name
 
         """
-        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, overlap=self.overlap, **kwargs)
+        f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, fft_overlap=self.fft_overlap,
+                                  bin_overlap=self.bin_overlap, **kwargs)
         for sound_file in self._files():
             f(sound_file)
 

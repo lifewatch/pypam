@@ -1,8 +1,10 @@
 import unittest
 import requests
 import pathlib
+import matplotlib.pyplot as plt
 
 from pypam.acoustic_survey import ASA
+import pypam.utils as utils
 import pyhydrophone as pyhy
 
 
@@ -98,6 +100,34 @@ class TestASA(unittest.TestCase):
 
     def test_plot_daily_patterns(self):
         self.asa.plot_rms_daily_patterns()
+
+    def test_millidecade_bands(self):
+        # Set the frequency resolution to 1 Hz and the duration of 1 second
+        nfft = 8000
+        binsize = 1.0
+        band = [0, 4000]
+        data_path = 'C:/Users/cleap/Documents/Data/Sound Data/SoundTrap/BelwindTest/Test'
+        self.asa = ASA(hydrophone=soundtrap, folder_path=data_path, binsize=binsize, nfft=nfft, timezone='UTC',
+                       include_dirs=True, zipped=False, dc_subtract=False)
+        ds = self.asa.evolution_freq_dom('hybrid_millidecade_bands', band=band, db=True)
+        ds['band_spectrum'].mean('id').plot()
+        plt.show()
+        print(ds)
+
+    def test_millidecade_bands_survey(self):
+        # Set the frequency resolution to 1 Hz and the duration of 1 second
+        nfft = 8000
+        fft_overlap = 0.5
+        binsize = 60
+        band = [0, 4000]
+        data_path = 'C:/Users/cleap/Documents/Data/Sound Data/SoundTrap/BelwindTest/Test'
+        self.asa = ASA(hydrophone=soundtrap, folder_path=data_path, binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
+                       timezone='UTC', include_dirs=True, zipped=False, dc_subtract=False)
+        psd_ds = self.asa.evolution_freq_dom('power_spectrum', band=band, db=True)
+        bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=nfft)
+        milli_psd = utils.psd_ds_to_bands(psd_ds, bands_limits, bands_c, fft_bin_width=1.0)
+        milli_psd['band_spectrum'].mean('id').plot()
+        plt.show()
 
 
 if __name__ == '__main__':
