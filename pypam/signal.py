@@ -23,7 +23,7 @@ sns.set_theme()
 
 
 FILTER_ORDER = 4
-MIN_FREQ = 10
+MIN_FREQ = 0
 
 
 class Signal:
@@ -470,10 +470,11 @@ class Signal:
         noverlap = nfft * overlap
         if nfft > self.signal.size:
             self.fill_or_crop(n_samples=nfft)
-        window = sig.get_window('boxcar', nfft)
-        freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap)
+        window = sig.get_window('hann', nfft)
+        freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap,
+                              detrend=False)
         if self.band is not None and self.band[0] is not None:
-            low_freq = np.argmax(freq > self.band[0])
+            low_freq = np.argmax(freq >= self.band[0])
         else:
             low_freq = MIN_FREQ
         self.psd = psd[low_freq:]
