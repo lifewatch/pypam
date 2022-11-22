@@ -102,15 +102,14 @@ def plot_spectrum(ds, col_name, ylabel, log=True, save_path=None):
     xscale = 'linear'
     if log:
         xscale = 'log'
-    for time_bin in ds.datetime:
-        ds[col_name].sel(datetime=time_bin).plot.line(xscale=xscale)
-        title = '%s of bin %s' % (col_name.replace('_', ' ').capitalize(), time_bin.values)
-        plt.title(title)
+    for id_n in ds.id:
+        ds_id = ds[col_name].sel(id=id_n)
+        ds_id.plot.line(xscale=xscale)
         plt.xlabel('Frequency [Hz]')
         plt.ylabel(ylabel)
 
         # Plot the percentiles as horizontal lines
-        plt.hlines(y=ds['value_percentiles'].loc[time_bin], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
+        plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
                    label=ds['percentiles'])
 
         plt.show()
