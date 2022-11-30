@@ -25,3 +25,8 @@ class TestAcuFile(unittest.TestCase):
 
     def test_plots(self):
         self.acu_file.plot_power_spectrum()
+
+    def test_millidecade_bands(self):
+        nfft = 8000
+        self.acu_file.hybrid_millidecade_bands(nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
+                                               method='spectrum', band=None)

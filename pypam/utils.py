@@ -8,6 +8,7 @@ import numba as nb
 import numpy as np
 import scipy.signal as sig
 import xarray
+import pandas as pd
 
 
 G = 10.0 ** (3.0 / 10.0)
@@ -336,8 +337,11 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bi
         bands_limits.append(fc * low_side_multiplier)
         band_count += 1
     # Add the upper limit (bands_limits's length will be +1 compared to bands_c)
+    if ls_freq > band[1]:
+        ls_freq = band[1]
+        if fc > band[1]:
+            bands_c[-1] = band[1]
     bands_limits.append(ls_freq)
-
     return bands_limits, bands_c
 
 
@@ -392,10 +396,12 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     ----------
     psd: xarray DataArray
         Output of pypam spectrum function
-    bands_c: list or array
-        Centre of the bands (used only of the ouput frequency axis naming)
     bands_limits: list or array
         Limits of the desired bands
+    bands_c: list or array
+        Centre of the bands (used only of the ouput frequency axis naming)
+    fft_bin_width: float
+        fft bin width in seconds
     method: string
         Should be 'density' or 'spectrum'
 
@@ -404,19 +410,28 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     xarray DataArray with frequency_bins instead of frequency as a dimension.
 
     """
-    fft_freq_lims = np.floor(np.array(bands_limits) / fft_bin_width) + fft_bin_width / 2
+    var_name = 'band_%s' % method
+    fft_freq_indices = np.floor(np.array(bands_limits) / fft_bin_width + fft_bin_width / 2).astype(int)
+    if fft_freq_indices[-1] > len(psd.frequency):
+        fft_freq_indices[-1] = len(psd.frequency) - 1
+    limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
+                                   'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
+    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - limits_df['lower_freq']
+    limits_df['upper_factor'] = limits_df['upper_freq'] - (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2)
+    psd_limits_lower = psd[var_name].isel(frequency=limits_df['lower_indexes']) * [limits_df['lower_factor']]
+    psd_limits_upper = psd[var_name].isel(frequency= limits_df['upper_indexes']) * [limits_df['upper_factor']]
 
-    weights_diff = (fft_freq_lims - bands_limits) / fft_bin_width
-    psd_bands = psd.groupby_bins('frequency', bins=bands_limits, labels=bands_c).sum()
-    psd_limits = psd['band_spectrum'].sel(frequency=fft_freq_lims[:-1] + fft_bin_width / 2)
-    psd_diff = (psd_limits * weights_diff[:-1])
-    psd_bands['band_spectrum'].loc[1:] = psd_bands['band_spectrum'].sel(
-        frequency_bins=psd_bands.frequency_bins[1:]) - psd_diff.diff('frequency').values.T
+    # Bin the bands and add the borders
+    psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
+    psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
+    psd_bands = psd_bands.fillna({var_name: 0})
+    psd_bands[var_name] = psd_bands[var_name] + psd_limits_lower.values.T + psd_limits_upper.values.T
+    psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
+    psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})
 
-    if method == 'density':
-        bandwidths = psd.frequency.diff()
-        psd_bands = psd_bands / bandwidths
-
+    # if method == 'density':
+    #     bandwidths = psd_bands.frequency_bins.diff()
+    #     psd_bands = psd_bands / bandwidths
     return psd_bands
 
 # Original MANTA code
@@ -455,6 +470,50 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
 #                 if (maxFFTBin - minFFTBin) > 1:
 #                     bandsOut[row, j] = bandsOut[row, j] + sum(psd[row, minFFTBin+1:maxFFTBin-1])
 #     return bandsOut
+# In python:
+# psd_bands = xarray.DataArray(np.zeros((psd.dims['id'], len(bands_c))), coords={'frequency': bands_c, 'id': psd.id},
+#                              dims=['id', 'frequency'])
+# step = fft_bin_width / 2
+# n_fft_bins = psd.dims['frequency']
+# start_offset = 0
+# for id_n, id_name in enumerate(psd_bands.id):
+#     for frequency_n, frequency_val in enumerate(psd_bands.frequency):
+#         min_fft_bin = int(np.floor((bands_limits[frequency_n] / fft_bin_width) + step) - start_offset)
+#         max_fft_bin = int(np.floor((bands_limits[frequency_n+1] / fft_bin_width) + step) - start_offset)
+#         if max_fft_bin > n_fft_bins:
+#             max_fft_bin = n_fft_bins
+#
+#         if min_fft_bin < 0:
+#             min_fft_bin = 0
+#
+#         if min_fft_bin == max_fft_bin:
+#             psd_bands.iloc[id_n, frequency_n] = psd['band_spectrum'].isel(id=id_n, frequency=min_fft_bin) * \
+#                                                     ((bands_limits[frequency_n+1] -
+#                                                       bands_limits[frequency_n]) / fft_bin_width)
+#         else:
+#             # Add the first partial FFT bin - take the top of the bin and
+#             # subtract the lower freq to get the amount we will use:
+#             # the top freq of a bin is bin# * step size - binSize/2 since bin
+#
+#             lower_factor = (min_fft_bin - step + 1) * fft_bin_width - bands_limits[frequency_n]
+#             psd_lower = psd['band_spectrum'].isel(id=id_n, frequency=min_fft_bin) * lower_factor
+#
+#             # Add the last partial FFT bin.
+#             upper_factor = bands_limits[frequency_n+1] - (max_fft_bin - fft_bin_width/2) * fft_bin_width
+#             psd_borders = psd_lower + psd['band_spectrum'].isel(id=id_n, frequency=max_fft_bin) * upper_factor
+#
+#             # Add any FFT bins in between min and max.
+#             if (max_fft_bin - min_fft_bin) > 1:
+#                 psd_bands.loc[id_name, frequency_val] = psd_borders + \
+#                                                     sum(psd['band_spectrum'].isel(id=id_n,
+#                                                                                   frequency=np.arange(min_fft_bin,
+#                                                                                                       max_fft_bin-1)))
+#             else:
+#                 psd_band = psd_borders
+#
+#             psd_bands.loc[id_name, frequency_val] = psd_band
+#             print(id_n, frequency_n, psd_band.values)
+
 
 def pcm2float(s, dtype='float64'):
     """

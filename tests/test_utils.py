@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray
 import matplotlib.pyplot as plt
+import scipy
 
 import pypam.utils as utils
 import pypam.signal as sig
@@ -33,9 +34,25 @@ class TestMillidecades(unittest.TestCase):
 
     def test_psd_to_millidecades(self):
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=[0, fs/2], nfft=nfft)
-        s = sig.Signal(data, fs=fs)
-        s.set_band(None)
-        fbands, spectra, _ = s.spectrum(scaling='spectrum', nfft=fs, db=False, overlap=0, force_calc=True)
+
+        # Compute the spectrum manually
+        ny_freq = int(int(nfft / 2))
+        c_spec = np.fft.fft(data) / fs
+        spectra_ds = abs(c_spec * c_spec)
+        spectra = 2 * spectra_ds[:ny_freq + 1]
+        spectra[0] = spectra_ds[0]
+        spectra[ny_freq] = spectra_ds[ny_freq]
+
+        fbands = scipy.fft.rfftfreq(nfft, 1/fs)
+
+        # Load the spectrum used for MANTA
+        spectra_manta = pd.read_csv('./test_data/spectra.csv', header=None)
+
+        # Check if they are the same
+        assert (abs(spectra_manta[0].values - spectra) > 1e-5).sum() == 0
+        print('Spectrum is the same with a 1e-5 precision')
+
+        # Convert the spectra to a datarray
         psd_da = xarray.DataArray([spectra], coords={'id': [0], 'frequency': fbands}, dims=['id', 'frequency'])
 
         psd_ds = xarray.Dataset({'band_spectrum': psd_da})
@@ -54,7 +71,10 @@ class TestMillidecades(unittest.TestCase):
         milli_psd['band_spectrum'].plot(ax=ax, label='pypam')
         plt.legend()
         plt.show()
-        assert ((mdec_power_test['sum'] - milli_psd['band_spectrum'].sel(id=0).values) > 1e-5).sum() == 0
+
+        # Check if the results are the same
+        assert ((mdec_power_test['sum'] - milli_psd['band_spectrum'].sel(id=0).values).abs() > 1e-5).sum() == 0
+        print('Results are the same with a 1e-5 precision')
 
 
 if __name__ == '__main__':
