@@ -577,12 +577,10 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
     new_ds = new_ds.reset_index('id')
     new_coords['id'] = new_ids
-    # new_ds = new_ds.assign_coords(new_coords)
+    new_ds = new_ds.assign_coords(new_coords)
     if len(ds.dims) == 0:
-
         ds = ds.merge(new_ds)
     else:
         ds = xarray.concat((ds, new_ds), 'id', combine_attrs="drop_conflicts")
     ds.attrs.update(new_ds.attrs)
-    # ds.attrs = new_attrs
     return ds
