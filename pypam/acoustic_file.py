@@ -687,7 +687,7 @@ class AcuFile:
         return ds
 
     def hybrid_millidecade_bands(self, nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
-                                 method='spectrum', band=None):
+                                 method='density', band=None):
         """
 
         Parameters
@@ -712,16 +712,20 @@ class AcuFile:
         -------
 
         """
+        var_name = 'band_%s' % method
         if band is None:
             band = [0, self.fs / 2]
 
-        psd_evo = self.power_spectrum(binsize=binsize, bin_overlap=bin_overlap, db=False, band=band, nfft=nfft,
+        psd_evo = self.psd(binsize=binsize, bin_overlap=bin_overlap, db=False, band=band, nfft=nfft,
                                       fft_overlap=fft_overlap)
         millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
         fft_bin_width = self.fs/nfft
         hybrid_millidecade_ds = utils.psd_ds_to_bands(psd_evo, millidecade_bands_limits, millidecade_bands_c,
                                                       fft_bin_width=fft_bin_width, method=method)
 
+        if db:
+            hybrid_millidecade_ds[var_name] = utils.to_db(hybrid_millidecade_ds[var_name].values,
+                                                                 ref=1.0, square=False)
         return hybrid_millidecade_ds
 
     def spectrogram(self, binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
@@ -821,7 +825,10 @@ class AcuFile:
                                                                percentiles=percentiles, overlap=fft_overlap)
 
             spectra_da = xarray.DataArray([spectra],
-                                          coords={'id': [i], 'datetime': ('id', [time_bin]), 'frequency': fbands},
+                                          coords={'id': [i],
+                                                  'datetime': ('id', [time_bin]),
+                                                  'frequency': fbands
+                                                  },
                                           dims=['id', 'frequency'])
             percentiles_da = xarray.DataArray([percentiles_val],
                                               coords={'id': [i], 'datetime': ('id', [time_bin]),

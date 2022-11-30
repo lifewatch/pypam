@@ -448,7 +448,7 @@ class Signal:
             sxx = self.sxx
         return self.freq, self.t, sxx
 
-    def _spectrum(self, scaling='density', nfft=512, db=True, overlap=0):
+    def _spectrum(self, scaling='density', nfft=512, db=True, overlap=0, window_name='hann', **kwargs):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a colum for each frequency and each
@@ -470,9 +470,9 @@ class Signal:
         noverlap = nfft * overlap
         if nfft > self.signal.size:
             self.fill_or_crop(n_samples=nfft)
-        window = sig.get_window('hann', nfft)
+        window = sig.get_window(window_name, nfft)
         freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap,
-                              detrend=False)
+                              detrend=False, **kwargs)
         if self.band is not None and self.band[0] is not None:
             low_freq = np.argmax(freq >= self.band[0])
         else:
@@ -511,7 +511,7 @@ class Signal:
         Frequency array, psd values
         """
         if self.psd is None or force_calc:
-            self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
+            self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap, **kwargs)
         if percentiles is not None:
             percentiles_val = np.percentile(self.psd, percentiles)
         else:
