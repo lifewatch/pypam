@@ -774,7 +774,13 @@ class AcuFile:
                                                                percentiles=percentiles)
 
             spectra_da = xarray.DataArray([spectra],
-                                          coords={'id': [i], 'datetime': ('id', [time_bin]), 'frequency': fbands},
+                                          coords={'id': [i],
+                                                  'datetime': ('id', [time_bin]),
+                                                  'frequency': fbands,
+                                                  'start_sample': ('id',
+                                                                   [start_sample]),
+                                                  'end_sample': ('id', [end_sample]),
+                                                  },
                                           dims=['id', 'frequency'])
             percentiles_da = xarray.DataArray([percentiles_val],
                                               coords={'id': [i], 'datetime': ('id', [time_bin]),

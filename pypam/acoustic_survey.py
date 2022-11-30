@@ -99,7 +99,7 @@ class ASA:
         if extra_attrs is None:
             self.extra_attrs = {}
         else:
-            self.extra_attrs = {}
+            self.extra_attrs = extra_attrs
 
         self.file_dependent_attrs = ['hydrophone_sensitivity', 'hydrophone_preamp_gain', 'hydrophone_Vpp', 'file_path',
                                      '_start_frame']
