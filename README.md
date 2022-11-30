@@ -184,4 +184,4 @@ ds()
    
 
 ## Cite
-DOI: 10.5281/zenodo.5031690
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6044593.svg)](https://doi.org/10.5281/zenodo.6044593)

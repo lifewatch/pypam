@@ -765,7 +765,12 @@ class AcousticFolder:
                                                        include_dirs=self.recursive)
             else:
                 zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
-                self.files_list = zipped_folder.namelist()
+                self.files_list = []
+                total_files_list = zipped_folder.namelist()
+                for f in total_files_list: 
+                    extension = f.split(".")[-1]
+                    if extension == 'wav':
+                        self.files_list.append(f)
         return self
 
     def __next__(self):
@@ -786,14 +791,13 @@ class AcousticFolder:
                                                                include_dirs=self.recursive)
                 else:
                     file_name = self.files_list[self.n]
-                    extension = file_name.split(".")[-1]
-                    if extension == 'wav':
-                        wav_file = self.folder_path.open(file_name)
-                        files_list.append(wav_file)
-                        for extension in self.extensions:
-                            ext_file_name = file_name.parent.joinpath(
-                                file_name.name.replace('.wav', extension))
-                            files_list.append(self.folder_path.open(ext_file_name))
+                    zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
+                    wav_file = zipped_folder.open(file_name)
+                    files_list.append(wav_file)
+                    for extension in self.extensions:
+                        ext_file_name = file_name.parent.joinpath(
+                            file_name.name.replace('.wav', extension))
+                        files_list.append(zipped_folder.open(ext_file_name))
                     self.n += 1
                     return files_list
             else:
