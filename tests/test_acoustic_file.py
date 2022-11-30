@@ -1,10 +1,6 @@
 import unittest
-import pathlib
-import matplotlib.pyplot as plt
 
-from pypam.acoustic_survey import ASA
 from pypam.acoustic_file import AcuFile
-import pypam.utils as utils
 import pyhydrophone as pyhy
 
 # Another hydrophone
@@ -30,3 +26,5 @@ class TestAcuFile(unittest.TestCase):
         nfft = 8000
         self.acu_file.hybrid_millidecade_bands(nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
                                                method='spectrum', band=None)
+        self.acu_file.hybrid_millidecade_bands(nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
+                                               method='density', band=None)

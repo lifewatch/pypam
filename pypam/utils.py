@@ -385,7 +385,7 @@ def get_decidecade_limits(band, nfft):
     return get_bands_limits(band, nfft, base=10, bands_per_division=10, hybrid_mode=False)
 
 
-def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'):
+def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum', db=True):
     """
     Group the psd according to the limits band_limits given. If a limit is not aligned with the limits in the psd
     frequency axis then that psd frequency bin is divided in proportion to each of the adjacent bands. For more details
@@ -395,22 +395,23 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     Parameters
     ----------
     psd: xarray DataArray
-        Output of pypam spectrum function
+        Output of pypam spectrum function. It should not be directly the dataset
     bands_limits: list or array
         Limits of the desired bands
     bands_c: list or array
-        Centre of the bands (used only of the ouput frequency axis naming)
+        Centre of the bands (used only of the output frequency axis naming)
     fft_bin_width: float
         fft bin width in seconds
     method: string
         Should be 'density' or 'spectrum'
+    db: bool
+        Set to True to return db instead of linear units
 
     Returns
     -------
     xarray DataArray with frequency_bins instead of frequency as a dimension.
 
     """
-    var_name = 'band_%s' % method
     fft_freq_indices = np.floor(np.array(bands_limits) / fft_bin_width + fft_bin_width / 2).astype(int)
     if fft_freq_indices[-1] > len(psd.frequency):
         fft_freq_indices[-1] = len(psd.frequency) - 1
@@ -418,20 +419,24 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
     limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - limits_df['lower_freq']
     limits_df['upper_factor'] = limits_df['upper_freq'] - (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2)
-    psd_limits_lower = psd[var_name].isel(frequency=limits_df['lower_indexes']) * [limits_df['lower_factor']]
-    psd_limits_upper = psd[var_name].isel(frequency= limits_df['upper_indexes']) * [limits_df['upper_factor']]
+    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes']) * [limits_df['lower_factor']]
+    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes']) * [limits_df['upper_factor']]
 
     # Bin the bands and add the borders
     psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
     psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
-    psd_bands = psd_bands.fillna({var_name: 0})
-    psd_bands[var_name] = psd_bands[var_name] + psd_limits_lower.values.T + psd_limits_upper.values.T
+    psd_bands = psd_bands.fillna(0)
+    psd_bands = psd_bands + psd_limits_lower.values + psd_limits_upper.values
     psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
     psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})
 
-    # if method == 'density':
-    #     bandwidths = psd_bands.frequency_bins.diff()
-    #     psd_bands = psd_bands / bandwidths
+    if method == 'density':
+        bandwidths = psd_bands.frequency_bins.diff('frequency_bins')
+        psd_bands = psd_bands / bandwidths
+
+    if db:
+        psd_bands = 10 * np.log10(psd_bands)
+
     return psd_bands
 
 # Original MANTA code
@@ -572,9 +577,12 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
     new_ds = new_ds.reset_index('id')
     new_coords['id'] = new_ids
-    new_ds = new_ds.assign_coords(new_coords)
+    # new_ds = new_ds.assign_coords(new_coords)
     if len(ds.dims) == 0:
+
         ds = ds.merge(new_ds)
     else:
         ds = xarray.concat((ds, new_ds), 'id', combine_attrs="drop_conflicts")
+    ds.attrs.update(new_ds.attrs)
+    # ds.attrs = new_attrs
     return ds

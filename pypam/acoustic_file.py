@@ -411,11 +411,7 @@ class AcuFile:
         return wav / mv
 
     def _get_metadata_attrs(self):
-        metadata_keys = ['hydrophone.name',
-                         'hydrophone.model',
-                         'hydrophone.sensitivity',
-                         'hydrophone.preamp_gain',
-                         'hydrophone.Vpp',
+        metadata_keys = [
                          'file_path',
                          'timezone',
                          'datetime_timezone',
@@ -424,8 +420,14 @@ class AcuFile:
                          '_start_frame',
                          'calibration',
                          'dc_subtract',
-                         'fs'
+                         'fs',
+                         'hydrophone.name',
+                         'hydrophone.model',
+                         'hydrophone.sensitivity',
+                         'hydrophone.preamp_gain',
+                         'hydrophone.Vpp'
                          ]
+
         metadata_attrs = {}
         for k in metadata_keys:
             d = self
@@ -433,6 +435,8 @@ class AcuFile:
                 d = d.__dict__[sub_k]
             if isinstance(d, pathlib.Path):
                 d = str(d)
+            if d is None:
+                d = 0
             metadata_attrs[k.replace('.', '_')] = d
 
         return metadata_attrs
@@ -692,7 +696,7 @@ class AcuFile:
         return ds
 
     def hybrid_millidecade_bands(self, nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
-                                 method='density', band=None):
+                                 method='density', band=None, percentiles=None):
         """
 
         Parameters
@@ -712,26 +716,26 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+        percentiles : list
+            List of all the percentiles that have to be returned. If set to empty list,
+            no percentiles is returned
 
         Returns
         -------
 
         """
-        var_name = 'band_%s' % method
         if band is None:
             band = [0, self.fs / 2]
 
-        psd_evo = self.psd(binsize=binsize, bin_overlap=bin_overlap, db=False, band=band, nfft=nfft,
-                                      fft_overlap=fft_overlap)
+        spectra_ds = self.power_spectrum(binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
+                                         db=False, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
         millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
         fft_bin_width = self.fs/nfft
-        hybrid_millidecade_ds = utils.psd_ds_to_bands(psd_evo, millidecade_bands_limits, millidecade_bands_c,
+        hybrid_millidecade_ds = utils.psd_ds_to_bands(spectra_ds['band_spectrum'],
+                                                      millidecade_bands_limits, millidecade_bands_c,
                                                       fft_bin_width=fft_bin_width, method=method)
-
-        if db:
-            hybrid_millidecade_ds[var_name] = utils.to_db(hybrid_millidecade_ds[var_name].values,
-                                                                 ref=1.0, square=False)
-        return hybrid_millidecade_ds
+        spectra_ds['millidecade_bands'] = hybrid_millidecade_ds
+        return spectra_ds
 
     def spectrogram(self, binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
                     scaling='density', db=True, band=None):

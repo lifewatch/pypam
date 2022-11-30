@@ -94,6 +94,7 @@ class ASA:
         self.period = period
 
         self.timezone = timezone
+        self.datetime_timezone = 'UTC'
         self.channel = channel
         self.calibration = calibration
         self.dc_subtract = dc_subtract
@@ -103,8 +104,7 @@ class ASA:
         else:
             self.extra_attrs = extra_attrs
 
-        self.file_dependent_attrs = ['hydrophone_sensitivity', 'hydrophone_preamp_gain', 'hydrophone_Vpp', 'file_path',
-                                     '_start_frame']
+        self.file_dependent_attrs = ['file_path', '_start_frame', 'end_to_end_calibration']
 
     def _files(self):
         """
@@ -139,12 +139,17 @@ class ASA:
             'binsize',
             'nfft',
             'bin_overlap',
+            'fft_overlap',
             'timezone',
+            'datetime_timezone',
             'p_ref',
+            'channel',
+            'dc_subtract',
             'hydrophone.name',
             'hydrophone.model',
-            'channel',
-            'dc_subtract'
+            'hydrophone.sensitivity',
+            'hydrophone.preamp_gain',
+            'hydrophone.Vpp',
         ]
         metadata_attrs = self.extra_attrs.copy()
         for k in metadata_keys:
@@ -314,6 +319,36 @@ class ASA:
         """
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
         return acoustic_file.compute_spd(psd_evolution, h=h, percentiles=percentiles, min_val=min_val, max_val=max_val)
+
+    def hybrid_millidecade_bands(self, db=True, method='spectrum', band=None, percentiles=None):
+        """
+
+        Parameters
+        ----------
+        db : bool
+            If set to True the result will be given in db, otherwise in upa^2
+        method: string
+            Can be 'spectrum' or 'density'
+        band : tuple or None
+            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+        percentiles : list
+            List of all the percentiles that have to be returned. If set to empty list,
+            no percentiles is returned
+
+        Returns
+        -------
+        An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
+        """
+        spectra_ds = self.evolution_freq_dom('power_spectrum', band=band, db=False, percentiles=percentiles)
+        bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
+        fft_bin_width = spectra_ds.attrs['fs'] / self.nfft
+        milli_psd = utils.psd_ds_to_bands(spectra_ds['band_spectrum'],
+                                          bands_limits, bands_c, fft_bin_width=fft_bin_width, method=method)
+
+        # Add the millidecade
+        spectra_ds['millidecade_bands'] = milli_psd
+        return spectra_ds
 
     def cut_and_place_files_period(self, period, folder_name, extensions=None):
         """
