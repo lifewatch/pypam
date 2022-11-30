@@ -724,6 +724,7 @@ class AcuFile:
         -------
 
         """
+
         if band is None:
             band = [0, self.fs / 2]
 

@@ -24,7 +24,8 @@ nfft = fs
 fft_overlap = 0.5
 binsize = 60.0
 bin_overlap = 0
-method = 'spectrum'
+method = 'density'
+
 band = [0, 4000]
 
 wav_path = '../tests/test_data/67416073.210610033655.wav'
@@ -35,6 +36,7 @@ acu_file = AcuFile(sfile=wav_path, hydrophone=soundtrap, p_ref=p_ref, timezone='
 start = time.time()
 millis = acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=fft_overlap, binsize=binsize, bin_overlap=bin_overlap,
                                            db=True, method=method, band=band)
+
 # record end time
 end = time.time()
 

@@ -407,6 +407,7 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     db: bool
         Set to True to return db instead of linear units
 
+
     Returns
     -------
     xarray DataArray with frequency_bins instead of frequency as a dimension.
@@ -421,7 +422,6 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     limits_df['upper_factor'] = limits_df['upper_freq'] - (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2)
     psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes']) * [limits_df['lower_factor']]
     psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes']) * [limits_df['upper_factor']]
-
     # Bin the bands and add the borders
     psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
     psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
