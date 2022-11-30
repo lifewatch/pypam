@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import scipy
 
 import pypam.utils as utils
-import pypam.signal as sig
 
 # Create artificial data of 1 second
 fs = 512000
@@ -55,8 +54,7 @@ class TestMillidecades(unittest.TestCase):
         # Convert the spectra to a datarray
         psd_da = xarray.DataArray([spectra], coords={'id': [0], 'frequency': fbands}, dims=['id', 'frequency'])
 
-        psd_ds = xarray.Dataset({'band_spectrum': psd_da})
-        milli_psd = utils.psd_ds_to_bands(psd_ds, bands_limits, bands_c, fft_bin_width=fs/nfft)
+        milli_psd = utils.psd_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs/nfft, db=False)
 
         # Read MANTA's output
         mdec_power_test = pd.read_csv('./test_data/mdec_power_test.csv')
@@ -68,12 +66,12 @@ class TestMillidecades(unittest.TestCase):
         plt.show()
 
         fig, ax = plt.subplots()
-        milli_psd['band_spectrum'].plot(ax=ax, label='pypam')
+        milli_psd.plot(ax=ax, label='pypam')
         plt.legend()
         plt.show()
 
         # Check if the results are the same
-        assert ((mdec_power_test['sum'] - milli_psd['band_spectrum'].sel(id=0).values).abs() > 1e-5).sum() == 0
+        assert ((mdec_power_test['sum'] - milli_psd.sel(id=0).values).abs() > 1e-5).sum() == 0
         print('Results are the same with a 1e-5 precision')
 
 
