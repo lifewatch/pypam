@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='lifewatch-pypam',
-    version='0.1.7',
+    version='0.1.8',
     description='Facilitate acoustic processing from underwater acoustic recorders',
     author='Clea Parcerisas',
     author_email='cleap@vliz.be',

@@ -344,7 +344,7 @@ class ASA:
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
         fft_bin_width = spectra_ds.attrs['fs'] / self.nfft
         milli_psd = utils.psd_ds_to_bands(spectra_ds['band_spectrum'],
-                                          bands_limits, bands_c, fft_bin_width=fft_bin_width, method=method)
+                                          bands_limits, bands_c, fft_bin_width=fft_bin_width, method=method, db=db)
 
         # Add the millidecade
         spectra_ds['millidecade_bands'] = milli_psd
