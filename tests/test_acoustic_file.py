@@ -1,7 +1,7 @@
 import unittest
-
 from pypam.acoustic_file import AcuFile
 import pyhydrophone as pyhy
+from tests import skip_unless_with_plots
 
 # Another hydrophone
 st = pyhy.SoundTrap('SoundTrap', 'ST600HF', '6716')
@@ -17,8 +17,9 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 
 class TestAcuFile(unittest.TestCase):
     def setUp(self) -> None:
-        self.acu_file = AcuFile('test_data/67416073.210610033655.wav', soundtrap, 1)
+        self.acu_file = AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
 
+    @skip_unless_with_plots()
     def test_plots(self):
         self.acu_file.plot_power_spectrum()
 

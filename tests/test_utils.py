@@ -2,9 +2,9 @@ import unittest
 import numpy as np
 import pandas as pd
 import xarray
-from os import getenv
 import matplotlib.pyplot as plt
 import scipy
+from tests import with_plots
 
 import pypam.utils as utils
 
@@ -59,7 +59,7 @@ class TestMillidecades(unittest.TestCase):
         # Read MANTA's output
         mdec_power_test = pd.read_csv('tests/test_data/mdec_power_test.csv')
 
-        if getenv('PYPAM_TEST_NO_PLOTS') is None:
+        if with_plots():
             # Plot the two outputs for comparison
             fig, ax = plt.subplots()
             ax.plot(milli_psd.frequency_bins, mdec_power_test['sum'], label='MANTA')

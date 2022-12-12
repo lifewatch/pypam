@@ -6,7 +6,7 @@ import pyhydrophone as pyhy
 
 
 # Acoustic Data
-summary_path = pathlib.Path('./test_data/data_summary.csv')
+summary_path = pathlib.Path('tests/test_data/data_summary.csv')
 include_dirs = False
 
 # Output folder
