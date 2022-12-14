@@ -57,8 +57,8 @@ The available methods and features are:
   - spectrogram (also octave bands spectrogram)
   - spectrum
   - spectral probability density (SPD)
-  - 1/3-octave bands 
-  - octave bands
+  - 1/n-octave bands
+  - hybrid millidecade bands
 - Plots
   - Signal and spectrogram 
   - Spectrum evolution 
@@ -91,7 +91,7 @@ features = ['rms', 'sel', 'peak', 'aci']
 band_list = [[10, 100], [500, 1000], [500, 100000]]
 third_octaves = None  # Calculate third octaves for the entire freq range
 
-asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=60.0)
+asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=60.0)
 features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
 oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 ```
@@ -117,7 +117,7 @@ A Dataset is a conjunction of AcousticSurveys to be studied together. The output
         * temporal_features/: graphs in time domain of the features 
         * spatial_features/: spatial plots (in a map) of the features
 
-```python 
+```python
 import pathlib
 
 import pyhydrophone as pyhy
@@ -181,6 +181,15 @@ ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_fe
 # Call the dataset creation. Will create the files in the corresponding folder
 ds()
 ```
+
+# TODO 
+Planned:
+- Add function to generate files per included folder (too big deployments)
+- Add options for the user to choose what to do when the blocksize is not multiple of the frames, and to deal with time 
+- keeping
+- Add Long Term Spectrograms (LTSA)
+- Add a logger that logs the code that was run and the warnings together with the output
+- Add deep learning features (vggish and compatibility with koogu)
    
 
 ## Cite
