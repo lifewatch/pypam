@@ -14,7 +14,7 @@ All the documentation can be found on [readthedocs](https://lifewatch-pypam.read
     pip install lifewatch-pypam
 ```
 
-### Using cit clone
+### Using git clone
 
 1. Clone the package
     ```bash
