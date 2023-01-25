@@ -44,7 +44,8 @@ REF_PRESSURE = 1e-6
 # SURVEY PARAMETERS
 nfft = 4096
 binsize = 60.0
-overlap = 0.5
+bin_overlap = 0.0
+fft_overlap = 0.5
 dc_subtract = False
 band_lf = [50, 500]
 band_mf = [500, 2000]
@@ -54,14 +55,12 @@ band_list = [band_lf]
 temporal_features = ['rms', 'sel', 'aci']
 frequency_features = ['third_octaves_levels']
 
-n_join_bins = 3
-
 
 class TestDataset(unittest.TestCase):
     def setUp(self) -> None:
         self.ds = dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
                                   frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                                  nfft=nfft, overlap=overlap, dc_subtract=dc_subtract)
+                                  bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
 
     def test_generate_dataset(self):
         self.ds()

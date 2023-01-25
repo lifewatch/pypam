@@ -45,7 +45,7 @@ class DataSet:
      """
 
     def __init__(self, summary_path, output_folder, instruments, temporal_features=None, frequency_features=None,
-                 bands_list=None, binsize=60.0, nfft=512, overlap=0, dc_subtract=False):
+                 bands_list=None, binsize=60.0, bin_overlap=0.0, nfft=512, fft_overlap=0, dc_subtract=False):
         self.metadata = pd.read_csv(summary_path)
         if 'end_to_end_calibration' not in self.metadata.columns:
             self.metadata['end_to_end_calibration'] = np.nan
@@ -55,8 +55,9 @@ class DataSet:
         self.frequency_features = frequency_features
         self.band_list = bands_list
         self.binsize = binsize
+        self.bin_overlap = bin_overlap
         self.nfft = nfft
-        self.overlap = overlap
+        self.fft_overlap = fft_overlap
         self.dc_subtract = dc_subtract
 
         if not isinstance(output_folder, pathlib.Path):
@@ -146,7 +147,7 @@ class DataSet:
                                   dc_subtract=self.dc_subtract,
                                   binsize=self.binsize,
                                   nfft=self.nfft,
-                                  overlap=self.overlap,
+                                  fft_overlap=self.fft_overlap,
                                   extra_attrs=extra_attrs,
                                   **self.metadata.loc[(idx, survey_columns)].to_dict())
         ds = xarray.Dataset()

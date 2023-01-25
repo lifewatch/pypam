@@ -1,2 +1,2 @@
 deployment_name,instrument_name,instrument_sensitivity,instrument_amp,instrument_Vpp,folder_path,timezone,include_dirs,calibration,etn_id,method,instrument_depth,end_to_end_calibration
-station_1,SoundTrap,-172.8,0,2,./test_data,UTC,0,5,etn_test,drift,4,172.8
+station_1,SoundTrap,-172.8,0,2,tests/test_data,UTC,0,5,etn_test,drift,4,172.8
