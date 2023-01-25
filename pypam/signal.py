@@ -23,7 +23,7 @@ sns.set_theme()
 
 
 FILTER_ORDER = 4
-MIN_FREQ = 0
+MIN_FREQ = 1
 
 
 class Signal:
@@ -111,7 +111,7 @@ class Signal:
             Set to True if signal has to be downsampled for spectral resolution incrementation
         """
         if band is None:
-            band = [MIN_FREQ, self.fs / 2]
+            band = [0, self.fs / 2]
         if band != self.band:
             if self._band_is_broadband(band):
                 self.signal = self._signal.copy()
@@ -409,7 +409,7 @@ class Signal:
         freq, t, sxx = sig.spectrogram(self.signal, fs=self.fs, nfft=nfft, window=window, scaling=scaling, noverlap=noverlap)
         if self.band is not None:
             if self.band[0] is None:
-                low_freq = MIN_FREQ
+                low_freq = 0
             else:
                 low_freq = np.argmax(freq >= self.band[0])
         else:
@@ -476,7 +476,7 @@ class Signal:
         if self.band is not None and self.band[0] is not None:
             low_freq = np.argmax(freq >= self.band[0])
         else:
-            low_freq = MIN_FREQ
+            low_freq = 0
         self.psd = psd[low_freq:]
         self.freq = freq[low_freq:]
 

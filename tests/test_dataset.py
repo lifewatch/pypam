@@ -47,10 +47,9 @@ binsize = 60.0
 bin_overlap = 0.0
 fft_overlap = 0.5
 dc_subtract = False
-band_lf = [50, 500]
-band_mf = [500, 2000]
-band_hf = [2000, 20000]
+band_lf = [0, 2000]
 band_list = [band_lf]
+
 # temporal_features = ['rms', 'sel', 'aci', 'dynamic_range', 'aci', 'sh', 'th', 'aei', 'adi', 'zcr', 'zcr_avg']
 temporal_features = ['rms', 'sel', 'aci']
 frequency_features = ['third_octaves_levels']

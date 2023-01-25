@@ -189,7 +189,7 @@ def oct_fbands(min_freq, max_freq, fraction):
 
 def octdsgn(fc, fs, fraction=1, n=2):
     """
-    Design of a octave band filter with center frequency fc for sampling frequency fs.
+    Design of an octave band filter with center frequency fc for sampling frequency fs.
     Default value for N is 3. For meaningful results, fc should be in range fs/200 < fc < fs/5.
 
     Parameters
@@ -221,7 +221,7 @@ def octdsgn(fc, fs, fraction=1, n=2):
 
 def octbankdsgn(fs, bands, fraction=1, n=2):
     """
-    Construction of a octave band filterbank.
+    Construction of an octave band filterbank.
 
     Parameters
     ----------
