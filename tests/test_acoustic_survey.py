@@ -8,7 +8,7 @@ from tests import skip_unless_with_plots, with_plots
 
 
 # Data information
-data_path = pathlib.Path('./../data')
+folder_path = pathlib.Path('tests/test_data')
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
@@ -37,7 +37,7 @@ zipped_files = False
 
 class TestASA(unittest.TestCase):
     def setUp(self) -> None:
-        self.asa = ASA(hydrophone=soundtrap, folder_path='tests/test_data', binsize=binsize, nfft=nfft, timezone='UTC',
+        self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
     def test_timestamp_array(self):
@@ -45,7 +45,7 @@ class TestASA(unittest.TestCase):
 
     def test_nmf(self):
         ds = self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=False)
-        self.asa = ASA(hydrophone=soundtrap, folder_path='./../data', binsize=binsize, nfft=nfft, timezone='UTC',
+        self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files)
 
     def test_features(self):

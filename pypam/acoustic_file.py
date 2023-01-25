@@ -43,12 +43,12 @@ class AcuFile:
     hydrophone : Object for the class hydrophone
     p_ref : Float
         Reference pressure in upa
-    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, or None
+    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
         Timezone where the data was recorded in
     channel : int
         Channel to perform the calculations in
     calibration: float, -1 or None
-        If float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
+        If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
         the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
     dc_subtract: bool
         Set to True to subtract the dc noise (root mean squared value
@@ -617,7 +617,7 @@ class AcuFile:
         ----------
         binsize: float
             Length in seconds of the bin to analyze
-        overlap : float [0 to 1]
+        bin_overlap : float [0 to 1]
             Percentage to overlap the bin windows
         db: boolean
             Set to True if the result should be in decibels
@@ -716,7 +716,7 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        percentiles : list
+        percentiles : list or None
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
 
@@ -814,7 +814,7 @@ class AcuFile:
             Percentage to overlap the bin windows
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list
+        percentiles : list or None
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
         band : tuple or None
@@ -874,7 +874,7 @@ class AcuFile:
             Percentage to overlap the bin windows
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list
+        percentiles : list or None
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
         band : tuple or None
@@ -896,15 +896,15 @@ class AcuFile:
         ----------
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
-        overlap : float [0 to 1]
+        bin_overlap : float [0 to 1]
             Percentage to overlap the bin windows
         nfft : int
             Length of the fft window in samples. Power of 2.
         fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
+            Percentage to overlap the windows in the fft
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list
+        percentiles : list or None
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
         band : tuple or None
@@ -988,10 +988,10 @@ class AcuFile:
         verbose : bool
             Set to True to get plots of the detections
         save_path: Path or str
-            Path where to save the images of the detections
-        detection_band : list or tuple
+            Path where to save the images of the detections'
+        detection_band : list or tuple or None
             Band used to detect the pulses [low_freq, high_freq]
-        analysis_band : list or tuple
+        analysis_band : list or tuple or None
             Band used to analyze the pulses [low_freq, high_freq]
         method : str
             Method to use for the detection. Can be 'snr', 'dt' or 'envelope'
@@ -1158,9 +1158,9 @@ class AcuFile:
         Parameters
         ----------
         db : boolean
-            If set to True the result will be given in db. Otherwise in upa^2/Hz
+            If set to True the result will be given in db. Otherwise, in upa^2/Hz
         log : boolean
-            If set to True the scale of the y axis is set to logarithmic
+            If set to True the scale of the y-axis is set to logarithmic
         save_path : string or Path
             Where to save the images
         **kwargs : any attribute valid on spd() function

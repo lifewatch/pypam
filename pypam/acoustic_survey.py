@@ -56,7 +56,7 @@ class ASA:
         the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
     dc_subtract: bool
         Set to True to subtract the dc noise (root mean squared value
-    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, or None
+    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
         Timezone where the data was recorded in
     """
 
@@ -302,7 +302,7 @@ class ASA:
             If set to True the result will be given in db. Otherwise in uPa^2
         h : float
             Histogram bin (in the correspondent units, uPa or db)
-        percentiles : list
+        percentiles : list or None
             All the percentiles that have to be returned. If set to None, no percentiles
             is returned (in 100 per cent)
         min_val : float
@@ -314,7 +314,7 @@ class ASA:
         -------
         percentiles : array like
             List of the percentiles calculated
-        p : numpy matrix
+        p : np.array
             Matrix with all the probabilities
         """
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
@@ -332,7 +332,7 @@ class ASA:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        percentiles : list
+        percentiles : list or None
             List of all the percentiles that have to be returned. If set to empty list,
             no percentiles is returned
 
@@ -437,9 +437,9 @@ class ASA:
             Maximum duration of the event, in seconds
         threshold : float
             Threshold above ref value which one it is considered piling, in db
-        detection_band : list or tuple
+        detection_band : list or tuple or None
             Band used to detect the pulses [low_freq, high_freq]
-        analysis_band : list or tuple
+        analysis_band : list or tuple or None
             Band used to analyze the pulses [low_freq, high_freq]
         dt : float
             Window size in seconds for the analysis (time resolution). Has to be smaller
