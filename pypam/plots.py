@@ -68,8 +68,9 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
     else:
         units = r'$\mu Pa$'
 
-    for time_bin in ds_spectrogram.datetime:
-        sxx = ds_spectrogram['spectrogram'].loc[time_bin]
+    for id_n in ds_spectrogram.id:
+        sxx = ds_spectrogram['spectrogram'].sel(id=id_n)
+        time_bin = sxx.datetime
         title = 'Spectrogram of bin %s' % time_bin.values
         if save_path is not None:
             save_path = save_path + time_bin.values
@@ -163,7 +164,7 @@ def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, xlog=False, ylog=False,
     if xlog:
         xscale = 'log'
     if ylog:
-        yscale = 'log'
+        yscale = 'symlog'
     if ax is None:
         _, ax = plt.subplots()
 

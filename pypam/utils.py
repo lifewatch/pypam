@@ -171,7 +171,7 @@ def to_db(wave, ref=1.0, square=False):
     return db
 
 
-@nb.jit
+# @nb.jit
 def oct_fbands(min_freq, max_freq, fraction):
     min_band_n = 0
     max_band_n = 0
@@ -181,7 +181,7 @@ def oct_fbands(min_freq, max_freq, fraction):
         max_band_n += 1
     bands = np.arange(min_band_n, max_band_n)
 
-    # construct time and frequency arrays
+    # construct requency arrays
     f = 1000 * (2 ** (bands / fraction))
 
     return bands, f
