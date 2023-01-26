@@ -715,7 +715,7 @@ class ASA:
         db : boolean
             If set to True, output in db
         log : boolean
-            If set to True, y axis in logarithmic scale
+            If set to True, y-axis in logarithmic scale
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         **kwargs : Any accepted for the spd method
