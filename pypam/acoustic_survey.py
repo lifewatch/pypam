@@ -459,7 +459,7 @@ class ASA:
             df = pd.concat([df, df_output])
         return df
 
-    def detect_ship_events(self, min_duration, threshold):
+    def detect_ship_events(self, min_duration, threshold, verbose=False):
         """
         Return a xarray DataSet with all the piling events and their rms, sel and peak values
 
@@ -469,6 +469,8 @@ class ASA:
             Minimum separation of the event, in seconds
         threshold : float
             Threshold above ref value which one it is considered piling, in db
+        verbose: bool
+            Set to True to make plots of the process
         """
         df = pd.DataFrame()
         last_end = None
@@ -488,7 +490,7 @@ class ASA:
                 df_output = sound_file.detect_ship_events(min_duration=min_duration,
                                                           threshold=threshold,
                                                           binsize=self.binsize, detector=detector,
-                                                          verbose=True)
+                                                          verbose=verbose)
                 df = pd.concat([df, df_output])
         return df
 
@@ -740,12 +742,11 @@ class AcousticFolder:
     def __init__(self, folder_path, zipped=False, include_dirs=False, extensions=None):
         """
         Store the information about the folder.
-        It will create an iterator that returns all the pairs of extensions having the same
-        name than the wav file
+        It will create an iterator that returns all the pairs of extensions having the same name than the wav file
 
         Parameters
         ----------
-        folder_path : string or Path
+        folder_path : string or pathlib.Path
             Path to the folder containing the acoustic files
         zipped : boolean
             Set to True if the subfolders are zipped

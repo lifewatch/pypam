@@ -58,6 +58,11 @@ class TestASA(unittest.TestCase):
         ds = self.asa.evolution_freq_dom('spectrogram', band=third_octaves, db=True)
         print(ds)
 
+    def test_millidecade_bands(self):
+        # Set the frequency resolution to 1 Hz and the duration of 1 second
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[0, 4000], percentiles=None)
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
+
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')
 
@@ -107,7 +112,7 @@ class TestASA(unittest.TestCase):
         self.asa.plot_rms_daily_patterns()
 
     @skip_unless_with_plots()
-    def test_millidecade_bands(self):
+    def test_plot_millidecade_bands(self):
         # Set the frequency resolution to 1 Hz and the duration of 1 second
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[0, 4000], percentiles=None)
         milli_psd['millidecade_bands'].plot()
