@@ -52,10 +52,10 @@ class ASA:
         Tuple or list with two elements: start and stop. Has to be a string in the
         format YYYY-MM-DD HH:MM:SS
     calibration: float, -1 or None
-        If float, it is the time ignored a the beginning of the file. If None, nothing is done. If negative,
+        If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
         the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
     dc_subtract: bool
-        Set to True to subtract the dc noise (root mean squared value
+        Set to True to subtract the dc noise (root mean squared value)
     timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
         Timezone where the data was recorded in
     """
@@ -171,7 +171,7 @@ class ASA:
         ----------
         method_list : string
             Method name present in AcuFile
-        list of tuples, tuple or None
+        band_list: list of tuples, tuple or None
             Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
             represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
             frequency will be analyzed
@@ -224,7 +224,7 @@ class ASA:
 
     def timestamps_array(self):
         """
-        Return an xarray DataSet with the timestamps of each bin.
+        Return a xarray DataSet with the timestamps of each bin.
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('timestamp_da', binsize=self.binsize, bin_overlap=self.bin_overlap)
@@ -299,7 +299,7 @@ class ASA:
         Parameters
         ----------
         db : boolean
-            If set to True the result will be given in db. Otherwise in uPa^2
+            If set to True the result will be given in db. Otherwise, in uPa^2
         h : float
             Histogram bin (in the correspondent units, uPa or db)
         percentiles : list or None
@@ -361,7 +361,7 @@ class ASA:
         folder_name: str or Path
             Path to the location of the files to cut
         extensions: list of strings
-            the extensions that want to be moved (csv will be splitted, log will just be moved)
+            the extensions that want to be moved (csv will be split, log will just be moved)
         """
         if extensions is None:
             extensions = []
@@ -496,7 +496,7 @@ class ASA:
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
         """
-        Separate the signal in n_sources sources, using non negative matrix factorization
+        Separate the signal in n_sources sources, using non-negative matrix factorization
         Parameters
         ----------
         window_time: float
@@ -680,7 +680,8 @@ class ASA:
 
         return psd_evolution
 
-    def _plot_ltsa(self, ds, col_name, output_name, units, save_path=None):
+    @staticmethod
+    def _plot_ltsa(ds, col_name, output_name, units, save_path=None):
         """
         Plot the evolution of the ds containing percentiles and band values
 
