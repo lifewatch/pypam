@@ -13,9 +13,9 @@ import seaborn as sns
 import xarray
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from pypam import plots
 from pypam import utils
 from pypam._event import Event
-from pypam import plots
 
 # Apply the default theme
 sns.set_theme('paper')
@@ -33,9 +33,9 @@ class ImpulseDetector:
         Minimum separation of the event, in seconds
     max_duration : float
         Maxium duration of the event, in seconds
-    detection_band : list
+    detection_band : list or None
         List or tuple of (min_freq, max_freq) of the frequency band used to detect the signals
-    analysis_band : list
+    analysis_band : list or None
         List or tuple of (min_freq, max_freq) of the frequency band used to characterize the impulses
     threshold : float
         Threshold above ref value which one it is considered piling, in db
@@ -43,6 +43,7 @@ class ImpulseDetector:
         Window size in seconds for the analysis (time resolution). Has to be smaller han
         min_duration!
     """
+
     def __init__(self, min_separation, max_duration, detection_band, analysis_band, threshold=150, dt=None):
         self.min_separation = min_separation
         self.max_duration = max_duration
@@ -211,8 +212,8 @@ class ImpulseDetector:
             event = self.load_event(s=signal, t=start, duration=duration)
             rms, sel, peak = event.analyze()
             fbands, psd, _ = event.spectrum(scaling='spectrum', nfft=128)
-            events_df.at[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
-            events_df.at[i, ('psd', fbands)] = psd
+            events_df.loc[i, ('temporal', columns_temp)] = [start, end, duration, rms, sel, peak]
+            events_df.loc[i, ('psd', fbands)] = psd
         return events_df
 
     def plot_all_events(self, signal, events_df, save_path=None):
@@ -247,9 +248,9 @@ class ImpulseDetector:
 
         if len(events_df) > 0:
             l0 = ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'rms')],
-                          marker='.', label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
+                               marker='.', label=r'$L_{rms}$ [dB re 1 $\mu Pa$]')
             l1 = ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'peak')],
-                          marker='x', label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
+                               marker='x', label=r'$L_{z-p}$ [dB re 1 $\mu Pa$]')
             ax[2].scatter(events_df[('temporal', 'start_seconds')], events_df[('temporal', 'sel')],
                           marker='+', label=r'$SEL_{ss}$ [dB re 1 $\mu Pa^2 s$]')
             color0 = l0.get_facecolors()[0]
@@ -264,9 +265,10 @@ class ImpulseDetector:
         divider2 = make_axes_locatable(ax[2])
         cax2 = divider2.append_axes("right", size="5%", pad=.05)
         cax2.remove()
-        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal', color=color0, zorder=2)
+        ax[1].plot(signal.times, utils.to_db(signal.signal, ref=1.0, square=True), label='Signal', color=color0,
+                   zorder=2)
         ylims = ax[1].get_ylim()
-        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(np.float).values, ymin=ylims[0], ymax=ylims[1],
+        ax[1].vlines(x=events_df[('temporal', 'start_seconds')].astype(float).values, ymin=ylims[0], ymax=ylims[1],
                      color=color1, label='Detections', zorder=1)
         ax[1].legend(bbox_to_anchor=(1, 0), loc="lower left")
         ax[1].set_title('Detections')
@@ -316,7 +318,7 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
     event_max_val = 0
     last_xi = 0
     i = 0
-    threshold_upa = 10 ** (threshold/20.0)
+    threshold_upa = 10 ** (threshold / 20.0)
     while i < len(signal):
         xi = signal[i]
 
@@ -355,7 +357,7 @@ def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separat
     :param min_separation:
     :return:
     """
-    signal_db = 10 * np.log10(signal**2)
+    signal_db = 10 * np.log10(signal ** 2)
     times_events = []
     min_separation_samples = int(min_separation * fs)
     event_on = False

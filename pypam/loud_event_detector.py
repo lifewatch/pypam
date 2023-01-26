@@ -84,8 +84,8 @@ class LoudEventDetector:
                 event = self.load_event(s=signal, n_start=int(start_i * signal.fs),
                                         duration_samples=int(duration * signal.fs))
                 rms, sel, peak = event.analyze()
-                events_df.at[i] = {'start_seconds': start_i, 'end_seconds': end_points[i],
-                                   'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
+                events_df.loc[i, :] = {'start_seconds': start_i, 'end_seconds': end_points[i],
+                                       'duration': duration, 'rms': rms, 'sel': sel, 'peak': peak}
 
         if verbose:
             # Compute the spectrogram

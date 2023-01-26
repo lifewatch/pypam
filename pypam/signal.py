@@ -1004,7 +1004,7 @@ class Signal:
 
     def blocks(self, blocksize):
         """
-        Wrappper for the Blocks class
+        Wrapper for the Blocks class
 
         Parameters
         ----------

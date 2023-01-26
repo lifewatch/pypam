@@ -26,7 +26,7 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
         Spectrogram
     h : float
         Histogram bin width
-    percentiles : list
+    percentiles : list or None
         List of floats with all the percentiles to be computed
     bin_edges : numpy array
         Limits of the histogram bins
@@ -345,9 +345,9 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bi
     return bands_limits, bands_c
 
 
-def get_center_freq(base, bands_per_division, n, firstOutBandcenterFreq):
+def get_center_freq(base, bands_per_division, n, first_out_band_centre_freq):
     if (bands_per_division == 10) or ((bands_per_division % 2) == 1):
-        center_freq = firstOutBandcenterFreq * base ** ((n - 1) / bands_per_division)
+        center_freq = first_out_band_centre_freq * base ** ((n - 1) / bands_per_division)
     else:
         b = bands_per_division * 0.3
         center_freq = base * G ** ((2 * (n - 1) + 1) / (2 * b))
@@ -559,7 +559,7 @@ def merge_ds(ds, new_ds, attrs_to_vars):
         Already existing dataset
     new_ds : xarray Dataset
         New dataset to merge
-    attrs_to_vars: list
+    attrs_to_vars: list or None
         List of all the attributes to convert to coordinates (not dimensions)
 
     Returns

@@ -1014,7 +1014,7 @@ class AcuFile:
             events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')],
                                                     unit='seconds') + time_bin
             events_df = events_df.set_index('datetime')
-            total_events = total_events.append(events_df)
+            total_events = pd.concat([total_events, events_df])
         if save_path is not None:
             csv_path = save_path.joinpath('%s.csv' % datetime.datetime.strftime(self.date, "%y%m%d_%H%M%S"))
             total_events.to_csv(csv_path)
@@ -1048,7 +1048,7 @@ class AcuFile:
             seconds_start = binsize * i
             events_df['start_seconds'] = events_df['start_seconds'] + seconds_start
             events_df['end_seconds'] = events_df['end_seconds'] + seconds_start
-            total_events = total_events.append(events_df)
+            total_events = pd.concat([total_events, events_df])
 
         return total_events
 

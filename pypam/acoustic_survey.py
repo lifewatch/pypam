@@ -456,7 +456,7 @@ class ASA:
                                                         detection_band=detection_band,
                                                         analysis_band=analysis_band,
                                                         verbose=verbose, **kwargs)
-            df = df.append(df_output)
+            df = pd.concat([df, df_output])
         return df
 
     def detect_ship_events(self, min_duration, threshold):
@@ -489,7 +489,7 @@ class ASA:
                                                           threshold=threshold,
                                                           binsize=self.binsize, detector=detector,
                                                           verbose=True)
-                df = df.append(df_output)
+                df = pd.concat([df, df_output])
         return df
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
