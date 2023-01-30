@@ -66,6 +66,7 @@ class TestASA(unittest.TestCase):
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')
 
+    @skip_unless_with_plots()
     def test_apply_to_all(self):
         self.asa.apply_to_all('plot_spectrogram')
         self.asa.apply_to_all('plot_psd')

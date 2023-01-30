@@ -54,7 +54,7 @@ class TestMillidecades(unittest.TestCase):
         # Convert the spectra to a datarray
         psd_da = xarray.DataArray([spectra], coords={'id': [0], 'frequency': fbands}, dims=['id', 'frequency'])
 
-        milli_psd = utils.psd_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs/nfft, db=False)
+        milli_psd = utils.spectra_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs/nfft, db=False)
 
         # Read MANTA's output
         mdec_power_test = pd.read_csv('tests/test_data/mdec_power_test.csv')

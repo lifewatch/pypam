@@ -340,14 +340,14 @@ class ASA:
         -------
         An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
         """
-        spectra_ds = self.evolution_freq_dom('power_spectrum', band=band, db=False, percentiles=percentiles)
+        spectra_ds = self.evolution_freq_dom('_spectrum', band=band, db=False, percentiles=percentiles, scaling=method)
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
         fft_bin_width = spectra_ds.attrs['fs'] / self.nfft
-        milli_psd = utils.psd_ds_to_bands(spectra_ds['band_spectrum'],
-                                          bands_limits, bands_c, fft_bin_width=fft_bin_width, method=method, db=db)
+        milli_spectra = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
+                                              bands_limits, bands_c, fft_bin_width=fft_bin_width, db=db)
 
         # Add the millidecade
-        spectra_ds['millidecade_bands'] = milli_psd
+        spectra_ds['millidecade_bands'] = milli_spectra
         return spectra_ds
 
     def cut_and_place_files_period(self, period, folder_name, extensions=None):

@@ -385,7 +385,7 @@ def get_decidecade_limits(band, nfft):
     return get_bands_limits(band, nfft, base=10, bands_per_division=10, hybrid_mode=False)
 
 
-def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum', db=True):
+def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     """
     Group the psd according to the limits band_limits given. If a limit is not aligned with the limits in the psd
     frequency axis then that psd frequency bin is divided in proportion to each of the adjacent bands. For more details
@@ -402,8 +402,6 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
         Centre of the bands (used only of the output frequency axis naming)
     fft_bin_width: float
         fft bin width in seconds
-    method: string
-        Should be 'density' or 'spectrum'
     db: bool
         Set to True to return db instead of linear units
 
@@ -429,10 +427,6 @@ def psd_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, method='spectrum'
     psd_bands = psd_bands + psd_limits_lower.values + psd_limits_upper.values
     psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
     psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})
-
-    if method == 'density':
-        bandwidths = psd_bands.frequency_bins.diff('frequency_bins')
-        psd_bands = psd_bands / bandwidths
 
     if db:
         psd_bands = 10 * np.log10(psd_bands)

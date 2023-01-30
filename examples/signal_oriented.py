@@ -30,11 +30,12 @@ for i in np.arange(N_CHUNKS):
     list_spectras.append(spectra)
 
 # Convert the spectra to a datarray
-psd_da = xarray.DataArray(list_spectras, coords={'id': np.arange(N_CHUNKS), 'frequency': fbands}, dims=['id', 'frequency'])
+psd_da = xarray.DataArray(list_spectras, coords={'id': np.arange(N_CHUNKS),
+                                                 'frequency': fbands}, dims=['id', 'frequency'])
 
 # Get the millidecade bands
 bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=[0, fs/2], nfft=nfft)
-milli_psd = utils.psd_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs / nfft, db=False)
+milli_psd = utils.spectra_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs / nfft, db=False)
 
 milli_psd.mean('id').plot()
 plt.show()
