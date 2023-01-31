@@ -33,7 +33,13 @@ def millidecade_bands():
     return millis['millidecade_bands']
 
 
-def test_millidecade_bands_string(millidecade_bands, snapshot):
+def test_millidecade_bands_dict(millidecade_bands, snapshot):
     pd = millidecade_bands.to_pandas()
-    out = pd.to_string()
+    out = pd.round(6).to_dict()
+    assert out == snapshot
+
+
+def test_millidecade_bands_csv(millidecade_bands, snapshot):
+    pd = millidecade_bands.to_pandas()
+    out = pd.round(6).to_csv(index=False)
     assert out == snapshot
