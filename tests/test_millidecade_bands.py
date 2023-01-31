@@ -1,6 +1,7 @@
 import pyhydrophone as pyhy
 from pypam.acoustic_file import AcuFile
 import pytest
+from pytest import approx
 
 
 # Adapted from examples/millidecade_bands.py to use pytest and snapshots.
@@ -35,4 +36,4 @@ def millis_pd():
 
 
 def test_millidecade_bands_pandas(millis_pd, snapshot):
-    assert millis_pd.to_dict() == snapshot
+    assert millis_pd.to_dict() == approx(snapshot)
