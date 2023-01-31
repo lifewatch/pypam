@@ -1,4 +1,3 @@
-import unittest
 import numpy as np
 import pandas as pd
 import xarray
@@ -24,15 +23,17 @@ for test_freq in test_freqs:
 nfft = fs
 
 
-class TestMillidecades(unittest.TestCase):
-    def test_get_millidecade_bands(self):
+class TestUtils:
+    @staticmethod
+    def test_get_millidecade_bands():
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=[0, fs/2], nfft=nfft)
         mdec_bands_test = pd.read_csv('tests/test_data/mdec_bands_test.csv', header=None)
         assert ((mdec_bands_test.iloc[:, 0] - bands_limits[:-1]) > 5e-5).sum() == 0
         assert ((mdec_bands_test.iloc[:, 2] - bands_limits[1:]) > 5e-5).sum() == 0
         assert ((mdec_bands_test.iloc[:, 1] - bands_c) > 5e-5).sum() == 0
 
-    def test_psd_to_millidecades(self):
+    @staticmethod
+    def test_psd_to_millidecades():
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=[0, fs/2], nfft=nfft)
 
         # Compute the spectrum manually
@@ -73,7 +74,3 @@ class TestMillidecades(unittest.TestCase):
 
         # Check if the results are the same
         assert ((mdec_power_test['sum'] - milli_psd.sel(id=0).values).abs() > 1e-5).sum() == 0
-
-
-if __name__ == '__main__':
-    unittest.main()
