@@ -35,5 +35,7 @@ def millis_pd():
     return millis['millidecade_bands'].to_pandas()
 
 
-def test_millidecade_bands_pandas(millis_pd, snapshot):
-    assert millis_pd.to_dict() == approx(snapshot)
+def test_millidecade_bands_csv(millis_pd, snapshot):
+    csv = millis_pd.to_csv(index=False, float_format='%.7f')
+    snapshot.assert_match(csv)
+
