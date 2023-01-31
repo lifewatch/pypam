@@ -32,4 +32,4 @@ jobs:
 
       - name: Run unit tests
         run:
-          PYPAM_TEST_NO_PLOTS= python -m unittest
+          PYPAM_TEST_NO_PLOTS= python -m pytest tests
