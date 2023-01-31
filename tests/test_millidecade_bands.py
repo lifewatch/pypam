@@ -1,13 +1,11 @@
 import pyhydrophone as pyhy
 from pypam.acoustic_file import AcuFile
 import pytest
-from pytest import approx
-
 
 # Adapted from examples/millidecade_bands.py to use pytest and snapshots.
 
 @pytest.fixture
-def millis_pd():
+def millidecade_bands():
     # If the model is not implemented yet in pyhydrophone, a general Hydrophone can be defined
     model = 'ST300HF'
     name = 'SoundTrap'
@@ -32,10 +30,10 @@ def millis_pd():
                                              bin_overlap=bin_overlap,
                                              db=True, method=method, band=band)
 
-    return millis['millidecade_bands'].to_pandas()
+    return millis['millidecade_bands']
 
 
-def test_millidecade_bands_csv(millis_pd, snapshot):
-    csv = millis_pd.to_csv(index=False, float_format='%.7f')
-    snapshot.assert_match(csv)
-
+def test_millidecade_bands_string(millidecade_bands, snapshot):
+    pd = millidecade_bands.to_pandas()
+    out = pd.to_string()
+    assert out == snapshot
