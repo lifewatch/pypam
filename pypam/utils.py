@@ -428,6 +428,9 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
     psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})
 
+    bandwidths = psd_bands.upper_frequency - psd_bands.lower_frequency
+    psd_bands = psd_bands / bandwidths
+
     if db:
         psd_bands = 10 * np.log10(psd_bands)
 
