@@ -56,6 +56,8 @@ class TestMillidecades(unittest.TestCase):
 
         milli_psd = utils.spectra_ds_to_bands(psd_da, bands_limits, bands_c, fft_bin_width=fs/nfft, db=False)
 
+        bandwidths = milli_psd.upper_frequency - milli_psd.lower_frequency
+        milli_psd_power = milli_psd * bandwidths
         # Read MANTA's output
         mdec_power_test = pd.read_csv('tests/test_data/mdec_power_test.csv')
 
@@ -72,7 +74,7 @@ class TestMillidecades(unittest.TestCase):
             plt.show()
 
         # Check if the results are the same
-        assert ((mdec_power_test['sum'] - milli_psd.sel(id=0).values).abs() > 1e-5).sum() == 0
+        assert ((mdec_power_test['sum'] - milli_psd_power.sel(id=0).values).abs() > 1e-5).sum() == 0
 
 
 if __name__ == '__main__':
