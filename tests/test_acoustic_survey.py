@@ -48,8 +48,6 @@ class TestASA(unittest.TestCase):
 
     def test_nmf(self):
         ds = self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=verbose)
-        self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
-                       include_dirs=include_dirs, zipped=zipped_files)
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
