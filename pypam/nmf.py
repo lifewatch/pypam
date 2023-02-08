@@ -9,6 +9,7 @@ This script is used to perform the NMF on hydrophone data
 """
 
 import numpy as np
+import sklearn
 
 from matplotlib import pyplot as plt
 from scipy import signal as sig
@@ -39,10 +40,15 @@ class NMF:
             I've found that Z_mag works best, perhaps because some sources are coherent.
         normalize: bool
             Set to True if matrices should be normalized to represent probabilities
+        verbose: bool
+            Set to True to see the evolution of the decomposition and to plot the results
+
+        Returns:
+            dataset with W, H as variables
         """
         self.nfft = int(self.window_time * s.fs)
         self.noverlap = (self.nfft / 2)
-        df = s.fs / self.nfft
+        # df = s.fs / self.nfft
 
         # Computing both the spectrogram and the STFT
         # The STFT will be needed to do the filtering with the time-freq. mask.
@@ -51,8 +57,8 @@ class NMF:
 
         # Apply the NMF Algorithm
         if V_type == 'Gxx':
-            f, t, Gxx = s.spectrogram(nfft=self.nfft, scaling='density', db=True, overlap=0.5)
-            V = Gxx
+            f, t, Z_stft = s.spectrogram(nfft=self.nfft, scaling='density', db=True, overlap=0.5)
+            V = Z_stft
 
         elif V_type == 'Z_mag' or V_type == 'Z_phase':
             f, t, Z_stft = sig.stft(s.signal, fs=s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
@@ -79,10 +85,12 @@ class NMF:
         else:
             raise Exception('This approach is not implemented!')
 
-        W, H, ErrConv = self.NMF_hals(V, init_type="rand_norm", max_iter=1000, tol=1e-9, verbose=verbose)
+        # W, H, ErrConv = self.NMF_hals(V, init_type="rand_norm", max_iter=1000000, tol=1e-9, verbose=verbose)
+        separator = sklearn.decomposition.NMF(n_components=self.R, init='random', tol=1e-9, verbose=verbose,
+                                              max_iter=1000)
+        W = separator.fit_transform(V)  # W=W_init, H=H_init
+        H = separator.components_
         V_approx = W @ H  # approximated V
-        Residual = V - V_approx
-        Residual_norm = np.linalg.norm(V - (W @ H))
 
         # Normalise the columns of W and H if so desired - This scales the values so that they are
         # between 0 and 1 and hence represent probabilities
@@ -98,22 +106,14 @@ class NMF:
             W = W @ Dw_inv
             H = Dw @ H @ Dv_inv
 
-        # Step 5: Creation of time-frequency masks to obtain the individual components.
-        WH_prod, G_tf, C_tf, c_tf = self.time_freq_masks(s, Z_stft, V, W, H)
-
         sources = np.arange(self.R)
         w_arr = xarray.DataArray(data=W, coords={'frequency': f, 'sources': sources},
                                  dims=['frequency', 'sources'])
         h_arr = xarray.DataArray(data=H, coords={'sources': sources, 'time': t},
                                  dims=['sources', 'time'])
-        wh_prod = xarray.DataArray(data=WH_prod, coords={'frequency': f, 'time': t},
-                                   dims=['frequency', 'time'])
-        gtf_arr = xarray.DataArray(data=G_tf, coords={'frequency': f, 'time': t, 'sources': sources},
-                                   dims=['frequency', 'time', 'sources'])
-        ctf_arr = xarray.DataArray(data=C_tf, coords={'frequency': f, 'time': t, 'sources': sources},
-                                   dims=['frequency', 'time', 'sources'])
-        nmf_ds = xarray.Dataset({'W': w_arr, 'H': h_arr, 'WH_prod': wh_prod,
-                                 'G_tf': gtf_arr, 'C_tf': ctf_arr})
+        v_arr = xarray.DataArray(data=Z_stft, coords={'frequency': f, 'time': t},
+                                 dims=['frequency', 'time'])
+        nmf_ds = xarray.Dataset({'W': w_arr, 'H': h_arr, 'Z_stft': v_arr})
 
         # Error convergence and decomposition
         if verbose:
@@ -123,130 +123,52 @@ class NMF:
             v = xarray.DataArray(data=Vlg, coords={'frequency': f, 'time': t}, dims=['frequency', 'time'])
             v_approx = xarray.DataArray(data=Vlg_ap, coords={'frequency': f, 'time': t}, dims=['frequency', 'time'])
 
-            self.plot_error_conv(ErrConv, Residual)
             self.plot_decomposition(s, f, v, v_approx, w_arr, h_arr)
 
         return nmf_ds
 
-    def NMF_hals(self, V, init_type, max_iter, tol, verbose=False):
-        """
-        Non-negative matrix factorisation (NMF) implementation using the
-        Hierarchical Alternating Least Squares (HALS) algorithm, which was firstly described in:
-
-        Cichocki, A., & Phan, A. H. (2009). Fast local algorithms for large scale nonnegative matrix and tensor
-        factorizations. IEICE Transactions on Fundamentals of Electronics, Communications and Computer Sciences,
-
-        The implementation in this script is done following:
-        Gillis, N. (2011 PhD thesis) Nonnegative Matrix Factorization Complexity, Algorithms and Applications
-        Ch. 4.1.3 - Algorithm (3)
-
-        The goal is to find an approximation of the (M x N) matrix V such that:
-                    V ~= WH
-        where W is an (M x R) matrix consisting of R basis vectors (columns)  and H is an (R x N) matrix with the
-        associated activations to the basis vectors
-
-
-        Arguments:
-            V          - M x N matrix data to approximate
-            R          - Rank: the number of assumed basis vectors
-            init_type  - Type of initialisation for W and H
-                         "rand_norm" - a random initialisation with a normalisation by the 2-norm of each column
-                                     - Note that a fixed seed is used here (can change to include in the function
-                                     if needed)
-                         (can put others here for different initialisations)
-            max_iter   - maximum number of iterations
-            tol        - Tolerance for convergence. The algorithm is deemed to have converged if either this tolerance
-                         is reached or max_iter has been exceeded
-
-        Returns:
-
-            W       - M x R matrix of basis vectors
-            H       - R x N matrix of activations
-            ErrConv - Difference between the residual before and after each iteration - Used to make a convergence plot
-
-        """
-
-        M = V.shape[0]
-        N = V.shape[1]
-
-        # Initialise W and H (can include other conditions for different types of normalisations)
-        np.random.seed(SEED)
-        W_init = np.random.rand(M, self.R)
-        H_init = np.random.rand(self.R, N)
-        if init_type == "rand_norm":
-            # Normalise
-            W_init = W_init / np.linalg.norm(W_init, axis=0)
-            H_init = H_init / np.linalg.norm(H_init, axis=0)
-
-        l = 0  # iteration count
-        eps = 1e-16  # for enforcing +ve
-
-        W = W_init
-        H = H_init
-
-        alpha = (np.trace((V @ H.T).T @ W)) / (np.trace((W.T @ W).T @ (H @ H.T)))
-        W = alpha * W
-
-        err = np.linalg.norm(V - (W @ H))
-        ErrConv = []
-
-        while err > tol:
-            err_befu = np.linalg.norm(V - (W @ H))  # Error before updating W and H
-            l += 1
-
-            # Update W
-            A = V @ H.T
-            B = H @ H.T
-            for r in np.arange(0, self.R, 1):
-                wr = (A[:, r] + W[:, r] * B[r, r] - (W @ B[:, r])) / (B[r, r])
-                W[:, r] = np.maximum(wr, eps)
-
-            # Update H
-            C = W.T @ V
-            D = W.T @ W
-            for r in np.arange(0, self.R, 1):
-                hr = (C[r, :] + D[r, r] * H[r, :] - (D[:, r] @ H)) / (D[r, r])
-                H[r, :] = np.maximum(hr, eps)
-
-            err_aftu = np.linalg.norm(V - (W @ H))  # Error after updating W and H
-            err = err_befu - err_aftu
-
-            ErrConv.append(err)
-
-            if (l % 10) == 0:  # condition to display convergence.
-                if verbose:
-                    print('Iteration: ' + str(l) + ', Error: ' + str(err))
-
-            if l > max_iter:  # In case it gets stuck or takes too long, break earlier
-                if verbose:
-                    print('Algorithm stopped after ' + str(max_iter) + ' iterations')
-                break
-
-        return W, H, ErrConv
-
-    def time_freq_masks(self, s, Z_stft, V, W, H):
+    def time_freq_masks(self, ds):
         """
         Compute the time-frequency masks
 
         Returns:
-            G_tf: time-freq masks,
+            G_tf: time-freq masks. Not divided by W@H
             C_tf: filtered STFT,
-            c_tf: filtered time domain signal
         """
-        # Initialising arrays
-        G_tf = np.zeros([V.shape[0], V.shape[1], self.R])
-        C_tf = np.zeros([V.shape[0], len(Z_stft[1]), self.R], dtype='complex')
-        c_tf = np.zeros([len(s.signal), self.R])
+        W = ds['W'].values
+        H = ds['H'].values
+        Z_stft = ds['Z_stft']
+        f = ds.frequency.values
+        t = ds.time.values
+        sources = ds.sources.values
 
-        WH_prod = W @ H
+        # Initialising arrays
+        G_tf = np.zeros([ds.dims['frequency'], ds.dims['time'], self.R])
+        C_tf = np.zeros([ds.dims['frequency'], ds.dims['time'], self.R], dtype='complex')
 
         for n in np.arange(0, self.R, 1):
-            G_tf[:, :, n] = (np.dot(W[:, [n]], H[[n], :])) / WH_prod  # Compute TF mask
-            C_tf[:, 0:V.shape[1], n] = G_tf[:, :, n] * Z_stft[0:, 0:V.shape[1]]
+            G_tf[:, :, n] = (np.dot(W[:, [n]], H[[n], :]))  # Compute TF mask. Before it was divided by W@H
+            C_tf[:, :, n] = G_tf[:, :, n] * Z_stft
+
+        gtf_arr = xarray.DataArray(data=G_tf, coords={'frequency': f, 'time': t, 'sources': sources},
+                                   dims=['frequency', 'time', 'sources'])
+        ctf_arr = xarray.DataArray(data=C_tf, coords={'frequency': f, 'time': t, 'sources': sources},
+                                   dims=['frequency', 'time', 'sources'])
+        nmf_tf_ds = xarray.Dataset({'G_tf': gtf_arr, 'C_tf': ctf_arr})
+        return nmf_tf_ds
+
+    def return_filtered_signal(self, s, C_tf):
+        c_tf = np.zeros([len(s.signal), self.R])
+        for n in np.arange(0, self.R, 1):
             _, sig_td = sig.istft(C_tf[:, :, n], s.fs, nperseg=self.nfft, noverlap=self.noverlap, window='hann')
             c_tf[:, n] = sig_td[0:len(s.signal)]
 
-        return WH_prod, G_tf, C_tf, c_tf
+        return c_tf
+
+    def reconstruct_sources(self, ds):
+        # Step 5: Creation of time-frequency masks to obtain the individual components.
+        ds_tf = self.time_freq_masks(ds)
+        return ds_tf
 
     @staticmethod
     def plot_error_conv(ErrConv, Residual):
@@ -258,7 +180,7 @@ class NMF:
         
     def plot_decomposition(self, s, f_sg, V, V_approx, W, H):
         W_log = np.log10(W)
-        fig, ax = plt.subplots(2, 2, figsize=(12, 6), sharex=False)
+        fig, ax = plt.subplots(2, 2, figsize=(12, 6))
 
         plots.plot_2d(V, x='time', y='frequency', xlabel='Time [mins]', ylabel='Frequency [Hz]',
                       cbar_label='SPL', title='Original spectrogram', ax=ax[0, 0])

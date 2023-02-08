@@ -157,7 +157,7 @@ class AcuFile:
             signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             if self.dc_subtract:
                 signal.remove_dc()
-            start_sample = i*blocksize + self._start_frame
+            start_sample = i * blocksize + self._start_frame
             end_sample = start_sample + len(signal_upa)
             yield i, time_bin, signal, start_sample, end_sample
         self.file.seek(0)
@@ -245,7 +245,7 @@ class AcuFile:
         date : datetime object
             Datetime where to split the file
         """
-        if issubclass(self.file_path, zipfile.ZipExtFile): 
+        if issubclass(self.file_path, zipfile.ZipExtFile):
             raise Exception('The split method is not implemented for zipped files')
         if not self.contains_date(date):
             raise Exception('This date is not included in the file!')
@@ -412,21 +412,21 @@ class AcuFile:
 
     def _get_metadata_attrs(self):
         metadata_keys = [
-                         'file_path',
-                         'timezone',
-                         'datetime_timezone',
-                         'p_ref',
-                         'channel',
-                         '_start_frame',
-                         'calibration',
-                         'dc_subtract',
-                         'fs',
-                         'hydrophone.name',
-                         'hydrophone.model',
-                         'hydrophone.sensitivity',
-                         'hydrophone.preamp_gain',
-                         'hydrophone.Vpp'
-                         ]
+            'file_path',
+            'timezone',
+            'datetime_timezone',
+            'p_ref',
+            'channel',
+            '_start_frame',
+            'calibration',
+            'dc_subtract',
+            'fs',
+            'hydrophone.name',
+            'hydrophone.model',
+            'hydrophone.sensitivity',
+            'hydrophone.preamp_gain',
+            'hydrophone.Vpp'
+        ]
 
         metadata_attrs = {}
         for k in metadata_keys:
@@ -500,11 +500,12 @@ class AcuFile:
                                                                                        'datetime': ('id', [time_bin]),
                                                                                        'start_sample': ('id',
                                                                                                         [start_sample]),
-                                                                                       'end_sample': ('id', [end_sample]),
+                                                                                       'end_sample': (
+                                                                                       'id', [end_sample]),
                                                                                        'band': [j],
                                                                                        'low_freq': ('band', [band[0]]),
                                                                                        'high_freq': (
-                                                                                       'band', [band[1]])},
+                                                                                           'band', [band[1]])},
                                                                    dims=['id', 'band'])
                 if j == 0:
                     ds_bands = methods_output
@@ -730,10 +731,10 @@ class AcuFile:
         spectra_ds = self._spectrum(scaling=method, binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
                                     db=False, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
         millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
-        fft_bin_width = self.fs/nfft
+        fft_bin_width = self.fs / nfft
         hybrid_millidecade_ds = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
-                                                      millidecade_bands_limits, millidecade_bands_c,
-                                                      fft_bin_width=fft_bin_width, db=db)
+                                                          millidecade_bands_limits, millidecade_bands_c,
+                                                          fft_bin_width=fft_bin_width, db=db)
         spectra_ds['millidecade_bands'] = hybrid_millidecade_ds
         return spectra_ds
 
@@ -1070,6 +1071,7 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+
         """
         if band is None:
             band = [None, self.fs / 2]

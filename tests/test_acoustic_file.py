@@ -29,3 +29,10 @@ class TestAcuFile(unittest.TestCase):
                                                method='spectrum', band=None)
         self.acu_file.hybrid_millidecade_bands(nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
                                                method='density', band=None)
+
+    def test_nmf(self):
+        ds = self.acu_file.source_separation(window_time=1.0, n_sources=15,
+                                             binsize=None, save_path=None, verbose=False, band=None)
+
+
+
