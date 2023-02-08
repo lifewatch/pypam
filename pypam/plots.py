@@ -158,11 +158,8 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     plt.close()
 
 
-def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, xlog=False, ylog=False, ax=None, **kwargs):
-    xscale = 'linear'
+def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
     yscale = 'linear'
-    if xlog:
-        xscale = 'log'
     if ylog:
         yscale = 'symlog'
     if ax is None:
@@ -172,7 +169,7 @@ def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, xlog=False, ylog=False,
         kwargs['cmap'] = 'YlGnBu_r'
     if 'robust' not in kwargs.keys():
         kwargs['robust'] = True
-    xarray.plot.pcolormesh(ds, x=x, y=y, add_colorbar=True, xscale=xscale, yscale=yscale,
+    xarray.plot.pcolormesh(ds, x=x, y=y, add_colorbar=True, yscale=yscale,
                            cbar_kwargs={'label': cbar_label}, ax=ax,
                            extend='neither', **kwargs)
     ax.set_title(title)
