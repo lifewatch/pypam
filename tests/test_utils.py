@@ -1,10 +1,10 @@
+import pytest
 import numpy as np
 import pandas as pd
 import xarray
 import matplotlib.pyplot as plt
 import scipy
 from tests import with_plots
-import pytest
 import pypam.utils as utils
 
 # Create artificial data of 1 second
@@ -22,6 +22,10 @@ for test_freq in test_freqs:
 # Set the nfft to 1 second
 nfft = fs
 
+
+# NOTE(pytest_migration): To minimize the diff, I'm using a class and @staticmethod annotations below.
+# BUT these are not required at all and can be removed (and the functions unindented as appropriate)
+# once all looks ready for a merge.
 
 class TestUtils:
     @staticmethod
