@@ -33,13 +33,14 @@ def millidecade_bands():
     return millis['millidecade_bands']
 
 
-def test_millidecade_bands_dict(millidecade_bands, snapshot):
-    pd = millidecade_bands.to_pandas()
-    out = pd.round(6).to_dict()
-    assert out == snapshot
+def test_millidecade_bands(millidecade_bands, snapshot):
+    # check data as pandas in dict format:
+    data_frame = millidecade_bands.to_pandas()
+    out = data_frame.round(6).to_dict()
+    assert out == snapshot(name="data-as-pandas-dict")
 
+    # # check data as list:  (probably unneeded per the above)
+    # assert millidecade_bands.data.tolist() == snapshot(name="data-as-list")
 
-def test_millidecade_bands_csv(millidecade_bands, snapshot):
-    pd = millidecade_bands.to_pandas()
-    out = pd.round(6).to_csv(index=False)
-    assert out == snapshot
+    # check coords:
+    assert millidecade_bands.coords.to_dataset().round(6).to_dict() == snapshot(name="coords")
