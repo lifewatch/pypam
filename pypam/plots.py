@@ -34,12 +34,13 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
     else:
         units = r'$\mu Pa^2/Hz$'
     # Plot the EPD
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r', cbar_label='Empirical Probability Density', ax=ax,
             ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0,
             robust=False)
     ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
-            label=spd['value_percentiles'].percentiles.values)
+            label=spd['value_percentiles'].percentiles.values, linewidth=1)
     if log:
         plt.xscale('symlog')
 
