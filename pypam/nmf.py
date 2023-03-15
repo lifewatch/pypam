@@ -9,7 +9,7 @@ This script is used to perform the NMF on hydrophone data
 """
 
 import numpy as np
-import sklearn
+import sklearn.decomposition
 
 from matplotlib import pyplot as plt
 from scipy import signal as sig
