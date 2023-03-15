@@ -8,7 +8,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-def plot_spd(spd, db, p_ref, log=True, save_path=None):
+def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
     """
     Plot the the SPD graph of the bin
 
@@ -24,26 +24,31 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None):
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
         Where to save the images
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : bool
+        set to True to show the plot
     """
     if db:
         units = r'dB %s $\mu Pa^2/Hz$' % p_ref
     else:
         units = r'$\mu Pa^2/Hz$'
     # Plot the EPD
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r', cbar_label='Empirical Probability Density', ax=ax,
             ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0,
             robust=False)
     ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
-            label=spd['value_percentiles'].percentiles.values)
+            label=spd['value_percentiles'].percentiles.values, linewidth=1)
     if log:
-        plt.xscale('log')
+        plt.xscale('symlog')
 
     plt.legend(loc='upper right')
-    plt.show()
+    if show:
+        plt.show()
     if save_path is not None:
         plt.savefig(save_path)
-    plt.close()
 
 
 def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
