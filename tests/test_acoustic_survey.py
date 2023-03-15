@@ -58,8 +58,14 @@ class TestASA(unittest.TestCase):
 
     def test_millidecade_bands(self):
         # Set the frequency resolution to 1 Hz and the duration of 1 second
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[10, 4000], percentiles=None)
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[10, 4000], percentiles=None)
+
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[0, 4000], percentiles=None)
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
+
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=None, percentiles=None)
+        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=None, percentiles=None)
 
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')
