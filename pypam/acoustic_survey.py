@@ -342,9 +342,9 @@ class ASA:
         """
         spectra_ds = self.evolution_freq_dom('_spectrum', band=band, db=False, percentiles=percentiles, scaling=method)
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
-        fft_bin_width = spectra_ds.attrs['fs'] / self.nfft
+        fft_bin_width = band[1] * 2 / self.nfft # Signal has been downsampled
         milli_spectra = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
-                                              bands_limits, bands_c, fft_bin_width=fft_bin_width, db=db)
+                                                  bands_limits, bands_c, fft_bin_width=fft_bin_width, db=db)
 
         # Add the millidecade
         spectra_ds['millidecade_bands'] = milli_spectra

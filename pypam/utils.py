@@ -269,7 +269,7 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     return filterbank, fsnew, d
 
 
-def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bin_centre=0):
+def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
     """
 
     Parameters
@@ -279,12 +279,12 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bi
     base
     bands_per_division
     hybrid_mode
-    first_bin_centre
 
     Returns
     -------
 
     """
+    first_bin_centre = 0
     low_side_multiplier = base ** (-1 / (2 * bands_per_division))
     high_side_multiplier = base ** (1 / (2 * bands_per_division))
 
@@ -307,7 +307,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bi
         # now keep counting until the difference between the log spaced
         # center frequency and new frequency is greater than .025
         center_freq = get_center_freq(base, bands_per_division, band_count, band[0])
-        linear_bin_count = round(center_freq / fft_bin_width)
+        linear_bin_count = round(center_freq / fft_bin_width - first_bin_centre)
         dc = abs(linear_bin_count * fft_bin_width - center_freq) + 0.1
         while abs(linear_bin_count * fft_bin_width - center_freq) < dc:
             # Compute next one
@@ -325,8 +325,9 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, first_bi
         for i in np.arange(linear_bin_count):
             # Add the frequencies
             fc = first_bin_centre + i * fft_bin_width
-            bands_c.append(fc)
-            bands_limits.append(fc - fft_bin_width / 2)
+            if fc >= band[0]:
+                bands_c.append(fc)
+                bands_limits.append(fc - fft_bin_width / 2)
 
     # count the log space frequencies
     ls_freq = center_freq * high_side_multiplier
@@ -411,19 +412,30 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     xarray DataArray with frequency_bins instead of frequency as a dimension.
 
     """
-    fft_freq_indices = np.floor(np.array(bands_limits) / fft_bin_width + fft_bin_width / 2).astype(int)
-    if fft_freq_indices[-1] > len(psd.frequency):
+    fft_freq_indices = (np.floor((np.array(bands_limits) + (fft_bin_width / 2)) / fft_bin_width)).astype(int)
+    original_first_fft_index = int(psd.frequency.values[0] / fft_bin_width)
+    fft_freq_indices -= original_first_fft_index
+
+    if fft_freq_indices[-1] > (len(psd.frequency) - 1):
         fft_freq_indices[-1] = len(psd.frequency) - 1
     limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
-    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - limits_df['lower_freq']
-    limits_df['upper_factor'] = limits_df['upper_freq'] - (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2)
-    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes']) * [limits_df['lower_factor']]
-    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes']) * [limits_df['upper_factor']]
+    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - \
+                                limits_df['lower_freq'] + psd.frequency.values[0]
+    limits_df['upper_factor'] = limits_df['upper_freq'] - \
+                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2) - psd.frequency.values[0]
+
+    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [limits_df['lower_factor']] / fft_bin_width
+    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [limits_df['upper_factor']] / fft_bin_width
     # Bin the bands and add the borders
     psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
-    psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
-    psd_bands = psd_bands.fillna(0)
+    if len(psd_without_borders.frequency) == 0:
+        psd_bands = xarray.zeros_like(psd)
+        psd_bands = psd_bands.assign_coords({'frequency_bins': ('frequency', bands_c)})
+        psd_bands = psd_bands.swap_dims({'frequency': 'frequency_bins'}).drop('frequency')
+    else:
+        psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
+        psd_bands = psd_bands.fillna(0)
     psd_bands = psd_bands + psd_limits_lower.values + psd_limits_upper.values
     psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
     psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})

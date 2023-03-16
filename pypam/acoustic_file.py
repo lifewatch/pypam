@@ -731,7 +731,7 @@ class AcuFile:
         spectra_ds = self._spectrum(scaling=method, binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
                                     db=False, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
         millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
-        fft_bin_width = self.fs / nfft
+        fft_bin_width = band[1] * 2 / nfft
         hybrid_millidecade_ds = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
                                                           millidecade_bands_limits, millidecade_bands_c,
                                                           fft_bin_width=fft_bin_width, db=db)

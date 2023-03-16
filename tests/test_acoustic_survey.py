@@ -21,7 +21,7 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 REF_PRESSURE = 1e-6
 
 # SURVEY PARAMETERS
-nfft = 4096
+nfft = 8000
 binsize = 60.0
 band_lf = [50, 500]
 band_hf = [500, 4000]
@@ -57,15 +57,44 @@ class TestASA(unittest.TestCase):
         print(ds)
 
     def test_millidecade_bands(self):
-        # Set the frequency resolution to 1 Hz and the duration of 1 second
-        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[10, 4000], percentiles=None)
-        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[10, 4000], percentiles=None)
-
-        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[0, 4000], percentiles=None)
+        # Set the frequency resolution to 1 Hz
+        # Check for the complete broadband and a band filtered in the lower frequencies
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
+        assert (milli_psd.frequency_bins[0] == 0) & (milli_psd.frequency_bins[-1] == 4000)
 
-        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=None, percentiles=None)
-        milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=None, percentiles=None)
+        milli_psd_filtered = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[10, 4000], percentiles=None)
+        assert (milli_psd_filtered.frequency_bins[0] == 10) & (milli_psd_filtered.frequency_bins[-1] == 4000)
+
+        # Same check than above, but for spectrum
+        milli_psd_spectrum = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[10, 4000], percentiles=None)
+        assert (milli_psd_spectrum.frequency_bins[0] == 10) & (milli_psd_spectrum.frequency_bins[-1] == 4000)
+
+        # Now check for a band with a higher limit < nyq
+        # Frequency resolution is then not 1 Hz because the signal is downsampled but the nfft is still 8000
+        milli_psd_halfhz = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 2000], percentiles=None)
+        assert (milli_psd_halfhz.frequency_bins[0] == 0) & (milli_psd_halfhz.frequency_bins[-1] == 2000)
+        assert ((milli_psd_halfhz.frequency[2] - milli_psd_halfhz.frequency[1]) == 0.5)
+
+        # Change the nfft so it is 2 Hz resolution
+        self.asa.nfft = 4000
+        milli_psd_2hz = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
+        assert (milli_psd_2hz.frequency_bins[0] == 0) & (milli_psd_2hz.frequency_bins[-1] == 4000)
+        assert ((milli_psd_2hz.frequency[2] - milli_psd_2hz.frequency[1]) == 2)
+
+        # Check with a multiple of 2 to the power -> it is faster so some people might want to use it
+        self.asa.nfft = 512
+        milli_psd_512 = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[50, 1000], percentiles=None)
+        assert (milli_psd_512.frequency[0] == 50.78125) & (milli_psd_512.frequency[-1] == 1000)
+
+        if verbose:
+            fig, ax = plt.subplots()
+            milli_psd_filtered['millidecade_bands'].mean(dim='id').plot(ax=ax, label='filtered')
+            milli_psd['millidecade_bands'].mean(dim='id').plot(ax=ax, label='not filtered')
+            milli_psd_halfhz['millidecade_bands'].mean(dim='id').plot(ax=ax, label='half_hz')
+            milli_psd_2hz['millidecade_bands'].mean(dim='id').plot(ax=ax, label='2Hz')
+            milli_psd_512['millidecade_bands'].mean(dim='id').plot(ax=ax, label='512')
+            plt.legend()
+            plt.show()
 
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')

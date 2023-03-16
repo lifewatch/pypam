@@ -124,10 +124,11 @@ class Signal:
                     # Reset to the original data
                     self.signal = self._signal.copy()
                     self.fs = self._fs
-                if downsample:
-                    self.downsample2band(band)
-                else:
+                if (not downsample) or (band[1] * 2 == self.fs):
                     self.filter(band=band)
+                else:
+                    self.downsample2band(band)
+
             self.band_n += 1
             self._processed[self.band_n] = []
             self.bands_list[self.band_n] = band
@@ -210,6 +211,8 @@ class Signal:
                 raise Exception('This is upsampling, can not downsample %s to %s!' % (self.fs, new_fs))
             filt = self._create_filter(band)
             self.downsample(new_fs, filt)
+        else:
+            print('trying to downsample to the same fs, ignoring...')
 
     def filter(self, band):
         """
