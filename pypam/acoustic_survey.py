@@ -558,6 +558,24 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
+        self.plot_rms_daily_patterns_from_ds(ds=rms_evolution, db=db, save_path=save_path)
+
+    def plot_rms_daily_patterns_from_ds(self, ds, db=True, save_path=None, ax=None, show=False):
+        """
+        Plot the daily rms patterns
+
+        Parameters
+        ----------
+        db : boolean
+            If set to True, output in db
+        save_path : string or Path
+            Where to save the output graph. If None, it is not saved
+        ax : matplotlib.axes
+            Ax to plot on
+        show : bool
+            Set to True to show directly
+        """
+        rms_evolution = ds
         hours_array = np.arange(24)
         daily_patterns = pd.DataFrame(columns=hours_array)
         for d, date_rms in rms_evolution.groupby(rms_evolution.datetime.dt.date, squeeze=False):
@@ -579,16 +597,19 @@ class ASA:
                 units = r'db re 1V %s $\mu Pa $' % self.p_ref
             else:
                 units = r'$\mu Pa $'
-            xarray.plot.pcolormesh(daily_xr, x='date', y='hour', robust=True, cbar_kwargs={'label': units})
-            plt.title('Daily patterns')
-            plt.ylabel('Hours of the day')
-            plt.xlabel('Days')
-            plt.tight_layout()
+
+            if ax is None:
+                fig, ax = plt.subplots()
+            xarray.plot.pcolormesh(daily_xr, x='date', y='hour', robust=True, cbar_kwargs={'label': units}, ax=ax)
+            ax.set_title('Daily patterns')
+            ax.set_ylabel('Hours of the day')
+            ax.set_xlabel('Days')
+
             if save_path is not None:
+                plt.tight_layout()
                 plt.savefig(save_path)
-            else:
+            if show:
                 plt.show()
-            plt.close()
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
