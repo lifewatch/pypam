@@ -553,63 +553,64 @@ class ASA:
         Parameters
         ----------
         db : boolean
-            If set to True, output in db
+            If set to True, the output is in db and will be show in the units output
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
-        self.plot_rms_daily_patterns_from_ds(ds=rms_evolution, db=db, save_path=save_path)
+        if db:
+            units = r'db re 1V %s $\mu Pa $' % self.p_ref
+        else:
+            units = r'$\mu Pa $'
+        self.plot_daily_patterns_from_ds(ds=rms_evolution, save_path=save_path, data_var='rms', units=units)
 
-    def plot_rms_daily_patterns_from_ds(self, ds, db=True, save_path=None, ax=None, show=False):
+    @staticmethod
+    def plot_daily_patterns_from_ds(ds, save_path=None, ax=None, show=False,
+                                    data_var='rms', units=r'$\mu Pa $', interpolate=True, plot_kwargs=None):
         """
         Plot the daily rms patterns
 
         Parameters
         ----------
-        db : boolean
-            If set to True, output in db
+        ds: xarray DataSet
+            Dataset to process. Should be an output of pypam, or similar structure
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         ax : matplotlib.axes
             Ax to plot on
         show : bool
             Set to True to show directly
+        data_var: str
+            Name of the data variable to plot
+        units: str
+            Name of the units to show on the colorbar
+        interpolate: bool
+            Set to False if no interpolation is desired for the nan values
         """
-        rms_evolution = ds
-        hours_array = np.arange(24)
-        daily_patterns = pd.DataFrame(columns=hours_array)
-        for d, date_rms in rms_evolution.groupby(rms_evolution.datetime.dt.date, squeeze=False):
-            # Average the rms per hour
-            hour_rms = date_rms.groupby(date_rms.datetime.dt.hour).mean()
-            daily_patterns.loc[d, hour_rms.hour.values] = hour_rms['rms'].values
+        daily_xr = ds.swap_dims(id='datetime')
+        daily_xr = daily_xr.sortby('datetime')
 
-        if len(daily_patterns) <= 1:
-            print('This function does not work with less than 1 day of data. Please run again with more than 1 day')
-        else:
-            daily_patterns.index = pd.to_datetime(daily_patterns.index)
-            daily_xr = xarray.DataArray(daily_patterns.astype(float).values,
-                                        coords={'id': np.arange(len(daily_patterns)),
-                                                'hour': daily_patterns.columns,
-                                                'date': ('id', daily_patterns.index)},
-                                        dims=['id', 'hour'])
-            # Plot the patterns
-            if db:
-                units = r'db re 1V %s $\mu Pa $' % self.p_ref
-            else:
-                units = r'$\mu Pa $'
+        hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
+        date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values,
+                                                       hours_float.values],
+                                                      names=('date', 'time'))
+        daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
 
-            if ax is None:
-                fig, ax = plt.subplots()
-            xarray.plot.pcolormesh(daily_xr, x='date', y='hour', robust=True, cbar_kwargs={'label': units}, ax=ax)
-            ax.set_title('Daily patterns')
-            ax.set_ylabel('Hours of the day')
-            ax.set_xlabel('Days')
+        if interpolate:
+            daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
 
-            if save_path is not None:
-                plt.tight_layout()
-                plt.savefig(save_path)
-            if show:
-                plt.show()
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
+                               cbar_kwargs={'label': units}, ax=ax, cmap='magma', **plot_kwargs)
+        ax.set_ylabel('Hours of the day')
+        ax.set_xlabel('Days')
+        if save_path is not None:
+            plt.tight_layout()
+            plt.savefig(save_path)
+        if show:
+            plt.show()
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """

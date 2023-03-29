@@ -68,6 +68,21 @@ class Detection(sig.Signal):
         wav_sig, fs = sf.read(self.acu_file.file_path, start=self.frame_init, stop=min(self.frame_end,
                                                                                        self.acu_file.file.frames))
 
+        self.orig_wav = wav_sig
+        self.orig_fs = fs
         # Read the signal and prepare it for analysis
         signal_upa = self.acu_file.wav2upa(wav=wav_sig)
         super().__init__(signal=signal_upa, fs=self.acu_file.fs, channel=self.acu_file.channel)
+
+    def save_clip(self, clip_path):
+        """
+        Save the snippet into a file (will keep original sampling rate and no filtering)
+
+        Parameters
+        ----------
+        clip_path: str or Path
+            path to save the clip to (.wav)
+
+        """
+        sf.write(clip_path, self.orig_wav, self.orig_fs)
+

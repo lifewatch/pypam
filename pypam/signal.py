@@ -1002,7 +1002,7 @@ class Signal:
         else:
             raise Exception("Unknown value for scaling : " + scaling)
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
-        ax[0, 0].plot(self.times, self.signal)
+        ax[0, 0].plot(self.times, self.signal, color='k', linewidth=1)
         ax[0, 0].set_title('Signal')
         ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
@@ -1010,7 +1010,7 @@ class Signal:
             vmin = sxx.min()
         if vmax is None:
             vmax = sxx.max()
-        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=vmin, vmax=vmax, shading='auto', cmap='viridis')
+        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=vmin, vmax=vmax, shading='auto', cmap='magma')
         plt.colorbar(im, cax=ax[1, 1], label=label)
         if log:
             ax[1, 0].set_yscale('symlog')
