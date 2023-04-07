@@ -968,7 +968,8 @@ class Signal:
 
         self._processed[self.band_n].append('noisereduction')
 
-    def plot(self, nfft=512, overlap=0, scaling='density', db=True, force_calc=False, show=False, save_path=None):
+    def plot(self, nfft=512, overlap=0, scaling='density', db=True, force_calc=False, show=False, save_path=None,
+             vmin=None, vmax=None, log=False):
         """
         Plot the signal and its spectrogram
         Parameters
@@ -987,7 +988,10 @@ class Signal:
             Set to True to show
         save_path: str or Path
             Where to save the output. Set to None to not save if (default)
-
+        vmin : float
+            minimum value to plot in the spectrogram
+        vmax: float
+            maximum value to plot in the spectrogram
         """
         plt.rcParams.update(plt.rcParamsDefault)
         _, _, sxx = self.spectrogram(nfft=nfft, scaling=scaling, overlap=overlap, db=db, force_calc=force_calc)
@@ -998,12 +1002,18 @@ class Signal:
         else:
             raise Exception("Unknown value for scaling : " + scaling)
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
-        ax[0, 0].plot(self.times, self.signal)
+        ax[0, 0].plot(self.times, self.signal, color='k', linewidth=1)
         ax[0, 0].set_title('Signal')
         ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
         ax[0, 1].set_axis_off()
-        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=60, vmax=150, shading='auto', cmap='viridis')
+        if vmin is None:
+            vmin = sxx.min()
+        if vmax is None:
+            vmax = sxx.max()
+        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=vmin, vmax=vmax, shading='auto', cmap='magma')
         plt.colorbar(im, cax=ax[1, 1], label=label)
+        if log:
+            ax[1, 0].set_yscale('symlog')
         ax[1, 0].set_title('Spectrogram')
         ax[1, 0].set_xlabel('Time [s]')
         ax[1, 0].set_ylabel('Frequency [Hz]')
