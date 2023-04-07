@@ -575,6 +575,7 @@ class ASA:
         show : bool
             Set to True to show directly
         """
+<<<<<<< Updated upstream
         rms_evolution = ds
         hours_array = np.arange(24)
         daily_patterns = pd.DataFrame(columns=hours_array)
@@ -582,6 +583,12 @@ class ASA:
             # Average the rms per hour
             hour_rms = date_rms.groupby(date_rms.datetime.dt.hour).mean()
             daily_patterns.loc[d, hour_rms.hour.values] = hour_rms['rms'].values
+=======
+        if plot_kwargs is None:
+            plot_kwargs = {}
+        daily_xr = ds.swap_dims(id='datetime')
+        daily_xr = daily_xr.sortby('datetime')
+>>>>>>> Stashed changes
 
         if len(daily_patterns) <= 1:
             print('This function does not work with less than 1 day of data. Please run again with more than 1 day')
