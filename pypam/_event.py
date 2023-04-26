@@ -70,7 +70,7 @@ class Event(Signal):
             diff_db = 5
         # Find the peak
         if len(self.signal) == 0:
-            print('heyyyyyyyyyyyy')
+            raise UserWarning('This event is empty!')
         cut_start = np.argmax(self.signal)
         peak = self.signal[cut_start]
 
