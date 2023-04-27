@@ -9,7 +9,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import soundfile as sf
-from oceansoundscape import raven
+try:
+    from oceansoundscape import raven
+except ModuleNotFoundError:
+    raven = None
 from tqdm import tqdm
 
 from pypam import signal as sig
@@ -98,6 +101,8 @@ class DetectionsDF:
 
     def load_from_raven(self, bled_file: pathlib.Path, call_conf: dict, max_samples: int, sampling_rate: int,
                         exclude_unlabeled: bool = True):
+        if raven is None:
+            raise Exception('You need to install oceansoundscape to be able to use the Raven functionality')
         new_df = raven.BLEDParser(bled_file, call_conf, max_samples, sampling_rate, exclude_unlabeled)
         self.df = pd.concat([self.df, new_df])
 
