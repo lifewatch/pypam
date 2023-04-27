@@ -4,15 +4,13 @@ __credits__ = "Clea Parcerisas"
 __email__ = "clea.parcerisas@vliz.be"
 __status__ = "Development"
 
-import datetime
-import os
 import pathlib
-import zipfile
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import soundfile as sf
+from oceansoundscape import raven
+from tqdm import tqdm
 
 from pypam import signal as sig
 from pypam import acoustic_file
@@ -86,3 +84,57 @@ class Detection(sig.Signal):
         """
         sf.write(clip_path, self.orig_wav, self.orig_fs)
 
+
+class DetectionsDF:
+    """
+    DataFrame containing a list of detections
+    """
+    def __init__(self):
+        self.df = pd.DataFrame()
+
+    def load_csv(self, csv_path):
+        new_csv = pd.read_csv(csv_path)
+        self.df = pd.concat([self.df, new_csv])
+
+    def load_from_raven(self, bled_file: pathlib.Path, call_conf: dict, max_samples: int, sampling_rate: int,
+                        exclude_unlabeled: bool = True):
+        new_df = raven.BLEDParser(bled_file, call_conf, max_samples, sampling_rate, exclude_unlabeled)
+        self.df = pd.concat([self.df, new_df])
+
+    def detections(self, hydrophone, p_ref=1.0, timezone='UTC', channel=0, calibration=None, dc_subtract=False):
+        for i, detection_row in tqdm(self.df.iterrows(), total=len(self.df)):
+            folder_path = pathlib.Path(detection_row['folder_path'])
+            file_path = folder_path.joinpath(detection_row['file_name'])
+
+            start_seconds = detection_row['start_time'].total_seconds()
+            end_seconds = detection_row['end_time'].total_seconds()
+
+            detection = Detection(start_seconds, end_seconds, file_path, hydrophone,
+                                  p_ref, timezone=timezone, channel=channel, calibration=calibration,
+                                  dc_subtract=dc_subtract)
+            yield i, detection
+
+    def plot_spectrograms_detections(self, band=None, downsample=True, max_duration_time=None, output_folder=None,
+                                     save_clips=False):
+        for i, d in self.detections():
+            try:
+                duration = d.duration
+                if max_duration_time is not None:
+                    if duration > max_duration_time:
+                        end_seconds = d.start_seconds + max_duration_time
+                    elif duration < 1:
+                        extra = 1 - duration
+                        end_seconds += extra  # add only at the end because apparently we are biased when annotating
+                d.set_band(band, downsample=downsample)
+                if output_folder is not None:
+                    spectrogram_path = output_folder.joinpath('%s_%s.png' % (i, d.label))
+                else:
+                    spectrogram_path = None
+                d.plot(save_path=spectrogram_path, show=False, nfft=128, overlap=0.7, log=False)
+
+                if save_clips:
+                    clip_path = output_folder.joinpath('%s_%s.wav' % (i, d.label))
+                    d.save_clip(clip_path)
+
+            except FileNotFoundError:
+                print('Detection %s was not produced because file was not found' % i)
