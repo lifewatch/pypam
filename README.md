@@ -20,13 +20,13 @@ All the documentation can be found on [readthedocs](https://lifewatch-pypam.read
     ```bash
     git clone https://github.com/lifewatch/pypam.git
     ```
-2. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the remaining dependencies
+2. Use poetry to install the project dependencies
     ```bash
-    pip install -r requirements.txt 
+    poetry install
     ```
 3. Build the project
     ```bash
-    python setup.py install
+    poetry build
     ```
 
 ## Usage

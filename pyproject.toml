@@ -1,6 +1,53 @@
+[tool.poetry]
+name = "pypam"
+version = "0.1.9b"
+description = 'Facilitate acoustic processing from underwater acoustic recorders'
+authors = ["Clea Parcerisas <cleap@vliz.be>"]
+readme = "README.md"
+repository = "https://github.com/lifewatch/pypam.git"
+packages = [{include = "pypam"}]
+license = "GPL-3.0-or-later"
+classifiers =[
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"]
+    
+[tool.poetry.dependencies]
+python = "^3.10"
+matplotlib = "^3.7.1"
+numpy = "^1.24.3"
+pandas = "^2.0.1"
+seaborn = "^0.12.2"
+soundfile = "^0.12.1"
+xarray = "^2023.4.2"
+tqdm = "^4.65.0"
+numba = "^0.57.0"
+noisereduce = "^2.0.1"
+scikit-learn = "^1.2.2"
+python-dateutil = "^2.8.2"
+poetry = "^1.4.2"
+
+
+[tool.poetry.group.dev.dependencies]
+black = {version = "^23.3.0", extras = ["dev"]}
+flake8 = {version = "^6.0.0", extras = ["dev"]}
+isort = {version = "^5.12.0", extras = ["dev"]}
+pytest = {version = "^7.3.1", extras = ["dev"]}
+coverage = {version = "^7.2.5", extras = ["dev"]}
+pytest-cov = {version = "^4.0.0", extras = ["dev"]}
+pre-commit = {version = "^3.3.1", extras = ["dev"]}
+
+[tool.poetry.extras]
+dev = []
+
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
+requires = ["poetry"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.black]
+line-length = 99
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
