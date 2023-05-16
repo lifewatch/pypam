@@ -41,7 +41,7 @@ pre-commit = {version = "^3.3.1", extras = ["dev"]}
 dev = []
 
 [build-system]
-requires = ["poetry"]
+requires = ["setuptools","poetry"]
 build-backend = "poetry.core.masonry.api"
 
 
