@@ -82,13 +82,13 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
             if type(save_path) == str:
                 save_path = pathlib.Path(save_path)
             file_name = pathlib.Path(ds_spectrogram.attrs['file_path']).name
-            save_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
+            spectrogram_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
         plot_2d(ds=sxx, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
                 cbar_label=r'$L_{rms}$ [%s]' % units, ylog=log, title=title)
 
         if save_path is not None:
-            plt.savefig(save_path)
+            plt.savefig(spectrogram_path)
         plt.show()
         plt.close()
 
