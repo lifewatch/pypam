@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import xarray
 import seaborn as sns
+import pathlib
 
 plt.rcParams.update({'text.usetex': True})
 sns.set_theme('paper')
@@ -53,7 +54,7 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
 
 def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
     """
-    Plot the the SPD graph of the bin
+    Plot the spectrogram for each id of the ds_spectrogram (separately)
 
     Parameters
     ----------
@@ -66,7 +67,7 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
-        Where to save the images
+        Where to save the images (folder)
     """
     if db:
         units = r'dB ' + str(p_ref) + r' $\mu Pa$'
@@ -78,13 +79,17 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
         time_bin = sxx.datetime
         title = 'Spectrogram of bin %s' % time_bin.values
         if save_path is not None:
-            save_path = save_path + time_bin.values
+            if type(save_path) == str:
+                save_path = pathlib.Path(save_path)
+            file_name = pathlib.Path(ds_spectrogram.attrs['file_path']).name
+            save_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
         plot_2d(ds=sxx, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
                 cbar_label=r'$L_{rms}$ [%s]' % units, ylog=log, title=title)
-        plt.show()
+
         if save_path is not None:
             plt.savefig(save_path)
+        plt.show()
         plt.close()
 
 
@@ -118,9 +123,9 @@ def plot_spectrum(ds, col_name, ylabel, log=True, save_path=None):
         plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
                    label=ds['percentiles'])
 
-        plt.show()
         if save_path is not None:
             plt.savefig(save_path)
+        plt.show()
         plt.close()
 
 
@@ -156,10 +161,9 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
 
     if log:
         plt.xscale('log')
-
-    plt.show()
     if save_path is not None:
         plt.savefig(save_path)
+    plt.show()
     plt.close()
 
 
