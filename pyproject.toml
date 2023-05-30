@@ -25,29 +25,42 @@ numba = "^0.57.0"
 noisereduce = "^2.0.1"
 scikit-learn = "^1.2.2"
 python-dateutil = "^2.8.2"
-poetry = "^1.4.2"
+poetry = "^1.5.0"
 
+# Development tools
+pre-commit = {version = "^3.3.1", optional = true}
+isort = {version = "^5.12.0", optional = true}
+black = {version = "^23.3.0", optional = true}
+flake8 = {version = "^6.0.0", optional = true}
 
-[tool.poetry.group.dev.dependencies]
-black = {version = "^23.3.0", extras = ["dev"]}
-flake8 = {version = "^6.0.0", extras = ["dev"]}
-isort = {version = "^5.12.0", extras = ["dev"]}
-pytest = {version = "^7.3.1", extras = ["dev"]}
-coverage = {version = "^7.2.5", extras = ["dev"]}
-pytest-cov = {version = "^4.0.0", extras = ["dev"]}
-pre-commit = {version = "^3.3.1", extras = ["dev"]}
+# Testing tools
+pyyaml = {version = "^6.0", optional = true}
+pytest = {version = "^7.3.1", optional = true}
+coverage = {version = "^7.2.5", optional = true}
+python-dotenv = {version = "^1.0.0", optional = true}
+pytest-cov = {version = "^4.1.0", optional = true}
 
+# Documentation tools
+sphinx = {version = "^7.0.1", optional = true}
+
+# Poetry has the dependecies groups, but those are not 
+#   compatible with extras, widely used in the python-verse.
 [tool.poetry.extras]
-dev = []
+dev = ["pre-commit", "isort", "black", "flake8"]
+tests = ["pyyaml","pytest", "coverage", "python-dotenv", "pytest-cov"]
+docs = ["sphinx"]
 
 [build-system]
 requires = ["setuptools","poetry"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.black]
-line-length = 99
+line-length = 79
 
 [tool.isort]
 multi_line_output = 3
 include_trailing_comma = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests",]
+pythonpath = ["."]
