@@ -34,7 +34,7 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
     spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
     p = np.zeros((sxx.shape[0], percentiles.size), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
-        spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((sxx.shape[0]) * h)
+        spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((sxx.shape[1]) * h)
         cumsum = np.cumsum(spd[i, :])
         for j in nb.prange(percentiles.size):
             p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j] * cumsum[-1])]
