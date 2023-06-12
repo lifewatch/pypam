@@ -513,3 +513,25 @@ def merge_ds(ds, new_ds, attrs_to_vars):
         ds = xarray.concat((ds, new_ds), 'id', combine_attrs="drop_conflicts")
     ds.attrs.update(new_ds.attrs)
     return ds
+
+
+def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=None):
+    pxx = psd_evolution['band_density'].to_numpy().T
+    if percentiles is None:
+        percentiles = []
+    if min_val is None:
+        min_val = pxx.min()
+    if max_val is None:
+        max_val = pxx.max()
+    # Calculate the bins of the psd values and compute spd using numba
+    bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
+    spd, p = sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
+    spd_arr = xarray.DataArray(data=spd,
+                               coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
+                               dims=['frequency', 'spl'])
+    p_arr = xarray.DataArray(data=p,
+                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
+                             dims=['frequency', 'percentiles'])
+    spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
+
+    return spd_ds

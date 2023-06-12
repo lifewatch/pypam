@@ -965,7 +965,7 @@ class AcuFile:
         """
         psd_evolution = self.psd(binsize=binsize, nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
                                  bin_overlap=bin_overlap, band=band)
-        return compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
+        return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
 
     def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None,
                              verbose=False, save_path=None, detection_band=None, analysis_band=None, method=None):
@@ -1168,25 +1168,3 @@ class AcuFile:
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, db=db, log=log, p_ref=self.p_ref, save_path=save_path)
-
-
-def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=None):
-    pxx = psd_evolution['band_density'].to_numpy().T
-    if percentiles is None:
-        percentiles = []
-    if min_val is None:
-        min_val = pxx.min()
-    if max_val is None:
-        max_val = pxx.max()
-    # Calculate the bins of the psd values and compute spd using numba
-    bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
-    spd, p = utils.sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
-    spd_arr = xarray.DataArray(data=spd,
-                               coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
-                               dims=['frequency', 'spl'])
-    p_arr = xarray.DataArray(data=p,
-                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
-                             dims=['frequency', 'percentiles'])
-    spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
-
-    return spd_ds
