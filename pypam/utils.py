@@ -542,17 +542,23 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
 
 def join_all_ds_output_deployment(deployment_path):
     """
-    Return the long-term spectrogram for one deployment in hybrid millidecade bands by joining spectrograms stored
-    in the files
     Parameters
     ----------
-    deployment_path : str or Path
-        Where all the netCDF files of a deployment are stored
+    da_sxx : xarray DataArray
+        Spectrogram in which we want to select only a certain range of datetime
+    start_datetime : datetime64
+        Lower limit of datetime that you want to plot
+    end_datetime : datetime64
+        Upper limit of datetime that you want to plot
 
     Returns
     -------
-    da_tot : DataArray
-        The spectrogram of one deployment
+    da_sxx : xarray DataArray
+        Spectrogram with the new limits
+    old_start_datetime : datetime64
+        Old lower datetime limit of the spectrogram
+    old_end_datetime : datetime64
+        Old upper datetime limit of the spectrogram
     """
 
     list_path = list(deployment_path.glob('*.nc'))
@@ -573,6 +579,16 @@ def join_all_ds_output_deployment(deployment_path):
 
 
 def select_datetime_range(da_sxx, start_datetime, end_datetime):
+    """
+    Parameters
+    ----------
+    da_sxx :
+    start_datetime:
+    end_datetime:
+
+    Returns
+    -------
+    """
 
     old_start_datetime = np.asarray(da_sxx.datetime)[0]
     old_end_datetime = np.asarray(da_sxx.datetime)[-1]
