@@ -9,7 +9,7 @@ import numpy as np
 import scipy.signal as sig
 import xarray
 import pandas as pd
-
+from tqdm import tqdm
 
 G = 10.0 ** (3.0 / 10.0)
 f_ref = 1000
@@ -248,7 +248,7 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     """
     uneven = (fraction % 2 != 0)
     fc = f_ref * G ** ((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(uneven) + uneven * f_ref * G ** (
-                bands / fraction)
+            bands / fraction)
 
     # limit for center frequency compared to sample frequency
     fclimit = 1 / 200
@@ -293,7 +293,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
     # Start the frequencies list
     bands_limits = []
     bands_c = []
-    
+
     # count the number of bands:
     band_count = 0
     center_freq = 0
@@ -420,13 +420,16 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
         fft_freq_indices[-1] = len(psd.frequency) - 1
     limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
-    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - \
+    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - \
                                 limits_df['lower_freq'] + psd.frequency.values[0]
     limits_df['upper_factor'] = limits_df['upper_freq'] - \
-                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2) - psd.frequency.values[0]
+                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[
+                                    0]
 
-    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [limits_df['lower_factor']] / fft_bin_width
-    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [limits_df['upper_factor']] / fft_bin_width
+    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [
+        limits_df['lower_factor']] / fft_bin_width
+    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [
+        limits_df['upper_factor']] / fft_bin_width
     # Bin the bands and add the borders
     psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
     if len(psd_without_borders.frequency) == 0:
@@ -535,3 +538,48 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
 
     return spd_ds
+
+
+def join_all_ds_output_deployment(deployment_path):
+    """
+    Return the long-term spectrogram for one deployment in hybrid millidecade bands by joining spectrograms stored
+    in the files
+    Parameters
+    ----------
+    deployment_path : str or Path
+        Where all the netCDF files of a deployment are stored
+
+    Returns
+    -------
+    da_tot : DataArray
+        The spectrogram of one deployment
+    first_datetime : datetime64
+        First datetime that have been stored in the first file of the deployment
+    last_datetime : datetime64
+        Last datetime that have been stored in the last file of the deployment
+    """
+
+    list_path = list(deployment_path.glob('*.nc'))
+
+    for path in tqdm(list_path):
+        ds = xarray.open_dataset(path)
+        ds.swap_dims({'id': 'datetime'})
+        da = xarray.DataArray(data=ds['millidecade_bands'],
+                              coords={'datetime': ds['datetime'].data,
+                                      'frequency_bins': ds['frequency_bins'].data},
+                              dims=['datetime', 'frequency_bins'])
+        if path == list_path[0]:
+            da_tot = da.copy()
+        else:
+            da_tot = xarray.concat([da_tot, da], 'datetime')
+
+    activation_datetime = np.datetime64(ds.attrs['activation_datetime'])
+    valid_data_until_datetime = np.datetime64(ds.attrs['valid_data_until_datetime'])
+
+    first_datetime = np.asarray(da_tot.datetime)[0]
+    last_datetime = np.asarray(da_tot.datetime)[-1]
+
+    da_tot = da_tot.where(da_tot.datetime >= activation_datetime, drop=True)
+    da_tot = da_tot.where(da_tot.datetime <= valid_data_until_datetime, drop=True)
+
+    return da_tot, first_datetime, last_datetime
