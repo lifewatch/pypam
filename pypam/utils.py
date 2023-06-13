@@ -540,7 +540,7 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     return spd_ds
 
 
-def join_all_ds_output_deployment(deployment_path):
+def join_all_ds_output_deployment(deployment_path, data_var_name):
     """
     Return the long-term spectrogram for one deployment in hybrid millidecade bands by joining spectrograms stored
     in the files
@@ -548,6 +548,8 @@ def join_all_ds_output_deployment(deployment_path):
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
+    data_var_name : str
+        Name of the data that you want to keep for joining ds
 
     Returns
     -------
@@ -559,11 +561,14 @@ def join_all_ds_output_deployment(deployment_path):
 
     for path in tqdm(list_path):
         ds = xarray.open_dataset(path)
-        ds.swap_dims({'id': 'datetime'})
-        da = xarray.DataArray(data=ds['millidecade_bands'],
-                              coords={'datetime': ds['datetime'].data,
-                                      'frequency_bins': ds['frequency_bins'].data},
-                              dims=['datetime', 'frequency_bins'])
+        ds = ds.swap_dims({'id': 'datetime'})
+        da = ds[data_var_name]
+
+        coords_to_drop = list(da.coords)
+        for dims in list(da.dims):
+            coords_to_drop.remove(dims)
+        da = da.drop_vars(coords_to_drop)
+
         if path == list_path[0]:
             da_tot = da.copy()
         else:
