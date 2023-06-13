@@ -553,10 +553,6 @@ def join_all_ds_output_deployment(deployment_path):
     -------
     da_tot : DataArray
         The spectrogram of one deployment
-    first_datetime : datetime64
-        First datetime that have been stored in the first file of the deployment
-    last_datetime : datetime64
-        Last datetime that have been stored in the last file of the deployment
     """
 
     list_path = list(deployment_path.glob('*.nc'))
@@ -573,13 +569,15 @@ def join_all_ds_output_deployment(deployment_path):
         else:
             da_tot = xarray.concat([da_tot, da], 'datetime')
 
-    activation_datetime = np.datetime64(ds.attrs['activation_datetime'])
-    valid_data_until_datetime = np.datetime64(ds.attrs['valid_data_until_datetime'])
+    return da_tot
 
-    first_datetime = np.asarray(da_tot.datetime)[0]
-    last_datetime = np.asarray(da_tot.datetime)[-1]
 
-    da_tot = da_tot.where(da_tot.datetime >= activation_datetime, drop=True)
-    da_tot = da_tot.where(da_tot.datetime <= valid_data_until_datetime, drop=True)
+def select_datetime_range(da_sxx, start_datetime, end_datetime):
 
-    return da_tot, first_datetime, last_datetime
+    old_start_datetime = np.asarray(da_sxx.datetime)[0]
+    old_end_datetime = np.asarray(da_sxx.datetime)[-1]
+
+    da_sxx = da_sxx.where(da_sxx.datetime >= start_datetime, drop=True)
+    da_sxx = da_sxx.where(da_sxx.datetime <= end_datetime, drop=True)
+
+    return da_sxx, old_start_datetime, old_end_datetime
