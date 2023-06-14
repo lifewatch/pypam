@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Parcerisas
+    given-names: Clea
+    orcid: https://orcid.org/0000-0001-7466-0288
+title: "PyPAM: a package to process long-term underwater acoustics data in chunks"
+version: 0.1.10
+doi: 10.5281/zenodo.7584847
+date-released: 2023-03-16
