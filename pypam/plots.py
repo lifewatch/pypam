@@ -167,6 +167,40 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     plt.close()
 
 
+def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=False):
+    """
+    Plot the long-term spectrogram in hybrid millidecade bands
+    Parameters
+    ----------
+    da_sxx : xarray DataArray
+        Spectrogram data
+    db : boolean
+        If set to True, output in db
+    p_ref : Float
+        Reference pressure in upa
+    log : boolean
+        If set to True the scale of the y axis is set to logarithmic
+    save_path : string or Path
+        Where to save the image
+    show : boolean
+        Set to True to show the plot
+    """
+
+    if db:
+        units = r'db re 1V %s $\mu Pa^2/Hz$' % p_ref
+    else:
+        units = r'$\mu Pa^2/Hz$'
+
+    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='%s [%s]' % ('SPLrms', units), xlabel='Time',
+            ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+    plt.close()
+
+
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
     yscale = 'linear'
     if ylog:
