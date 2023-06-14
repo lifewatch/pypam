@@ -318,7 +318,7 @@ class ASA:
             Matrix with all the probabilities
         """
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
-        return acoustic_file.compute_spd(psd_evolution, h=h, percentiles=percentiles, min_val=min_val, max_val=max_val)
+        return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     def hybrid_millidecade_bands(self, db=True, method='spectrum', band=None, percentiles=None):
         """
