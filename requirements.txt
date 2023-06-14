@@ -1,7 +1,7 @@
 seaborn==0.12.2
 xarray==2023.01
 noisereduce==2.0.1
-pyhydrophone==0.1.2
+pyhydrophone==0.1.4
 latex==0.7.0
 pytest==7.2.1
 syrupy==3.0.6  # for snapshot testing
