@@ -609,3 +609,49 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     da_sxx = da_sxx.where(da_sxx.datetime <= end_datetime, drop=True)
 
     return da_sxx, old_start_datetime, old_end_datetime
+
+
+def join_all_ds_output_station(directory_path, station, data_var_name, drop=False):
+    """
+    Return a DataArray by joining the data you selected from all the output ds for one station
+    Parameters
+    ----------
+    directory_path : str or Path
+        Where all the deployments folders are
+    station : str
+        Name of the station to compute the spectrogram
+    data_var_name : str
+        Name of the data that you want to keep for joining ds
+    drop : boolean
+        Set to True if you want to drop other coords
+
+    Returns
+    -------
+    da_tot : xarray DataArray
+        Data joined of one deployment
+    """
+
+    list_path_deployment = list(directory_path.iterdir())
+    list_path_deployment_station = []
+
+    for deployment_path in list_path_deployment:
+        if deployment_path.parts[-1].split('_')[0] == station:
+            list_path_deployment_station.append(deployment_path)
+
+    for deployment_station_path in tqdm(list_path_deployment_station):
+        da_deployment = join_all_ds_output_deployment(deployment_station_path, data_var_name=data_var_name, drop=drop)
+
+        if deployment_station_path == list_path_deployment_station[0]:
+            da_tot = da_deployment.copy()
+
+        else:
+            da_tot = xarray.concat([da_tot, da_deployment], 'datetime')
+
+    datetime = np.asarray(da_tot.datetime)
+    errors = []
+    for i in range(1, len(datetime)):
+        if datetime[i] < datetime[i - 1]:
+            errors.append(datetime[i])
+    da_tot = da_tot.drop_sel(datetime=errors)
+
+    return da_tot
