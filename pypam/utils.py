@@ -556,7 +556,7 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
     Returns
     -------
     da_tot : DataArray
-        The spectrogram of one deployment
+        Data joined of one deployment
     """
 
     deployment_path = pathlib.Path(deployment_path)
@@ -586,7 +586,7 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     Parameters
     ----------
     da_sxx : xarray DataArray
-        Spectrogram in which we want to select only a certain range of datetime
+        Data in which we want to select only a certain range of datetime
     start_datetime : datetime64
         Lower limit of datetime that you want to plot
     end_datetime : datetime64
@@ -595,11 +595,11 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     Returns
     -------
     da_sxx : xarray DataArray
-        Spectrogram with the new limits
+        Data with the new limits
     old_start_datetime : datetime64
-        Old lower datetime limit of the spectrogram
+        Old lower datetime limit of the data
     old_end_datetime : datetime64
-        Old upper datetime limit of the spectrogram
+        Old upper datetime limit of the data
     """
 
     old_start_datetime = np.asarray(da_sxx.datetime)[0]
