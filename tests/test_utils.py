@@ -7,6 +7,7 @@ import scipy
 from tests import with_plots
 from pypam import utils
 
+
 # Create artificial data of 1 second
 @pytest.fixture
 def artificial_data():
@@ -33,6 +34,7 @@ def test_get_millidecade_bands(artificial_data):
     assert ((mdec_bands_test.iloc[:, 0] - bands_limits[:-1]) > 5e-5).sum() == 0
     assert ((mdec_bands_test.iloc[:, 2] - bands_limits[1:]) > 5e-5).sum() == 0
     assert ((mdec_bands_test.iloc[:, 1] - bands_c) > 5e-5).sum() == 0
+
 
 def test_psd_to_millidecades(artificial_data):
     data, nfft, fs = artificial_data
@@ -68,9 +70,6 @@ def test_psd_to_millidecades(artificial_data):
         # Plot the two outputs for comparison
 
         # generate figure with the two subplots
-
-
-
         fig, ax = plt.subplots()
         ax.plot(milli_psd.frequency_bins, mdec_power_test['sum'], label='MANTA')
         plt.legend()
