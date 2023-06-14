@@ -655,3 +655,31 @@ def join_all_ds_output_station(directory_path, station, data_var_name, drop=Fals
     da_tot = da_tot.drop_sel(datetime=errors)
 
     return da_tot
+
+
+def reindexing_datetime(da, first_datetime, last_datetime, freq='10T', tolerance='1D', fill_value=np.nan):
+    """
+    Reindex the datetime of your data and fill missing values
+    Parameters
+    ----------
+    da : xarray DataArray
+        Data you want to reindex
+    first_datetime : datetime64
+        Lower limit of the new datetime index
+    last_datetime : datetime64
+        Upper limit of the new datetime index
+    freq : str
+        Frequency of values in the new datetime index
+    tolerance : str
+        Maximum distance between original and new datetimes for inexact matches
+    fill_value : scalar
+        Value to use for newly missing values
+
+    Returns
+    -------
+    da_reindex : xarray DataArray
+        Data after reindexing
+    """
+    index = pd.date_range(start=first_datetime, end=last_datetime, freq=freq).round('T')
+    da_reindex = da.reindex(datetime=index, tolerance=tolerance, method='nearest', fill_value=fill_value)
+    return da_reindex
