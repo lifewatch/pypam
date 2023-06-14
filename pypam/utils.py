@@ -9,6 +9,7 @@ import numpy as np
 import scipy.signal as sig
 import xarray
 import pandas as pd
+import pathlib
 from tqdm import tqdm
 
 G = 10.0 ** (3.0 / 10.0)
@@ -540,16 +541,17 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     return spd_ds
 
 
-def join_all_ds_output_deployment(deployment_path, data_var_name):
+def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
     """
-    Return the long-term spectrogram for one deployment in hybrid millidecade bands by joining spectrograms stored
-    in the files
+    Return a DataArray by joining the data you selected from all the output ds for one deployment
     Parameters
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
     data_var_name : str
         Name of the data that you want to keep for joining ds
+    drop : boolean
+        Set to True if you want to drop other coords
 
     Returns
     -------
@@ -557,6 +559,7 @@ def join_all_ds_output_deployment(deployment_path, data_var_name):
         The spectrogram of one deployment
     """
 
+    deployment_path = pathlib.Path(deployment_path)
     list_path = list(deployment_path.glob('*.nc'))
 
     for path in tqdm(list_path):
@@ -564,10 +567,11 @@ def join_all_ds_output_deployment(deployment_path, data_var_name):
         ds = ds.swap_dims({'id': 'datetime'})
         da = ds[data_var_name]
 
-        coords_to_drop = list(da.coords)
-        for dims in list(da.dims):
-            coords_to_drop.remove(dims)
-        da = da.drop_vars(coords_to_drop)
+        if drop:
+            coords_to_drop = list(da.coords)
+            for dims in list(da.dims):
+                coords_to_drop.remove(dims)
+            da = da.drop_vars(coords_to_drop)
 
         if path == list_path[0]:
             da_tot = da.copy()
