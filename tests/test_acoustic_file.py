@@ -3,9 +3,6 @@ from pypam.acoustic_file import AcuFile
 import pyhydrophone as pyhy
 from tests import skip_unless_with_plots
 
-# Another hydrophone
-st = pyhy.SoundTrap('SoundTrap', 'ST600HF', '6716')
-
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
@@ -31,8 +28,5 @@ class TestAcuFile(unittest.TestCase):
                                                method='density', band=None)
 
     def test_nmf(self):
-        ds = self.acu_file.source_separation(window_time=1.0, n_sources=15,
-                                             binsize=None, save_path=None, verbose=False, band=None)
-
-
-
+        self.acu_file.source_separation(window_time=1.0, n_sources=15,
+                                        binsize=None, save_path=None, verbose=False, band=None)
