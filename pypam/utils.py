@@ -9,7 +9,8 @@ import numpy as np
 import scipy.signal as sig
 import xarray
 import pandas as pd
-
+import pathlib
+from tqdm import tqdm
 
 G = 10.0 ** (3.0 / 10.0)
 f_ref = 1000
@@ -248,7 +249,7 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     """
     uneven = (fraction % 2 != 0)
     fc = f_ref * G ** ((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(uneven) + uneven * f_ref * G ** (
-                bands / fraction)
+            bands / fraction)
 
     # limit for center frequency compared to sample frequency
     fclimit = 1 / 200
@@ -293,7 +294,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
     # Start the frequencies list
     bands_limits = []
     bands_c = []
-    
+
     # count the number of bands:
     band_count = 0
     center_freq = 0
@@ -420,13 +421,16 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
         fft_freq_indices[-1] = len(psd.frequency) - 1
     limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
-    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width/2 - \
+    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - \
                                 limits_df['lower_freq'] + psd.frequency.values[0]
     limits_df['upper_factor'] = limits_df['upper_freq'] - \
-                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width/2) - psd.frequency.values[0]
+                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[
+                                    0]
 
-    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [limits_df['lower_factor']] / fft_bin_width
-    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [limits_df['upper_factor']] / fft_bin_width
+    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [
+        limits_df['lower_factor']] / fft_bin_width
+    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [
+        limits_df['upper_factor']] / fft_bin_width
     # Bin the bands and add the borders
     psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
     if len(psd_without_borders.frequency) == 0:
@@ -535,3 +539,73 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
 
     return spd_ds
+
+
+def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
+    """
+    Return a DataArray by joining the data you selected from all the output ds for one deployment
+    Parameters
+    ----------
+    deployment_path : str or Path
+        Where all the netCDF files of a deployment are stored
+    data_var_name : str
+        Name of the data that you want to keep for joining ds
+    drop : boolean
+        Set to True if you want to drop other coords
+
+    Returns
+    -------
+    da_tot : DataArray
+        Data joined of one deployment
+    """
+
+    deployment_path = pathlib.Path(deployment_path)
+    list_path = list(deployment_path.glob('*.nc'))
+
+    for path in tqdm(list_path):
+        ds = xarray.open_dataset(path)
+        ds = ds.swap_dims({'id': 'datetime'})
+        da = ds[data_var_name]
+
+        if drop:
+            coords_to_drop = list(da.coords)
+            for dims in list(da.dims):
+                coords_to_drop.remove(dims)
+            da = da.drop_vars(coords_to_drop)
+
+        if path == list_path[0]:
+            da_tot = da.copy()
+        else:
+            da_tot = xarray.concat([da_tot, da], 'datetime')
+
+    return da_tot
+
+
+def select_datetime_range(da_sxx, start_datetime, end_datetime):
+    """
+    Parameters
+    ----------
+    da_sxx : xarray DataArray
+        Data in which we want to select only a certain range of datetime
+    start_datetime : datetime64
+        Lower limit of datetime that you want to plot
+    end_datetime : datetime64
+        Upper limit of datetime that you want to plot
+
+    Returns
+    -------
+    da_sxx : xarray DataArray
+        Data with the new limits
+    old_start_datetime : datetime64
+        Old lower datetime limit of the data
+    old_end_datetime : datetime64
+        Old upper datetime limit of the data
+    """
+
+    old_start_datetime = np.asarray(da_sxx.datetime)[0]
+    old_end_datetime = np.asarray(da_sxx.datetime)[-1]
+
+    da_sxx = da_sxx.where(da_sxx.datetime >= start_datetime, drop=True)
+    da_sxx = da_sxx.where(da_sxx.datetime <= end_datetime, drop=True)
+
+    return da_sxx, old_start_datetime, old_end_datetime
