@@ -782,6 +782,11 @@ class AcousticFolder:
             i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
         """
         self.folder_path = pathlib.Path(folder_path)
+        if not self.folder_path.exists():
+            raise FileNotFoundError('The path %s does not exist. Please choose another one.' % folder_path)
+        if len(list(self.folder_path.glob('**/*.wav'))) == 0:
+            raise ValueError('The directory %s is empty. Please select another directory with *.wav files' %
+                             folder_path)
         self.zipped = zipped
         self.recursive = include_dirs
         if extensions is None:

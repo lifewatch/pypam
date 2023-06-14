@@ -43,6 +43,16 @@ class TestASA(unittest.TestCase):
         self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
+    def test_empty_directory(self):
+        with self.assertRaises(ValueError) as context:
+            ASA(hydrophone=soundtrap, folder_path=folder_path.joinpath('empty_folder'), binsize=binsize,
+                nfft=nfft, timezone='UTC', include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
+
+    def test_path_not_exists(self):
+        with self.assertRaises(FileNotFoundError) as context:
+            ASA(hydrophone=soundtrap, folder_path='non_existing_folder', binsize=binsize,
+                nfft=nfft, timezone='UTC', include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
+
     def test_timestamp_array(self):
         self.asa.timestamps_array()
 
