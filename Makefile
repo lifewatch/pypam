@@ -3,7 +3,7 @@ FLAKE8_EXCLUDE = venv,.venv,.eggs,.tox,.git,__pycache__,*.pyc
 PROJECT = pypam
 AUTHOR = Clea Parcerisas 
 
-.PHONY: build docs clean install docker-build
+.PHONY: build docs clean install docker-build tests
 
 clean:
 	@find . -name '*.pyc' -exec rm --force {} +
