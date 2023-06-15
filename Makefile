@@ -34,7 +34,7 @@ docs:
 	poetry run sphinx-build -E -a -b html ./docs/source ./docs/build/html
 
 test:
-	poetry run pytest ${TEST_PATH}
+	poetry run pytest ${TEST_PATH} -rxXs
 
 test-coverage:
 	poetry run pytest --cov=$(PROJECT) ${TEST_PATH} --cov-report term-missing

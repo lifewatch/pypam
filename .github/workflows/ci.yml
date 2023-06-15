@@ -24,12 +24,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install libsndfile1
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          python -m pip freeze
+          make init-dev
+
 
       - name: Run unit tests
         run:
-          PYPAM_TEST_NO_PLOTS= python -m pytest tests -rxXs
+          PYPAM_TEST_NO_PLOTS = make tests
