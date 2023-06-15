@@ -1,6 +1,65 @@
+[tool.poetry]
+name = "pypam"
+version = "0.1.9b"
+description = 'Facilitate acoustic processing from underwater acoustic recorders'
+authors = ["Clea Parcerisas <cleap@vliz.be>"]
+readme = "README.md"
+repository = "https://github.com/lifewatch/pypam.git"
+packages = [{include = "pypam"}]
+license = "GPL-3.0-or-later"
+classifiers =[
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"]
+    
+[tool.poetry.dependencies]
+python = "^3.8"
+matplotlib = "^3.7.1"
+numpy = "^1.24.3"
+pandas = "^2.0.2"
+seaborn = "^0.12.2"
+soundfile = "^0.12.1"
+tqdm = "^4.65.0"
+numba = "^0.57.0"
+noisereduce = "^2.0.1"
+scikit-learn = "^1.2.2"
+python-dateutil = "^2.8.2"
+poetry = "^1.5.0"
+xarray = "2023.01.0"
+
+# Development tools
+pre-commit = {version = "^3.3.1", optional = true}
+isort = {version = "^5.12.0", optional = true}
+black = {version = "^23.3.0", optional = true}
+
+# Testing tools
+pyyaml = {version = "^6.0", optional = true}
+pytest = {version = "^7.3.1", optional = true}
+coverage = {version = "^7.2.5", optional = true}
+python-dotenv = {version = "^1.0.0", optional = true}
+pytest-cov = {version = "^4.1.0", optional = true}
+
+# Documentation tools
+sphinx = {version = "^7.0.1", optional = true}
+
+# Poetry has the dependecies groups, but those are not 
+#   compatible with extras, widely used in the python-verse.
+[tool.poetry.extras]
+dev = ["pre-commit", "isort", "black", "flake8"]
+tests = ["pyyaml","pytest", "coverage", "python-dotenv", "pytest-cov"]
+docs = ["sphinx"]
+
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools","poetry"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests",]
+pythonpath = ["."]

@@ -4,4 +4,4 @@ noisereduce==2.0.1
 pyhydrophone
 latex==0.7.0
 pytest==7.2.1
-syrupy==3.0.6  # for snapshot testing
+syrupy==3.0.6 # for snapshot testing
