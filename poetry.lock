@@ -1878,6 +1878,16 @@ files = [
 plugins = ["importlib-metadata"]
 
 [[package]]
+name = "pyhydrophone"
+version = "0.1.4"
+description = "Python scripts to read hydrophones files"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pyhydrophone-0.1.4.tar.gz", hash = "sha256:4d513ecb176bba962c5ea92c0393092d9bdfa65f1b2fc3520e1e050e2fe1fe71"},
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -2839,4 +2849,4 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "fc4cd61fff548a64a15e0243af6890e972cc5ed025711173bc3786fda0348422"
+content-hash = "a282eb22185403dd3c30ac46ce0a588d908f5bf5eb5657f9214b925409d5c8b5"
