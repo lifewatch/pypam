@@ -26,6 +26,7 @@ scikit-learn = "^1.2.2"
 python-dateutil = "^2.8.2"
 poetry = "^1.5.0"
 xarray = "2023.01.0"
+pyhydrophone = "^0.1.4"
 
 # Development tools
 pre-commit = {version = "^3.3.1", optional = true}
