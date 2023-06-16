@@ -167,7 +167,7 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     plt.close()
 
 
-def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=False):
+def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, show=True):
     """
     Plot the long-term spectrogram in hybrid millidecade bands
     Parameters
