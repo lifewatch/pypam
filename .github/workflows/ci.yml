@@ -24,9 +24,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get install libsndfile1        
           make init-dev
 
 
       - name: Run unit tests
         run:
+          export POETRY_PYPAM_TEST_NO_PLOTS=make test          
           PYPAM_TEST_NO_PLOTS= make test
