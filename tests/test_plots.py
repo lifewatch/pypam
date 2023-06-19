@@ -57,7 +57,7 @@ class TestPlots(unittest.TestCase):
     @skip_unless_with_plots()
     def test_plot_spectrum_mean(self):
         psd = self.asa.evolution_freq_dom('psd')
-        pypam.plots.plot_spectrum_mean(ds=psd, col_name='band_density', output_name='PSD')
+        pypam.plots.plot_spectrum_mean(ds=psd, col_name='band_density', output_name='PSD', show=True)
 
     @skip_unless_with_plots()
     def test_plot_hmb_ltsa(self):

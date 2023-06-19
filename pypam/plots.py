@@ -18,14 +18,14 @@ sns.set_palette('colorblind')
 
 def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
     """
-    Plot the the SPD graph of the bin
+    Plot the SPD graph of the bin
 
     Parameters
     ----------
     spd : xarray DataArray
         Data array with 2D data frequency-sound_pressure
     db : boolean
-        If set to True the result will be given in db. Otherwise in upa^2/Hz
+        If set to True the result will be given in db. Otherwise, in upa^2/Hz
     p_ref : Float
         Reference pressure in upa
     log : boolean
@@ -135,17 +135,18 @@ def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_pat
     if log:
         xscale = 'log'
 
+    # TODO infer these units from the output dataset
     if col_name == 'band_density':
         if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % p_ref
+            units = r'$[dB %s \mu Pa^2/Hz]$' % p_ref
         else:
-            units = r'$SPL_rms [\mu Pa^2/Hz]$'
+            units = r'$[\mu Pa^2/Hz]$'
 
     else:  # col_name == 'band_spectrum':
         if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2]$' % p_ref
+            units = r'$[dB %s \mu Pa^2]$' % p_ref
         else:
-            units = r'$SPL_rms [\mu Pa^2]$'
+            units = r'$[\mu Pa^2]$'
 
     for id_n in ds.id:
         ds_id = ds[col_name].sel(id=id_n)
@@ -196,20 +197,20 @@ def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, 
     """
     if col_name == 'band_density':
         if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % p_ref
+            units = r'$[dB %s \mu Pa^2/Hz]$' % p_ref
         else:
-            units = r'$SPL_rms [\mu Pa^2/Hz]$'
+            units = r'$[\mu Pa^2/Hz]$'
 
     else:  # col_name == 'band_spectrum':
         if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2]$' % p_ref
+            units = r'$[dB %s \mu Pa^2]$' % p_ref
         else:
-            units = r'$SPL_rms [\mu Pa^2]$'
+            units = r'$[\mu Pa^2]$'
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    ds[col_name].mean(dim='id').plot.line(x='frequency', ax=ax)
+    sns.lineplot(x='frequency', y='value', ax=ax, data=ds[col_name].to_pandas().melt(), errorbar='sd')
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
         ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)
@@ -264,7 +265,7 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None,
     if ax is None:
         fig, ax = plt.subplots()
 
-    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='%s [%s]' % ('SPLrms', units), ax=ax, xlabel='Time',
+    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='[%s]' % units, ax=ax, xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
 
     if save_path is not None:
