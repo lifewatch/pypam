@@ -16,7 +16,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
+def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
     """
     Plot the the SPD graph of the bin
 
@@ -36,6 +36,11 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
         ax to plot on
     show : bool
         set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
     """
     if db:
         units = r'dB %s $\mu Pa^2/Hz$' % p_ref
@@ -53,13 +58,15 @@ def plot_spd(spd, db, p_ref, log=True, save_path=None, ax=None, show=True):
         plt.xscale('symlog')
 
     plt.legend(loc='upper right')
-    if show:
-        plt.show()
     if save_path is not None:
         plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
 
 
-def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
+def plot_spectrograms(ds_spectrogram, db=True, p_ref=1.0, log=True, save_path=None, show=True):
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
 
@@ -75,6 +82,8 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
         Where to save the images (folder)
+    show : bool
+        set to True to show the plot
     """
     if db:
         units = r'dB ' + str(p_ref) + r' $\mu Pa$'
@@ -96,11 +105,12 @@ def plot_spectrograms(ds_spectrogram, log, db, p_ref=1.0, save_path=None):
 
         if save_path is not None:
             plt.savefig(spectrogram_path)
-        plt.show()
+        if show:
+            plt.show()
         plt.close()
 
 
-def plot_spectrum(ds, col_name, ylabel, log=True, save_path=None):
+def plot_spectrum(ds, col_name, db=True, p_ref=1.0, log=True, save_path=None, show=True):
     """
     Plot the spectrums contained on the dataset
 
@@ -110,21 +120,38 @@ def plot_spectrum(ds, col_name, ylabel, log=True, save_path=None):
         Dataset resultant from psd or power spectrum calculation
     col_name : string
         Name of the column where the data is (scaling type) 'spectrum' or 'density'
-    ylabel : string
-        Label of the y axis (with units of the data)
+    db : boolean
+        If set to True the result will be given in db. Otherwise in upa^2/Hz
+    p_ref : Float
+        Reference pressure in upa
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path: string or Path
         Where to save the image
+    show : bool
+        set to True to show the plot
     """
     xscale = 'linear'
     if log:
         xscale = 'log'
+
+    if col_name == 'band_density':
+        if db:
+            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % p_ref
+        else:
+            units = r'$SPL_rms [\mu Pa^2/Hz]$'
+
+    else:  # col_name == 'band_spectrum':
+        if db:
+            units = r'$SPL_rms [dB %s \mu Pa^2]$' % p_ref
+        else:
+            units = r'$SPL_rms [\mu Pa^2]$'
+
     for id_n in ds.id:
         ds_id = ds[col_name].sel(id=id_n)
         ds_id.plot.line(xscale=xscale)
         plt.xlabel('Frequency [Hz]')
-        plt.ylabel(ylabel)
+        plt.ylabel(units)
 
         # Plot the percentiles as horizontal lines
         plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
@@ -132,11 +159,12 @@ def plot_spectrum(ds, col_name, ylabel, log=True, save_path=None):
 
         if save_path is not None:
             plt.savefig(save_path)
-        plt.show()
+        if show:
+            plt.show()
         plt.close()
 
 
-def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=True):
+def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
     """
     Plot the mean spectrum
 
@@ -144,18 +172,43 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
     ----------
     ds : xarray DataSet
         Output of evolution
-    units : string
-        Units of the spectrum
     col_name : string
         Column name of the value to plot. Can be 'density' or 'spectrum'
     output_name : string
         Name of the label. 'PSD' or 'SPLrms'
+    db : boolean
+        If set to True the result will be given in db. Otherwise in upa^2/Hz
+    p_ref : Float
+        Reference pressure in upa
     log : boolean
         If set to True, y axis in logarithmic scale
     save_path : string or Path
         Where to save the output graph. If None, it is not saved
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : bool
+        set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
     """
-    fig, ax = plt.subplots()
+    if col_name == 'band_density':
+        if db:
+            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % p_ref
+        else:
+            units = r'$SPL_rms [\mu Pa^2/Hz]$'
+
+    else:  # col_name == 'band_spectrum':
+        if db:
+            units = r'$SPL_rms [dB %s \mu Pa^2]$' % p_ref
+        else:
+            units = r'$SPL_rms [\mu Pa^2]$'
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
     ds[col_name].mean(dim='id').plot.line(x='frequency', ax=ax)
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
@@ -170,11 +223,14 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
         plt.xscale('log')
     if save_path is not None:
         plt.savefig(save_path)
-    plt.show()
+    if show:
+        plt.show()
     plt.close()
 
+    return ax
 
-def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=False):
+
+def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
     """
     Plot the long-term spectrogram in hybrid millidecade bands
     Parameters
@@ -189,8 +245,15 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=Fa
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
         Where to save the image
+    ax : matplotlib.axes class or None
+        ax to plot on
     show : boolean
         Set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
     """
 
     if db:
@@ -198,7 +261,10 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=Fa
     else:
         units = r'$\mu Pa^2/Hz$'
 
-    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='%s [%s]' % ('SPLrms', units), xlabel='Time',
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='%s [%s]' % ('SPLrms', units), ax=ax, xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
 
     if save_path is not None:
@@ -206,6 +272,8 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=Fa
     if show:
         plt.show()
     plt.close()
+
+    return ax
 
 
 def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='datetime', freq_coord='frequency',
