@@ -340,7 +340,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
         solpos_arr = solpos[['elevation']].to_xarray()
         solpos_2d = solpos_arr['elevation'].expand_dims({'id': [0, 1]})
         # Plot the night/day bar
-        xarray.plot.pcolormesh(solpos_2d, x='index', y='id', cmap='Greys', ax=ax2, add_colorbar=False)
+        xarray.plot.pcolormesh(solpos_2d, x='index', y='id', cmap='Greys', ax=ax2, add_colorbar=False, vmax=0, vmin=-12)
 
         night_moment = solpos.elevation.argmax()
         day_moment = solpos.elevation.argmin()
