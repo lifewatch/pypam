@@ -67,7 +67,7 @@ def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=Tr
     return ax
 
 
-def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, save_path=None, show=True):
+def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=True):
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
 
@@ -75,10 +75,6 @@ def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, sav
     ----------
     ds_spectrogram : xarray DataArray
         Data array with 3D data (datetime, frequency and time_bin as dimensions)
-    db : boolean
-        If set to True the result will be given in db. Otherwise in upa^2/Hz
-    p_ref : Float
-        Reference pressure in upa
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
@@ -86,10 +82,6 @@ def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, sav
     show : bool
         set to True to show the plot
     """
-    if db:
-        units = r'dB ' + str(p_ref) + r' $\mu Pa$'
-    else:
-        units = r'$\mu Pa$'
 
     for id_n in ds_spectrogram.id:
         sxx = ds_spectrogram['spectrogram'].sel(id=id_n)
@@ -102,7 +94,8 @@ def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, sav
             spectrogram_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
         plot_2d(ds=sxx, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
-                cbar_label=r'$[%s]' % units, ylog=log, title=title)
+                cbar_label=r'%s [$%s$]' % (ds_spectrogram['spectrogram'].standard_name,
+                                           ds_spectrogram['spectrogram'].units), ylog=log, title=title)
 
         if save_path is not None:
             plt.savefig(spectrogram_path)
