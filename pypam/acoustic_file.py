@@ -1102,11 +1102,7 @@ class AcuFile:
         **kwargs : any attribute valid on psd() function
         """
         psd = self.psd(db=db, **kwargs)
-        if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % self.p_ref
-        else:
-            units = r'$SPL_rms [\mu Pa^2/Hz]$'
-        self._plot_spectrum(ds=psd, col_name='density', units=units, log=log,
+        plots.plot_spectrum(ds=psd, col_name='band_density', db=db, p_ref=self.p_ref, log=log,
                             save_path=save_path)
 
     def plot_power_spectrum(self, db=True, log=True, save_path=None, **kwargs):
@@ -1124,16 +1120,8 @@ class AcuFile:
         **kwargs : any attribute valid on power_spectrum() function
         """
         power = self.power_spectrum(db=db, **kwargs)
-        if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2]$' % self.p_ref
-        else:
-            units = r'$SPL_rms [\mu Pa^2]$'
-        self._plot_spectrum(ds=power, col_name='spectrum', units=units,
+        plots.plot_spectrum(ds=power, col_name='band_spectrum', db=db, p_ref=self.p_ref,
                             log=log, save_path=save_path)
-
-    @staticmethod
-    def _plot_spectrum(ds, col_name, units, log=False, save_path=None):
-        plots.plot_spectrum(ds, 'band_' + col_name, log=log, ylabel=units, save_path=save_path)
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
         """
