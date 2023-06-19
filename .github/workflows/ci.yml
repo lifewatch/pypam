@@ -29,6 +29,6 @@ jobs:
 
 
       - name: Run unit tests
-        run:
+        run: |
           export POETRY_PYPAM_TEST_NO_PLOTS=make test          
           PYPAM_TEST_NO_PLOTS= make test
