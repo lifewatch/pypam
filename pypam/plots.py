@@ -52,12 +52,13 @@ def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=Tr
     plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r', cbar_label='Empirical Probability Density', ax=ax,
             ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0,
             robust=False)
-    ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
-            label=spd['value_percentiles'].percentiles.values, linewidth=1)
+    if len(spd.percentiles) > 0:
+        ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
+                label=spd['value_percentiles'].percentiles.values, linewidth=1)
+        plt.legend(loc='upper right')
     if log:
         plt.xscale('symlog')
 
-    plt.legend(loc='upper right')
     if save_path is not None:
         plt.savefig(save_path)
     if show:
