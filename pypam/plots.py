@@ -2,6 +2,13 @@ import matplotlib.pyplot as plt
 import xarray
 import seaborn as sns
 import pathlib
+import matplotlib.gridspec as gridspec
+try:
+    import pvlib
+except ModuleNotFoundError:
+    pvlib = None
+
+import pypam
 
 plt.rcParams.update({'text.usetex': True})
 sns.set_theme('paper')
@@ -199,6 +206,96 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=Fa
     if show:
         plt.show()
     plt.close()
+
+
+def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='datetime', freq_coord='frequency',
+                         min_val=None, max_val=None, p_ref=1.0, show=True, log=True, save_path=None,
+                         location=None):
+    """
+    :param ds: dataset output of pypam
+    :param data_var: strig, name of the data variable to plot as a spectrogram. default band_density.
+    :param time_coord: string, name of the coordinate which represents time (has to be type np.datetime64)
+    :param freq_coord: string, name of the coordinate which represents frequency.
+    :param percentiles: list or numpy array of the percentiles to compute and plot (1 to 100).
+    :param min_val: minimum value (SPL) in db to compute the SPD. If None, minimum of the dataset will be used
+    :param max_val: maximum value (SPL) in db to compute the SPD. If None, maximum of the dataset will be used
+    :param p_ref: pressure reference in uPa. Default to 1uPa
+    :param show: bool. Set to True to show the plot
+    :param log: set to True to set the frequencies axis in a log scale
+    :param save_path: None, string or Path. Where to save the plot. If None, the plot is not saved.
+    :param location: tuple or list [latitude, longitude] in decimal coordinates. If location is passed, a bar with
+    the sun position is going to be added below the time axis
+
+    :return:
+    """
+    plt.figure(figsize=(12, 8))
+    gs = gridspec.GridSpec(2, 2, height_ratios=[10, 0.5], width_ratios=[3, 2])
+
+    ax0 = plt.subplot(gs[0])
+    ax1 = plt.subplot(gs[1], sharey=ax0)
+
+    units = r'db re 1V %s $\mu Pa^2/Hz$' % p_ref
+
+    # LTSA plot
+    xarray.plot.pcolormesh(ds[data_var], x=time_coord, y=freq_coord, add_colorbar=True,
+                           cbar_kwargs={'label': '%s [%s]' % ('Spectrum Level', units),
+                                        'location': 'top', 'orientation': 'horizontal', 'shrink': 2/3}, ax=ax0,
+                           extend='neither', cmap='YlGnBu_r')
+
+    # SPD plot
+    spd = pypam.utils.compute_spd(ds, percentiles=percentiles, min_val=min_val, max_val=max_val)
+
+    xarray.plot.pcolormesh(spd['spd'], x='spl', y=freq_coord, cmap='binary', add_colorbar=True,
+                           cbar_kwargs={'label': 'Empirical Probability Density',
+                                        'location': 'top', 'orientation': 'horizontal'}, ax=ax1,
+                           extend='neither', vmin=0, robust=False)
+
+    ax1.plot(spd['value_percentiles'], spd['value_percentiles'].frequency,
+             label=spd['value_percentiles'].percentiles.values, linewidth=1)
+
+    if location is not None:
+        if pvlib is None:
+            raise Exception('To use this feature it is necessary to install pvlib ')
+        ax2 = plt.subplot(gs[2], sharex=ax0)
+        solpos = pvlib.solarposition.get_solarposition(
+            time=ds.datetime,
+            latitude=location[1],
+            longitude=location[0],
+            altitude=0,
+            temperature=20,
+            pressure=pvlib.atmosphere.alt2pres(0),
+        )
+        solpos_arr = solpos[['zenith']].to_xarray()
+        solpos_2d = solpos_arr['zenith'].expand_dims({'id': [0, 1]})
+        # Plot the night/day bar
+        xarray.plot.pcolormesh(solpos_2d, x='index', y='id', cmap='Greys', ax=ax2, add_colorbar=False)
+
+        night_moment = solpos.zenith.argmax()
+        day_moment = solpos.zenith.argmin()
+        ax2.text(solpos.iloc[night_moment].name, 0.3, 'Night', fontdict={'color': 'white'})
+        ax2.text(solpos.iloc[day_moment].name, 0.3, 'Day', fontdict={'color': 'k'})
+
+        # Adjust the axis
+        ax2.get_yaxis().set_visible(False)
+        ax2.set_xlabel('Time')
+        ax0.get_xaxis().set_visible(False)
+    else:
+        ax0.set_xlabel('Time')
+    # Adjust the axis names and visibilities
+    ax0.set_ylabel('Frequency [Hz]')
+    ax1.get_yaxis().set_visible(False)
+    ax1.set_xlabel('Spectrum Level %s' % units)
+
+    if log:
+        ax0.set_yscale('symlog')
+
+    ax1.legend(loc='upper right')
+    plt.subplots_adjust(wspace=0.05, hspace=0.01)
+
+    if show:
+        plt.show()
+    if save_path is not None:
+        plt.savefig(save_path)
 
 
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
