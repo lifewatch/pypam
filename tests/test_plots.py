@@ -2,34 +2,70 @@ import unittest
 
 import xarray
 
+import pathlib
 import pypam.plots
-import pypam.signal as sig
-import pypam.nmf as nmf
-import numpy as np
+import pypam.utils
+from pypam.acoustic_file import AcuFile
+from pypam.acoustic_survey import ASA
+import pyhydrophone as pyhy
 from tests import skip_unless_with_plots, with_plots
 import matplotlib.pyplot as plt
+
+plt.rcParams.update(plt.rcParamsDefault)
+
+# Data information
+folder_path = pathlib.Path('test_data')
+
+# Hydrophone Setup
+# If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
+model = 'ST300HF'
+name = 'SoundTrap'
+serial_number = 67416073
+soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+
+# SURVEY PARAMETERS
+nfft = 8000
+binsize = 60.0
+dc_subtract = True
+include_dirs = True
+zipped_files = False
 
 
 class TestSignal(unittest.TestCase):
     def setUp(self) -> None:
-        self.ds = xarray.open_dataset('tests/test_data/test_day.nc')
+        self.ds = xarray.open_dataset('test_data/test_day.nc')
         self.ds = self.ds.rename({'millidecade_bands': 'band_density', 'frequency_bins': 'frequency'})
+        self.acu_file = AcuFile('test_data/67416073.210610033655.wav', soundtrap, 1)
+        self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
+                       include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
     @skip_unless_with_plots()
     def test_plot_spd(self):
-        pypam.plots.plot_spd(self.ds)
+        ds_spd = pypam.utils.compute_spd(self.ds)
+        pypam.plots.plot_spd(spd=ds_spd)
 
     @skip_unless_with_plots()
     def test_plot_spectrograms(self):
-        pypam.plots.plot_spectrograms(self.ds)
+        ds_spectrogram = self.acu_file.spectrogram()
+        pypam.plots.plot_spectrograms(ds_spectrogram=ds_spectrogram)
+
+    @skip_unless_with_plots()
+    def test_plot_spectrum(self):
+        psd = self.acu_file.psd()
+        pypam.plots.plot_spectrum(ds=psd, col_name='band_density')
 
     @skip_unless_with_plots()
     def test_plot_spectrum_mean(self):
-        pypam.plots.plot_spectrum_mean(self.ds)
+        psd = self.asa.evolution_freq_dom('psd')
+        pypam.plots.plot_spectrum_mean(ds=psd, col_name='band_density', output_name='PSD')
 
     @skip_unless_with_plots()
     def test_plot_hmb_ltsa(self):
-        pypam.plots.plot_hmb_ltsa(self.ds)
+        ds = self.ds.copy()
+        ds = ds.rename({'band_density': 'millidecade_bands', 'frequency': 'frequency_bins'})
+        ds = ds.swap_dims({'id': 'datetime'})
+        da = ds['millidecade_bands']
+        pypam.plots.plot_hmb_ltsa(da)
 
     @skip_unless_with_plots()
     def test_summary_plot(self):
