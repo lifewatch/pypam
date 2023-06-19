@@ -41,7 +41,7 @@ class TestPlots(unittest.TestCase):
 
     @skip_unless_with_plots()
     def test_plot_spd(self):
-        ds_spd = pypam.utils.compute_spd(self.ds)
+        ds_spd = pypam.utils.compute_spd(self.ds, percentiles=[1, 10, 50, 90, 99])
         pypam.plots.plot_spd(spd=ds_spd, show=True)
 
     @skip_unless_with_plots()
