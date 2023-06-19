@@ -629,13 +629,9 @@ class ASA:
         **kwargs : Any accepted for the power_spectrum method
         """
         power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
 
-        return plots.plot_spectrum_mean(ds=power, units=units, col_name='band_spectrum',
-                                        output_name='SPLrms', save_path=save_path, log=log)
+        return plots.plot_spectrum_mean(ds=power, col_name='band_spectrum',
+                                        output_name='SPLrms', db=db, p_ref=self.p_ref, log=log, save_path=save_path)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -652,13 +648,9 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
 
-        return plots.plot_spectrum_mean(ds=psd, units=units, col_name='band_density',
-                                        output_name='PSD', save_path=save_path, log=log)
+        return plots.plot_spectrum_mean(ds=psd, col_name='band_density',
+                                        output_name='PSD', db=db, p_ref=self.p_ref, log=log, save_path=save_path)
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
