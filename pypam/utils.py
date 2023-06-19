@@ -16,7 +16,7 @@ G = 10.0 ** (3.0 / 10.0)
 f_ref = 1000
 
 
-@nb.jit
+@nb.njit
 def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.ndarray):
     """
     Return spd from the spectrogram
@@ -84,7 +84,7 @@ def sel(signal, fs):
     return np.sum(signal ** 2) / fs
 
 
-@nb.jit
+@nb.njit
 def peak(signal):
     """
     Return the peak value
@@ -421,11 +421,10 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
         fft_freq_indices[-1] = len(psd.frequency) - 1
     limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
-    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - \
-                                limits_df['lower_freq'] + psd.frequency.values[0]
-    limits_df['upper_factor'] = limits_df['upper_freq'] - \
-                                (limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[
-                                    0]
+    limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - limits_df[
+        'lower_freq'] + psd.frequency.values[0]
+    limits_df['upper_factor'] = limits_df['upper_freq'] - (
+                limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[0]
 
     psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [
         limits_df['lower_factor']] / fft_bin_width

@@ -17,7 +17,7 @@ __credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
 __email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
 __status__ = "Development"
 
-from numba import njit
+import numba as nb
 import numpy as np
 from scipy import fftpack
 from scipy import signal as sig
@@ -52,7 +52,7 @@ from scipy import signal as sig
 #     return main_value, temporal_values
 
 
-@njit
+@nb.njit
 def compute_aci(sxx: np.ndarray):
     """
     Return the aci of the signal
@@ -80,7 +80,7 @@ def compute_aci(sxx: np.ndarray):
     return aci_val
 
 
-@njit
+@nb.njit
 def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     """
     Compute the Bioacoustic Index from the spectrogram of an audio signal.
@@ -136,7 +136,7 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     return area
 
 
-@njit
+@nb.njit
 def compute_sh(sxx):
     """
     Compute Spectral Entropy of Shannon from the spectrogram of an audio signal.
@@ -246,7 +246,7 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
     return ndsi
 
 
-@njit
+@nb.njit
 def gini(values):
     """
     Compute the Gini index of values.
@@ -268,7 +268,7 @@ def gini(values):
     return g / n
 
 
-@njit
+@nb.njit
 def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Evenness Index of an audio signal.
@@ -302,7 +302,7 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return gini(values)
 
 
-@njit
+@nb.njit
 def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Diversity Index.
@@ -356,7 +356,7 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return adi
 
 
-@njit
+@nb.njit
 def compute_zcr_avg(s, window_length=512, window_hop=256):
     """
     Compute the Zero Crossing Rate of an audio signal.
@@ -383,7 +383,7 @@ def compute_zcr_avg(s, window_length=512, window_hop=256):
     return np.mean(zcr_bins)
 
 
-@njit
+@nb.njit
 def compute_zcr(s):
     """
     Compute the Zero Crossing Rate of an audio signal.

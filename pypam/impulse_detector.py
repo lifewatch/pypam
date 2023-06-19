@@ -294,7 +294,7 @@ class PilingDetector(ImpulseDetector):
                          detection_band=detection_band, analysis_band=analysis_band, threshold=threshold, dt=dt)
 
 
-@nb.jit
+@nb.njit
 def events_times(levels, dt, threshold, min_separation):
     # diff_levels = np.diff(levels)
     indices = np.where(levels >= threshold)[0]
@@ -309,7 +309,7 @@ def events_times(levels, dt, threshold, min_separation):
     return times
 
 
-@nb.jit
+@nb.njit
 def events_times_diff(signal, fs, threshold, max_duration, min_separation):
     times_events = []
     min_separation_samples = int(min_separation * fs - 1)
@@ -344,7 +344,7 @@ def events_times_diff(signal, fs, threshold, max_duration, min_separation):
     return times_events
 
 
-@nb.jit
+@nb.njit
 def events_times_snr(signal, fs, blocksize, threshold, max_duration, min_separation):
     """
     Signal must be an envelope
