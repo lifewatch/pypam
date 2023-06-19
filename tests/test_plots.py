@@ -31,7 +31,7 @@ include_dirs = True
 zipped_files = False
 
 
-class TestSignal(unittest.TestCase):
+class TestPlots(unittest.TestCase):
     def setUp(self) -> None:
         self.ds = xarray.open_dataset('tests/test_data/test_day.nc')
         self.ds = self.ds.rename({'millidecade_bands': 'band_density', 'frequency_bins': 'frequency'})
