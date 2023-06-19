@@ -527,13 +527,16 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
     spd = sxx2spd(sxx=pxx, h=h, bin_edges=bin_edges)
 
-    p = np.nanpercentile(pxx, 100 - np.array(percentiles), axis=1)
+    p = np.nanpercentile(pxx, np.array(percentiles), axis=1)
+    percentiles_names = []
+    for level_p in percentiles:
+        percentiles_names.append('L%s' % str(100 - level_p))
 
     spd_arr = xarray.DataArray(data=spd,
                                coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
                                dims=['frequency', 'spl'])
     p_arr = xarray.DataArray(data=p.T,
-                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
+                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles_names},
                              dims=['frequency', 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
     units_attrs = output_units.get_units_attrs(method_name='spd', log=False)

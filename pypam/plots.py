@@ -293,13 +293,14 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
             temperature=20,
             pressure=pvlib.atmosphere.alt2pres(0),
         )
-        solpos_arr = solpos[['zenith']].to_xarray()
-        solpos_2d = solpos_arr['zenith'].expand_dims({'id': [0, 1]})
+
+        solpos_arr = solpos[['elevation']].to_xarray()
+        solpos_2d = solpos_arr['elevation'].expand_dims({'id': [0, 1]})
         # Plot the night/day bar
         xarray.plot.pcolormesh(solpos_2d, x='index', y='id', cmap='Greys', ax=ax2, add_colorbar=False)
 
-        night_moment = solpos.zenith.argmax()
-        day_moment = solpos.zenith.argmin()
+        night_moment = solpos.elevation.argmax()
+        day_moment = solpos.elevation.argmin()
         ax2.text(solpos.iloc[night_moment].name, 0.3, 'Night', fontdict={'color': 'white'})
         ax2.text(solpos.iloc[day_moment].name, 0.3, 'Day', fontdict={'color': 'k'})
 
