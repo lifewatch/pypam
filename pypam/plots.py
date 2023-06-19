@@ -101,7 +101,7 @@ def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, sav
             spectrogram_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
         plot_2d(ds=sxx, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
-                cbar_label=r'$L_{rms}$ [%s]' % units, ylog=log, title=title)
+                cbar_label=r'$[%s]' % units, ylog=log, title=title)
 
         if save_path is not None:
             plt.savefig(spectrogram_path)
@@ -195,17 +195,18 @@ def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, 
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
+    # TODO infer this from the ds itself
     if col_name == 'band_density':
         if db:
-            units = r'$[dB %s \mu Pa^2/Hz]$' % p_ref
+            units = r'$dB %s \mu Pa^2/Hz$' % p_ref
         else:
-            units = r'$[\mu Pa^2/Hz]$'
+            units = r'$\mu Pa^2/Hz$'
 
     else:  # col_name == 'band_spectrum':
         if db:
-            units = r'$[dB %s \mu Pa^2]$' % p_ref
+            units = r'$dB %s \mu Pa^2$' % p_ref
         else:
-            units = r'$[\mu Pa^2]$'
+            units = r'$\mu Pa^2$'
 
     if ax is None:
         fig, ax = plt.subplots()

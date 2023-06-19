@@ -42,12 +42,12 @@ class TestPlots(unittest.TestCase):
     @skip_unless_with_plots()
     def test_plot_spd(self):
         ds_spd = pypam.utils.compute_spd(self.ds)
-        pypam.plots.plot_spd(spd=ds_spd)
+        pypam.plots.plot_spd(spd=ds_spd, show=True)
 
     @skip_unless_with_plots()
     def test_plot_spectrogram_per_chunk(self):
         ds_spectrogram = self.acu_file.spectrogram()
-        pypam.plots.plot_spectrograms_per_chunk(ds_spectrogram=ds_spectrogram)
+        pypam.plots.plot_spectrogram_per_chunk(ds_spectrogram=ds_spectrogram, show=True)
 
     @skip_unless_with_plots()
     def plot_spectrum_per_chunk(self):
@@ -65,13 +65,13 @@ class TestPlots(unittest.TestCase):
         ds = ds.rename({'band_density': 'millidecade_bands', 'frequency': 'frequency_bins'})
         ds = ds.swap_dims({'id': 'datetime'})
         da = ds['millidecade_bands']
-        pypam.plots.plot_hmb_ltsa(da)
+        pypam.plots.plot_hmb_ltsa(da, show=True)
 
     @skip_unless_with_plots()
     def test_summary_plot(self):
         # Only necessary while compute_spd not updated
         pctlev = [1, 10, 25, 50, 75, 90, 99]
         pypam.plots.plot_summary_dataset(ds=self.ds, percentiles=pctlev,
-                                         min_val=40, max_val=130, location=[112.186, 36.713])
+                                         min_val=40, max_val=130, location=[112.186, 36.713], show=True)
         pypam.plots.plot_summary_dataset(ds=self.ds, percentiles=pctlev,
-                                         min_val=40, max_val=130, location=None)
+                                         min_val=40, max_val=130, location=None, show=True)
