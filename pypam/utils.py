@@ -31,12 +31,8 @@ def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
         Limits of the histogram bins
     """
     spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
-    # p = np.zeros((sxx.shape[0], percentiles.size), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
         spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((sxx.shape[1]) * h)
-        # cumsum = np.cumsum(spd[i, :])
-        # for j in nb.prange(percentiles.size):
-        #     p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j] * cumsum[-1])]
 
     return spd
 
@@ -529,13 +525,16 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
     bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
     spd = sxx2spd(sxx=pxx, h=h, bin_edges=bin_edges)
 
-    p = np.nanpercentile(pxx, 100 - np.array(percentiles), axis=1)
+    p = np.nanpercentile(pxx, np.array(percentiles), axis=1)
+    percentiles_names = []
+    for level_p in percentiles:
+        percentiles_names.append('L%s' % str(100 - level_p))
 
     spd_arr = xarray.DataArray(data=spd,
                                coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
                                dims=['frequency', 'spl'])
     p_arr = xarray.DataArray(data=p.T,
-                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
+                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles_names},
                              dims=['frequency', 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
 
