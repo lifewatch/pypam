@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update(plt.rcParamsDefault)
 
 # Data information
-folder_path = pathlib.Path('test_data')
+folder_path = pathlib.Path('tests/test_data')
 
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
@@ -33,7 +33,7 @@ zipped_files = False
 
 class TestSignal(unittest.TestCase):
     def setUp(self) -> None:
-        self.ds = xarray.open_dataset('test_data/test_day.nc')
+        self.ds = xarray.open_dataset('tests/test_data/test_day.nc')
         self.ds = self.ds.rename({'millidecade_bands': 'band_density', 'frequency_bins': 'frequency'})
         self.acu_file = AcuFile('test_data/67416073.210610033655.wav', soundtrap, 1)
         self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
