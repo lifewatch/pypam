@@ -1138,7 +1138,7 @@ class AcuFile:
         **kwargs : any attribute valid on spectrogram() function
         """
         ds_spectrogram = self.spectrogram(db=db, **kwargs)
-        plots.plot_spectrograms(ds_spectrogram, log, db, self.p_ref, save_path)
+        plots.plot_spectrogram_per_chunk(ds_spectrogram, log, db, self.p_ref, save_path)
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """

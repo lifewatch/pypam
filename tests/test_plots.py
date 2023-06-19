@@ -45,12 +45,12 @@ class TestPlots(unittest.TestCase):
         pypam.plots.plot_spd(spd=ds_spd)
 
     @skip_unless_with_plots()
-    def test_plot_spectrograms(self):
+    def test_plot_spectrogram_per_chunk(self):
         ds_spectrogram = self.acu_file.spectrogram()
-        pypam.plots.plot_spectrograms(ds_spectrogram=ds_spectrogram)
+        pypam.plots.plot_spectrograms_per_chunk(ds_spectrogram=ds_spectrogram)
 
     @skip_unless_with_plots()
-    def test_plot_spectrum(self):
+    def plot_spectrum_per_chunk(self):
         psd = self.acu_file.psd()
         pypam.plots.plot_spectrum(ds=psd, col_name='band_density')
 

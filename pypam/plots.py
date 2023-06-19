@@ -66,7 +66,7 @@ def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=Tr
     return ax
 
 
-def plot_spectrograms(ds_spectrogram, db=True, p_ref=1.0, log=True, save_path=None, show=True):
+def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, save_path=None, show=True):
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
 
@@ -110,7 +110,7 @@ def plot_spectrograms(ds_spectrogram, db=True, p_ref=1.0, log=True, save_path=No
         plt.close()
 
 
-def plot_spectrum(ds, col_name, db=True, p_ref=1.0, log=True, save_path=None, show=True):
+def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_path=None, show=True):
     """
     Plot the spectrums contained on the dataset
 
