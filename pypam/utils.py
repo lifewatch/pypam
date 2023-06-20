@@ -436,7 +436,7 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     if len(psd_without_borders.frequency) == 0:
         psd_bands = xarray.zeros_like(psd)
         psd_bands = psd_bands.assign_coords({'frequency_bins': ('frequency', bands_c)})
-        psd_bands = psd_bands.swap_dims({'frequency': 'frequency_bins'}).drop('frequency')
+        psd_bands = psd_bands.swap_dims({'frequency': 'frequency_bins'}).drop_coords('frequency')
     else:
         psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
         psd_bands = psd_bands.fillna(0)
