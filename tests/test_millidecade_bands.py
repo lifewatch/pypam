@@ -27,10 +27,14 @@ def millidecade_bands():
                        dc_subtract=False)
 
     millis = acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=fft_overlap, binsize=binsize,
-                                             bin_overlap=bin_overlap,
-                                             db=True, method=method, band=band)
-
-    return millis['millidecade_bands']
+                                               bin_overlap=bin_overlap,
+                                               db=True, method=method, band=band)
+    # Round the values of the coordinates (does not work directly with round) so it can be checked in the CI
+    for c in millis.coords:
+        if millis[c].dtype == float:
+            millis[c] = millis[c].round(6)
+    # Returnt the fixture with the data also rounded to 6 dec positions
+    return millis['millidecade_bands'].round(6)
 
 
 def test_millidecade_bands(millidecade_bands, snapshot):
