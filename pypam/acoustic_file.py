@@ -24,6 +24,7 @@ from pypam import nmf
 from pypam import plots
 from pypam import signal as sig
 from pypam import utils
+from pypam import units as output_units
 
 pd.plotting.register_matplotlib_converters()
 plt.rcParams.update({'pcolor.shading': 'auto'})
@@ -496,6 +497,7 @@ class AcuFile:
                         print('There was an error in band %s, feature %s. Setting to None. '
                               'Error: %s' % (band, method_name, e))
                         output = None
+                    units_attrs = output_units.get_units_attrs(method_name=method_name, p_ref=self.p_ref, **kwargs)
                     methods_output[method_name] = xarray.DataArray([[output]], coords={'id': [i],
                                                                                        'datetime': ('id', [time_bin]),
                                                                                        'start_sample': ('id',
@@ -506,7 +508,8 @@ class AcuFile:
                                                                                        'low_freq': ('band', [band[0]]),
                                                                                        'high_freq': (
                                                                                            'band', [band[1]])},
-                                                                   dims=['id', 'band'])
+                                                                   dims=['id', 'band'],
+                                                                   attrs=units_attrs)
                 if j == 0:
                     ds_bands = methods_output
                 else:
@@ -680,6 +683,7 @@ class AcuFile:
 
         # Create an empty dataset
         da = xarray.DataArray()
+        units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, db=db)
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
             signal.set_band(band, downsample=downsample)
             fbands, levels = signal.octave_levels(db, fraction)
@@ -687,12 +691,13 @@ class AcuFile:
                                          coords={'id': [i], 'start_sample': ('id', [start_sample]),
                                                  'end_sample': ('id', [end_sample]), 'datetime': ('id', [time_bin]),
                                                  'frequency': fbands},
-                                         dims=['id', 'frequency'])
+                                         dims=['id', 'frequency']
+                                         )
             if i == 0:
                 da = da_levels
             else:
                 da = xarray.concat((da, da_levels), 'id')
-
+        da.attrs.update(units_attrs)
         ds = xarray.Dataset(data_vars={oct_str: da}, attrs=self._get_metadata_attrs())
         return ds
 
@@ -790,6 +795,8 @@ class AcuFile:
                 da = da_sxx
             else:
                 da = xarray.concat((da, da_sxx), 'id')
+        units_attrs = output_units.get_units_attrs(method_name='spectrogram_' + scaling, p_ref=self.p_ref, db=db)
+        da.attrs.update(units_attrs)
         ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
         return ds
 
@@ -853,6 +860,9 @@ class AcuFile:
                 ds = ds_bin
             else:
                 ds = xarray.concat((ds, ds_bin), 'id')
+        units_attrs = output_units.get_units_attrs(method_name='spectrum_' + scaling, db=db, p_ref=self.p_ref)
+        ds[spectrum_str].attrs.update(units_attrs)
+        ds['value_percentiles'].attrs.update({'units': '%', 'standard_name': 'percentiles'})
         ds.attrs = self._get_metadata_attrs()
         return ds
 
