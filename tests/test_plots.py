@@ -35,6 +35,7 @@ class TestPlots(unittest.TestCase):
     def setUp(self) -> None:
         self.ds = xarray.open_dataset('tests/test_data/test_day.nc')
         self.ds = self.ds.rename({'millidecade_bands': 'band_density', 'frequency_bins': 'frequency'})
+        self.ds = self.ds.where(self.ds.frequency > 10, drop=True)
         self.acu_file = AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
         self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
