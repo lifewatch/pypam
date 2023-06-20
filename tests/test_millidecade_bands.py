@@ -36,6 +36,7 @@ def millidecade_bands():
 def test_millidecade_bands(millidecade_bands, snapshot):
     # check data as pandas in dict format:
     data_frame = millidecade_bands.to_pandas()
+    data_frame.columns = data_frame.columns.to_numpy().round(6)
     out = data_frame.round(6).to_dict()
     assert out == snapshot(name="data-as-pandas-dict")
 
@@ -43,4 +44,4 @@ def test_millidecade_bands(millidecade_bands, snapshot):
     # assert millidecade_bands.data.tolist() == snapshot(name="data-as-list")
 
     # check coords:
-    assert millidecade_bands.coords.to_dataset().round(6).to_dict() == snapshot(name="coords")
+    assert millidecade_bands.coords.to_dataset().to_dataframe().round(6).to_dict() == snapshot(name="coords")
