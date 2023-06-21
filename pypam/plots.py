@@ -320,11 +320,12 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
 
     ax1.legend(loc='upper right')
     plt.subplots_adjust(wspace=0.05, hspace=0.01)
+    plt.tight_layout()
 
     if show:
         plt.show()
     if save_path is not None:
-        plt.savefig(save_path)
+        plt.savefig(save_path, pad_inches=0.01)
 
 
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
