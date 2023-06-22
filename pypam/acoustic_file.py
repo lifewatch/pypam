@@ -1087,12 +1087,14 @@ class AcuFile:
                 ds = xarray.concat((ds, separation_ds), 'id')
         return ds
 
-    def plot_psd(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_mean(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
         Parameters
         ----------
+        scaling : str
+            'density' or 'spectrum'
         db : boolean
             If set to True the result will be given in db. Otherwise in upa^2/Hz
         log : boolean
@@ -1101,27 +1103,29 @@ class AcuFile:
             Where to save the images
         **kwargs : any attribute valid on psd() function
         """
-        psd = self.psd(db=db, **kwargs)
-        plots.plot_spectrum(ds=psd, col_name='band_density', db=db, p_ref=self.p_ref, log=log,
-                            save_path=save_path)
+        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        plots.plot_spectrum_mean(ds=psd, col_name='band_' + scaling, db=db, p_ref=self.p_ref, log=log,
+                                 save_path=save_path)
 
-    def plot_power_spectrum(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
-        Plot the power spectrogram of all the file (units^2) re 1 V 1 upa
+        Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
         Parameters
         ----------
+        scaling : str
+            'density' or 'spectrum'
         db : boolean
             If set to True the result will be given in db. Otherwise in upa^2/Hz
         log : boolean
             If set to True the scale of the y axis is set to logarithmic
         save_path : string or Path
             Where to save the images
-        **kwargs : any attribute valid on power_spectrum() function
+        **kwargs : any attribute valid on psd() function
         """
-        power = self.power_spectrum(db=db, **kwargs)
-        plots.plot_spectrum(ds=power, col_name='band_spectrum', db=db, p_ref=self.p_ref,
-                            log=log, save_path=save_path)
+        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        plots.plot_spectrum_per_chunk(ds=psd, col_name='band_' + scaling, db=db, p_ref=self.p_ref, log=log,
+                                      save_path=save_path)
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
         """

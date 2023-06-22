@@ -18,7 +18,8 @@ class TestAcuFile(unittest.TestCase):
 
     @skip_unless_with_plots()
     def test_plots(self):
-        self.acu_file.plot_power_spectrum()
+        self.acu_file.plot_spectrum_per_chunk(scaling='density', db=True)
+        self.acu_file.plot_spectrum_mean(scaling='spectrum', db=True)
 
     def test_millidecade_bands(self):
         nfft = 8000
