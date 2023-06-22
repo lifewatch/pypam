@@ -539,7 +539,7 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
                              coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
                              dims=['frequency', 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
-    units_attrs = output_units.get_units_attrs(method_name='spd')
+    units_attrs = output_units.get_units_attrs(method_name='spd', log=False)
     spd_ds['spd'].attrs.update(units_attrs)
     return spd_ds
 

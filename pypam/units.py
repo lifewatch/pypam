@@ -8,6 +8,7 @@ LINEAR_UNITS = {'rms': ('L_rms', 'upa'),
                 'spectrum_density': ('PSD', 'uPa^2/Hz'),
                 'spectrum_spectrum': ('Spectrum level', 'uPa^2'),
                 'spd': ('empirical_probability_density', '%'),
+                'waveform': ('amplitude', 'upa'),
                 'aci': ('ACI', 'unitless'),
                 'bi': ('BI', 'unitless'),
                 'sh': ('SH', 'unitless'),
@@ -30,12 +31,7 @@ def logarithmic_units(method_name, p_ref):
     return name, log_unit
 
 
-def get_units(method_name, **kwargs):
-    log = True
-    if 'db' in kwargs.keys():
-        if not kwargs['db']:
-            log = False
-
+def get_units(method_name, log, **kwargs):
     if log:
         if 'p_ref' not in kwargs.keys():
             raise ValueError('Units cannot be given in db without specifying the p_ref argument. '

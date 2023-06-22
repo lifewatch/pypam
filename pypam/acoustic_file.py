@@ -481,7 +481,10 @@ class AcuFile:
                     sorted_bands = [band] + sorted_bands
                 else:
                     sorted_bands = sorted_bands + [band]
-
+        log = True
+        if 'db' in kwargs.keys():
+            if not kwargs['db']:
+                log = False
         # Define an empty dataset
         ds = xarray.Dataset()
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
@@ -497,7 +500,9 @@ class AcuFile:
                         print('There was an error in band %s, feature %s. Setting to None. '
                               'Error: %s' % (band, method_name, e))
                         output = None
-                    units_attrs = output_units.get_units_attrs(method_name=method_name, p_ref=self.p_ref, **kwargs)
+
+                    units_attrs = output_units.get_units_attrs(method_name=method_name, log=log,
+                                                               p_ref=self.p_ref, **kwargs)
                     methods_output[method_name] = xarray.DataArray([[output]], coords={'id': [i],
                                                                                        'datetime': ('id', [time_bin]),
                                                                                        'start_sample': ('id',
@@ -683,7 +688,7 @@ class AcuFile:
 
         # Create an empty dataset
         da = xarray.DataArray()
-        units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, db=db)
+        units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, log=db)
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
             signal.set_band(band, downsample=downsample)
             fbands, levels = signal.octave_levels(db, fraction)
@@ -795,7 +800,7 @@ class AcuFile:
                 da = da_sxx
             else:
                 da = xarray.concat((da, da_sxx), 'id')
-        units_attrs = output_units.get_units_attrs(method_name='spectrogram_' + scaling, p_ref=self.p_ref, db=db)
+        units_attrs = output_units.get_units_attrs(method_name='spectrogram_' + scaling, p_ref=self.p_ref, log=db)
         da.attrs.update(units_attrs)
         ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
         return ds
@@ -860,7 +865,7 @@ class AcuFile:
                 ds = ds_bin
             else:
                 ds = xarray.concat((ds, ds_bin), 'id')
-        units_attrs = output_units.get_units_attrs(method_name='spectrum_' + scaling, db=db, p_ref=self.p_ref)
+        units_attrs = output_units.get_units_attrs(method_name='spectrum_' + scaling, log=db, p_ref=self.p_ref)
         ds[spectrum_str].attrs.update(units_attrs)
         ds['value_percentiles'].attrs.update({'units': '%', 'standard_name': 'percentiles'})
         ds.attrs = self._get_metadata_attrs()
