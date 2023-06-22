@@ -17,7 +17,7 @@ f_ref = 1000
 
 
 @nb.njit
-def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.ndarray):
+def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
     """
     Return spd from the spectrogram
 
@@ -27,20 +27,14 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
         Spectrogram
     h : float
         Histogram bin width
-    percentiles : list or None
-        List of floats with all the percentiles to be computed
     bin_edges : numpy array
         Limits of the histogram bins
     """
     spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
-    p = np.zeros((sxx.shape[0], percentiles.size), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
         spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((sxx.shape[1]) * h)
-        cumsum = np.cumsum(spd[i, :])
-        for j in nb.prange(percentiles.size):
-            p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j] * cumsum[-1])]
 
-    return spd, p
+    return spd
 
 
 @nb.njit
@@ -528,11 +522,14 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
         max_val = pxx.max()
     # Calculate the bins of the psd values and compute spd using numba
     bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
-    spd, p = sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
+    spd = sxx2spd(sxx=pxx, h=h, bin_edges=bin_edges)
+
+    p = np.nanpercentile(pxx, 100 - np.array(percentiles), axis=1)
+
     spd_arr = xarray.DataArray(data=spd,
                                coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
                                dims=['frequency', 'spl'])
-    p_arr = xarray.DataArray(data=p,
+    p_arr = xarray.DataArray(data=p.T,
                              coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
                              dims=['frequency', 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
