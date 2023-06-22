@@ -621,7 +621,7 @@ class ASA:
         """
         power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
 
-        return plots.plot_spectrum_mean(ds=power, col_name='band_spectrum', log=log, save_path=save_path)
+        return plots.plot_spectrum_mean(ds=power, data_var='band_spectrum', log=log, save_path=save_path)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -671,7 +671,7 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        self._plot_ltsa(ds=psd_evolution, data_var='density', save_path=save_path)
+        self._plot_ltsa(ds=psd_evolution, data_var='band_density', save_path=save_path)
 
         return psd_evolution
 
@@ -692,7 +692,7 @@ class ASA:
         # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
         plots.plot_2d(ds[data_var], x='datetime', y='frequency', title='Long Term Spectrogram',
-                      cbar_label='%s [%s]' % (ds[data_var].standard_name, ds[data_var].units),
+                      cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units),
                       xlabel='Time', ylabel='Frequency [Hz]')
         plt.tight_layout()
         if save_path is not None:
