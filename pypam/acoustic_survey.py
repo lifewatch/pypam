@@ -533,12 +533,8 @@ class ASA:
         plt.figure()
         plt.plot(rms_evolution['rms'])
         plt.xlabel('Time')
-        if db:
-            units = r'db re 1V %s $\mu Pa$' % self.p_ref
-        else:
-            units = r'$\mu Pa$'
         plt.title('Evolution of the broadband rms value')  # Careful when filter applied!
-        plt.ylabel('rms [%s]' % units)
+        plt.ylabel('%s [%s]' % (rms_evolution['rms'].standard_name, rms_evolution['rms'].units))
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
@@ -558,15 +554,11 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
-        if db:
-            units = r'db re 1V %s $\mu Pa $' % self.p_ref
-        else:
-            units = r'$\mu Pa $'
-        self.plot_daily_patterns_from_ds(ds=rms_evolution, save_path=save_path, data_var='rms', units=units)
+        self.plot_daily_patterns_from_ds(ds=rms_evolution, save_path=save_path, data_var='rms')
 
     @staticmethod
     def plot_daily_patterns_from_ds(ds, save_path=None, ax=None, show=False,
-                                    data_var='rms', units=r'$\mu Pa $', interpolate=True, plot_kwargs=None):
+                                    data_var='rms', interpolate=True, plot_kwargs=None):
         """
         Plot the daily rms patterns
 
@@ -582,8 +574,6 @@ class ASA:
             Set to True to show directly
         data_var: str
             Name of the data variable to plot
-        units: str
-            Name of the units to show on the colorbar
         interpolate: bool
             Set to False if no interpolation is desired for the nan values
         """
@@ -605,7 +595,8 @@ class ASA:
             fig, ax = plt.subplots()
 
         xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
-                               cbar_kwargs={'label': units}, ax=ax, cmap='magma', **plot_kwargs)
+                               cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
+                               ax=ax, cmap='magma', **plot_kwargs)
         ax.set_ylabel('Hours of the day')
         ax.set_xlabel('Days')
         if save_path is not None:
@@ -630,8 +621,7 @@ class ASA:
         """
         power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
 
-        return plots.plot_spectrum_mean(ds=power, col_name='band_spectrum',
-                                        output_name='SPLrms', db=db, p_ref=self.p_ref, log=log, save_path=save_path)
+        return plots.plot_spectrum_mean(ds=power, col_name='band_spectrum', log=log, save_path=save_path)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -649,8 +639,7 @@ class ASA:
         """
         psd = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
 
-        return plots.plot_spectrum_mean(ds=psd, col_name='band_density',
-                                        output_name='PSD', db=db, p_ref=self.p_ref, log=log, save_path=save_path)
+        return plots.plot_spectrum_mean(ds=psd, data_var='band_density', log=log, save_path=save_path)
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
@@ -665,12 +654,7 @@ class ASA:
         **kwargs : Any accepted for the power spectrum method
         """
         power_evolution = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
-        self._plot_ltsa(ds=power_evolution, col_name='spectrum',
-                        output_name='SPLrms', units=units, save_path=save_path)
+        self._plot_ltsa(ds=power_evolution, data_var='band_spectrum', save_path=save_path)
 
         return power_evolution
 
@@ -687,17 +671,12 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2/Hz$'
-        self._plot_ltsa(ds=psd_evolution, col_name='density',
-                        output_name='PSD', units=units, save_path=save_path)
+        self._plot_ltsa(ds=psd_evolution, data_var='density', save_path=save_path)
 
         return psd_evolution
 
     @staticmethod
-    def _plot_ltsa(ds, col_name, output_name, units, save_path=None):
+    def _plot_ltsa(ds, data_var, save_path=None):
         """
         Plot the evolution of the ds containing percentiles and band values
 
@@ -705,19 +684,16 @@ class ASA:
         ----------
         ds : xarray DataSet
             Output of evolution
-        units : string
-            Units of the spectrum
-        col_name : string
+        data_var : string
             Column name of the value to plot. Can be 'density' or 'spectrum'
-        output_name : string
-            Name of the label. 'PSD' or 'SPLrms'
         save_path : string or Path
             Where to save the output graph. If None, it is not saved
         """
         # Plot the evolution
         # Extra axes for the colorbar and delete the unused one
-        plots.plot_2d(ds['band_' + col_name], x='datetime', y='frequency', title='Long Term Spectrogram',
-                      cbar_label='%s [%s]' % (output_name, units), xlabel='Time', ylabel='Frequency [Hz]')
+        plots.plot_2d(ds[data_var], x='datetime', y='frequency', title='Long Term Spectrogram',
+                      cbar_label='%s [%s]' % (ds[data_var].standard_name, ds[data_var].units),
+                      xlabel='Time', ylabel='Frequency [Hz]')
         plt.tight_layout()
         if save_path is not None:
             plt.savefig(save_path)
@@ -740,7 +716,7 @@ class ASA:
         **kwargs : Any accepted for the spd method
         """
         spd_ds = self.spd(db=db, **kwargs)
-        plots.plot_spd(spd_ds, db=db, log=log, save_path=save_path, p_ref=self.p_ref)
+        plots.plot_spd(spd_ds, log=log, save_path=save_path)
 
     def save(self, file_path):
         """

@@ -112,7 +112,7 @@ class TestASA(unittest.TestCase):
     @skip_unless_with_plots()
     def test_apply_to_all(self):
         self.asa.apply_to_all('plot_spectrogram')
-        self.asa.apply_to_all('plot_psd')
+        self.asa.apply_to_all('plot_spectrum_mean', scaling='density')
 
     def test_detect_piling_events(self):
         min_separation = 1

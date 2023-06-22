@@ -11,6 +11,8 @@ import pyhydrophone as pyhy
 from tests import skip_unless_with_plots, with_plots
 import matplotlib.pyplot as plt
 
+import pypam.units as output_units
+
 plt.rcParams.update(plt.rcParamsDefault)
 
 # Data information
@@ -35,6 +37,7 @@ class TestPlots(unittest.TestCase):
     def setUp(self) -> None:
         self.ds = xarray.open_dataset('tests/test_data/test_day.nc')
         self.ds = self.ds.rename({'millidecade_bands': 'band_density', 'frequency_bins': 'frequency'})
+        self.ds['band_density'].attrs.update(output_units.get_units_attrs('spectrum_density', log=True, p_ref=1.0))
         self.ds = self.ds.where(self.ds.frequency > 10, drop=True)
         self.acu_file = AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
         self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
@@ -51,14 +54,14 @@ class TestPlots(unittest.TestCase):
         pypam.plots.plot_spectrogram_per_chunk(ds_spectrogram=ds_spectrogram, show=True)
 
     @skip_unless_with_plots()
-    def plot_spectrum_per_chunk(self):
+    def test_plot_spectrum_per_chunk(self):
         psd = self.acu_file.psd()
-        pypam.plots.plot_spectrum(ds=psd, col_name='band_density')
+        pypam.plots.plot_spectrum_per_chunk(ds=psd, data_var='band_density')
 
     @skip_unless_with_plots()
     def test_plot_spectrum_mean(self):
         psd = self.asa.evolution_freq_dom('psd')
-        pypam.plots.plot_spectrum_mean(ds=psd, col_name='band_density', output_name='PSD', show=True)
+        pypam.plots.plot_spectrum_mean(ds=psd, data_var='band_density', show=True)
 
     @skip_unless_with_plots()
     def test_plot_hmb_ltsa(self):

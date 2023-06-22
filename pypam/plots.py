@@ -16,7 +16,7 @@ sns.set_style('ticks')
 sns.set_palette('colorblind')
 
 
-def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
+def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
     """
     Plot the SPD graph of the bin
 
@@ -24,10 +24,6 @@ def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=Tr
     ----------
     spd : xarray DataArray
         Data array with 2D data frequency-sound_pressure
-    db : boolean
-        If set to True the result will be given in db. Otherwise, in upa^2/Hz
-    p_ref : Float
-        Reference pressure in upa
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
@@ -42,16 +38,13 @@ def plot_spd(spd, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=Tr
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
-    if db:
-        units = r'dB %s $\mu Pa^2/Hz$' % p_ref
-    else:
-        units = r'$\mu Pa^2/Hz$'
     # Plot the EPD
     if ax is None:
         fig, ax = plt.subplots()
-    plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r', cbar_label='Empirical Probability Density', ax=ax,
-            ylabel='PSD [%s]' % units, xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0,
-            robust=False)
+    plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r',
+            cbar_label=r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
+            ax=ax, ylabel=r'%s [$%s$]' % (spd['spl'].standard_name, spd['spl'].units), xlabel='Frequency [Hz]',
+            title='Spectral Probability Density (SPD)', vmin=0, robust=False)
     if len(spd.percentiles) > 0:
         ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
                 label=spd['value_percentiles'].percentiles.values, linewidth=1)
