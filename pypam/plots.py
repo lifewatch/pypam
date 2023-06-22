@@ -111,7 +111,7 @@ def plot_spectrogram_per_chunk(ds_spectrogram, db=True, p_ref=1.0, log=True, sav
         plt.close()
 
 
-def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_path=None, show=True):
+def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
     """
     Plot the spectrums contained on the dataset
 
@@ -119,12 +119,8 @@ def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_pat
     ----------
     ds : xarray Dataset
         Dataset resultant from psd or power spectrum calculation
-    col_name : string
-        Name of the column where the data is (scaling type) 'spectrum' or 'density'
-    db : boolean
-        If set to True the result will be given in db. Otherwise in upa^2/Hz
-    p_ref : Float
-        Reference pressure in upa
+    data_var : string
+        Name of the data variable to use
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path: string or Path
@@ -136,24 +132,11 @@ def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_pat
     if log:
         xscale = 'log'
 
-    # TODO infer these units from the output dataset
-    if col_name == 'band_density':
-        if db:
-            units = r'$[dB %s \mu Pa^2/Hz]$' % p_ref
-        else:
-            units = r'$[\mu Pa^2/Hz]$'
-
-    else:  # col_name == 'band_spectrum':
-        if db:
-            units = r'$[dB %s \mu Pa^2]$' % p_ref
-        else:
-            units = r'$[\mu Pa^2]$'
-
     for id_n in ds.id:
-        ds_id = ds[col_name].sel(id=id_n)
+        ds_id = ds[data_var].sel(id=id_n)
         ds_id.plot.line(xscale=xscale)
         plt.xlabel('Frequency [Hz]')
-        plt.ylabel(units)
+        plt.ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
 
         # Plot the percentiles as horizontal lines
         plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
@@ -166,7 +149,7 @@ def plot_spectrum_per_chunk(ds, col_name, db=True, p_ref=1.0, log=True, save_pat
         plt.close()
 
 
-def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
+def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
     """
     Plot the mean spectrum
 
@@ -174,14 +157,8 @@ def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, 
     ----------
     ds : xarray DataSet
         Output of evolution
-    col_name : string
-        Column name of the value to plot. Can be 'density' or 'spectrum'
-    output_name : string
-        Name of the label. 'PSD' or 'SPLrms'
-    db : boolean
-        If set to True the result will be given in db. Otherwise in upa^2/Hz
-    p_ref : Float
-        Reference pressure in upa
+    data_var : string
+        Name of the data variable to use
     log : boolean
         If set to True, y axis in logarithmic scale
     save_path : string or Path
@@ -196,31 +173,18 @@ def plot_spectrum_mean(ds, col_name, output_name, db=True, p_ref=1.0, log=True, 
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
-    # TODO infer this from the ds itself
-    if col_name == 'band_density':
-        if db:
-            units = r'$dB %s \mu Pa^2/Hz$' % p_ref
-        else:
-            units = r'$\mu Pa^2/Hz$'
-
-    else:  # col_name == 'band_spectrum':
-        if db:
-            units = r'$dB %s \mu Pa^2$' % p_ref
-        else:
-            units = r'$\mu Pa^2$'
-
     if ax is None:
         fig, ax = plt.subplots()
 
-    sns.lineplot(x='frequency', y='value', ax=ax, data=ds[col_name].to_pandas().melt(), errorbar='sd')
+    sns.lineplot(x='frequency', y='value', ax=ax, data=ds[data_var].to_pandas().melt(), errorbar='sd')
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
         ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)
 
     ax.set_facecolor('white')
-    plt.title(col_name.replace('_', ' ').capitalize())
+    plt.title(data_var.replace('_', ' ').capitalize())
     plt.xlabel('Frequency [Hz]')
-    plt.ylabel('%s [%s]' % (output_name, units))
+    plt.ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
 
     if log:
         plt.xscale('log')

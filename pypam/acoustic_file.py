@@ -1119,8 +1119,7 @@ class AcuFile:
         **kwargs : any attribute valid on psd() function
         """
         psd = self._spectrum(db=db, scaling=scaling, **kwargs)
-        plots.plot_spectrum_mean(ds=psd, col_name='band_' + scaling, db=db, p_ref=self.p_ref, log=log,
-                                 save_path=save_path)
+        plots.plot_spectrum_mean(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
     def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
@@ -1139,8 +1138,7 @@ class AcuFile:
         **kwargs : any attribute valid on psd() function
         """
         psd = self._spectrum(db=db, scaling=scaling, **kwargs)
-        plots.plot_spectrum_per_chunk(ds=psd, col_name='band_' + scaling, db=db, p_ref=self.p_ref, log=log,
-                                      save_path=save_path)
+        plots.plot_spectrum_per_chunk(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
         """
