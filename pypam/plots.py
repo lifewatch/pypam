@@ -142,6 +142,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
         plt.close()
 
 
+
 def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
     """
     Plot the mean spectrum
@@ -170,6 +171,7 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
         fig, ax = plt.subplots()
 
     sns.lineplot(x='frequency', y='value', ax=ax, data=ds[data_var].to_pandas().melt(), errorbar='sd')
+
     if len(ds['percentiles']) > 0:
         # Add the percentiles values
         ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)

@@ -28,6 +28,7 @@ def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
     ----------
     sxx : numpy matrix
         Spectrogram
+        Spectrogram
     h : float
         Histogram bin width
     bin_edges : numpy array

@@ -1121,6 +1121,7 @@ class AcuFile:
         psd = self._spectrum(db=db, scaling=scaling, **kwargs)
         plots.plot_spectrum_mean(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
+
     def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
