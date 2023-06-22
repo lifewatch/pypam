@@ -16,6 +16,7 @@ import sklearn.metrics as metrics
 
 from pypam import acoustic_indices
 from pypam import utils
+from pypam import units as output_units
 
 # Apply the default theme
 plt.rcParams.update({'pcolor.shading': 'auto'})
@@ -942,25 +943,28 @@ class Signal:
         """
         s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
         if verbose:
-            _, _, sxx0 = self.spectrogram(nfft, db=True, force_calc=True)
+            db = True
+            label, units = output_units.get_units('spectrogram', log=db, p_ref=1.0)
+            label_a, units_a = output_units.get_units('amplitude', log=False)
+            _, _, sxx0 = self.spectrogram(nfft, db=db, force_calc=True)
             fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
             ax[0, 0].plot(self.times, self.signal)
             ax[0, 0].set_title('Signal')
-            ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
+            ax[0, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
             ax[0, 1].set_axis_off()
             im = ax[0, 1].pcolormesh(self.t, self.freq, sxx0, vmin=60, vmax=150, shading='auto', cmap='viridis')
-            plt.colorbar(im, cax=ax[0, 2], label=r'PSD [dB re 1 $\mu Pa^2 / Hz$]')
+            plt.colorbar(im, cax=ax[0, 2], label=r'%s [%s]' % (label, units))
             ax[0, 1].set_title('Spectrogram')
 
             self.signal = s
             _, _, sxx1 = self.spectrogram(nfft, db=True, force_calc=True)
             ax[1, 0].plot(self.times, s)
-            ax[1, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
+            ax[1, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
             ax[1, 0].set_xlabel('Time [s]')
             ax[1, 1].set_axis_off()
             ax[1, 1].set_xlabel('Time [s]')
             im = ax[1, 1].pcolormesh(self.t, self.freq, sxx1, vmin=60, vmax=150, shading='auto', cmap='viridis')
-            plt.colorbar(im, cax=ax[1, 2], label=r'PSD [dB re 1 $\mu Pa^2 / Hz$]')
+            plt.colorbar(im, cax=ax[1, 2], label=r'%s [%s]' % (label, units))
             plt.show()
             plt.close()
         else:
@@ -995,16 +999,14 @@ class Signal:
         """
         plt.rcParams.update(plt.rcParamsDefault)
         _, _, sxx = self.spectrogram(nfft=nfft, scaling=scaling, overlap=overlap, db=db, force_calc=force_calc)
-        if scaling == 'density':
-            label = r'PSD [dB re 1 $\mu Pa^2 / Hz$]'
-        elif scaling == 'spectrum':
-            label = r'Power Spectrum [dB re 1 $\mu Pa^2$]'
-        else:
-            raise Exception("Unknown value for scaling : " + scaling)
+
+        label, units = output_units.get_units('spectrum_' + scaling, log=db, p_ref=1.0)
+        label_a, units_a = output_units.get_units('amplitude', log=False)
+
         fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
         ax[0, 0].plot(self.times, self.signal, color='k', linewidth=1)
         ax[0, 0].set_title('Signal')
-        ax[0, 0].set_ylabel(r'Amplitude [$\mu Pa$]')
+        ax[0, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
         ax[0, 1].set_axis_off()
         if vmin is None:
             vmin = sxx.min()
