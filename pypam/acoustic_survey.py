@@ -654,7 +654,7 @@ class ASA:
         **kwargs : Any accepted for the power spectrum method
         """
         power_evolution = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
-        self._plot_ltsa(ds=power_evolution, data_var='band_spectrum', save_path=save_path)
+        plots.plot_ltsa(ds=power_evolution, data_var='band_spectrum', save_path=save_path)
 
         return power_evolution
 
@@ -671,35 +671,9 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        self._plot_ltsa(ds=psd_evolution, data_var='band_density', save_path=save_path)
+        plots.plot_ltsa(ds=psd_evolution, data_var='band_density', save_path=save_path)
 
         return psd_evolution
-
-    @staticmethod
-    def _plot_ltsa(ds, data_var, save_path=None):
-        """
-        Plot the evolution of the ds containing percentiles and band values
-
-        Parameters
-        ----------
-        ds : xarray DataSet
-            Output of evolution
-        data_var : string
-            Column name of the value to plot. Can be 'density' or 'spectrum'
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        """
-        # Plot the evolution
-        # Extra axes for the colorbar and delete the unused one
-        plots.plot_2d(ds[data_var], x='datetime', y='frequency', title='Long Term Spectrogram',
-                      cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units),
-                      xlabel='Time', ylabel='Frequency [Hz]')
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """

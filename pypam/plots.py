@@ -135,7 +135,6 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
         plt.close()
 
 
-
 def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
     """
     Plot the mean spectrum
@@ -185,21 +184,20 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
     return ax
 
 
-def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
+def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
     """
-    Plot the long-term spectrogram in hybrid millidecade bands
+    Plot the evolution of the ds containing percentiles and band values
+
     Parameters
     ----------
-    da_sxx : xarray DataArray
-        Spectrogram data
-    db : boolean
-        If set to True, output in db
-    p_ref : Float
-        Reference pressure in upa
+    ds : xarray DataSet
+        Output of evolution
+    data_var : string
+        Column name of the value to plot. Can be 'density' or 'spectrum' or 'millidecade_bands
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
-        Where to save the image
+        Where to save the output graph. If None, it is not saved
     ax : matplotlib.axes class or None
         ax to plot on
     show : boolean
@@ -210,18 +208,15 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None,
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
-
-    if db:
-        units = r'db re 1V %s $\mu Pa^2/Hz$' % p_ref
-    else:
-        units = r'$\mu Pa^2/Hz$'
-
     if ax is None:
         fig, ax = plt.subplots()
 
-    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='[%s]' % units, ax=ax, xlabel='Time',
+    # Plot the evolution
+    # Extra axes for the colorbar and delete the unused one
+    plot_2d(ds[data_var], x='datetime', y='frequency', ax=ax,
+            cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
-
+    plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path)
     if show:
