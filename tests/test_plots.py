@@ -64,12 +64,8 @@ class TestPlots(unittest.TestCase):
         pypam.plots.plot_spectrum_mean(ds=psd, data_var='band_density', show=True)
 
     @skip_unless_with_plots()
-    def test_plot_hmb_ltsa(self):
-        ds = self.ds.copy()
-        ds = ds.rename({'band_density': 'millidecade_bands', 'frequency': 'frequency_bins'})
-        ds = ds.swap_dims({'id': 'datetime'})
-        da = ds['millidecade_bands']
-        pypam.plots.plot_hmb_ltsa(da, show=True)
+    def test_plot_ltsa(self):
+        pypam.plots.plot_ltsa(ds=self.ds, data_var='band_density', show=True)
 
     @skip_unless_with_plots()
     def test_summary_plot(self):
@@ -79,3 +75,13 @@ class TestPlots(unittest.TestCase):
                                          min_val=40, max_val=130, location=[112.186, 36.713], show=True)
         pypam.plots.plot_summary_dataset(ds=self.ds, percentiles=pctlev,
                                          min_val=40, max_val=130, location=None, show=True)
+
+    @skip_unless_with_plots()
+    def test_plot_daily_patterns_from_ds(self):
+        ds = self.ds.mean(dim='frequency', keep_attrs=True)
+        pypam.plots.plot_daily_patterns_from_ds(ds=ds, data_var='band_density', show=True)
+
+    @skip_unless_with_plots()
+    def test_plot_rms_evolution(self):
+        rms_evolution = self.asa.evolution('rms', db=True)
+        pypam.plots.plot_rms_evolution(ds=rms_evolution, show=True)
