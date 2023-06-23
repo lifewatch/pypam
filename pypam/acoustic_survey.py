@@ -530,17 +530,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db)
-        plt.figure()
-        plt.plot(rms_evolution['rms'])
-        plt.xlabel('Time')
-        plt.title('Evolution of the broadband rms value')  # Careful when filter applied!
-        plt.ylabel('%s [%s]' % (rms_evolution['rms'].standard_name, rms_evolution['rms'].units))
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
+        plots.plot_rms_evolution(ds=rms_evolution, save_path=save_path)
 
     def plot_rms_daily_patterns(self, db=True, save_path=None):
         """

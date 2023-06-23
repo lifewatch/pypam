@@ -374,6 +374,43 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
     return ax
 
 
+def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
+    """
+    Plot the rms evolution
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process
+    save_path : string or Path
+        Where to save the image
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : boolean
+        Set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.plot(ds['rms'])
+    ax.set_xlabel('Time')
+
+    ax.set_title('Evolution of the broadband rms value')  # Careful when filter applied!
+    ax.set_ylabel(r'%s [%s]' % (ds['rms'].standard_name, ds['rms'].units))
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
+
+
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
     yscale = 'linear'
     if ylog:
