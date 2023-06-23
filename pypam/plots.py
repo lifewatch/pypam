@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import xarray
+import numpy as np
+import pandas as pd
 import seaborn as sns
 import pathlib
 import matplotlib.gridspec as gridspec
@@ -132,7 +134,6 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
             plt.savefig(save_path)
         if show:
             plt.show()
-        plt.close()
 
 
 def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
@@ -179,7 +180,6 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
         plt.savefig(save_path)
     if show:
         plt.show()
-    plt.close()
 
     return ax
 
@@ -221,7 +221,6 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
         plt.savefig(save_path)
     if show:
         plt.show()
-    plt.close()
 
     return ax
 
@@ -316,6 +315,63 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
         plt.show()
     if save_path is not None:
         plt.savefig(save_path, pad_inches=0.01)
+
+
+def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, ax=None,
+                                show=True, plot_kwargs=None):
+    """
+    Plot the daily rms patterns
+
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process. Should be an output of pypam, or similar structure
+    data_var : str
+        Name of the data variable to plot
+    interpolate: bool
+        Set to False if no interpolation is desired for the nan values
+    save_path : string or Path
+        Where to save the output graph. If None, it is not saved
+    ax : matplotlib.axes
+        Ax to plot on
+    show : bool
+        Set to True to show directly
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
+    daily_xr = ds.swap_dims(id='datetime')
+    daily_xr = daily_xr.sortby('datetime')
+
+    hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
+    date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values, hours_float.values],
+                                                  names=('date', 'time'))
+    daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
+
+    if interpolate:
+        daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
+                           cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
+                           ax=ax, cmap='magma', **plot_kwargs)
+    ax.set_ylabel('Hours of the day')
+    ax.set_xlabel('Days')
+
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
 
 
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):

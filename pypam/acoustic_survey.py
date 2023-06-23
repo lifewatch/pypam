@@ -554,56 +554,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
-        self.plot_daily_patterns_from_ds(ds=rms_evolution, save_path=save_path, data_var='rms')
-
-    @staticmethod
-    def plot_daily_patterns_from_ds(ds, save_path=None, ax=None, show=False,
-                                    data_var='rms', interpolate=True, plot_kwargs=None):
-        """
-        Plot the daily rms patterns
-
-        Parameters
-        ----------
-        ds: xarray DataSet
-            Dataset to process. Should be an output of pypam, or similar structure
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        ax : matplotlib.axes
-            Ax to plot on
-        show : bool
-            Set to True to show directly
-        data_var: str
-            Name of the data variable to plot
-        interpolate: bool
-            Set to False if no interpolation is desired for the nan values
-        """
-        if plot_kwargs is None:
-            plot_kwargs = {}
-        daily_xr = ds.swap_dims(id='datetime')
-        daily_xr = daily_xr.sortby('datetime')
-
-        hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
-        date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values,
-                                                       hours_float.values],
-                                                      names=('date', 'time'))
-        daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
-
-        if interpolate:
-            daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
-
-        if ax is None:
-            fig, ax = plt.subplots()
-
-        xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
-                               cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
-                               ax=ax, cmap='magma', **plot_kwargs)
-        ax.set_ylabel('Hours of the day')
-        ax.set_xlabel('Days')
-        if save_path is not None:
-            plt.tight_layout()
-            plt.savefig(save_path)
-        if show:
-            plt.show()
+        plots.plot_daily_patterns_from_ds(ds=rms_evolution, data_var='rms', save_path=save_path)
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
