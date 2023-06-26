@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import xarray
+import numpy as np
+import pandas as pd
 import seaborn as sns
 import pathlib
 import matplotlib.gridspec as gridspec
@@ -132,8 +134,6 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
             plt.savefig(save_path)
         if show:
             plt.show()
-        plt.close()
-
 
 
 def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
@@ -180,26 +180,24 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
         plt.savefig(save_path)
     if show:
         plt.show()
-    plt.close()
 
     return ax
 
 
-def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None, show=True):
+def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
     """
-    Plot the long-term spectrogram in hybrid millidecade bands
+    Plot the evolution of the ds containing percentiles and band values
+
     Parameters
     ----------
-    da_sxx : xarray DataArray
-        Spectrogram data
-    db : boolean
-        If set to True, output in db
-    p_ref : Float
-        Reference pressure in upa
+    ds : xarray DataSet
+        Output of evolution
+    data_var : string
+        Column name of the value to plot. Can be 'density' or 'spectrum' or 'millidecade_bands
     log : boolean
         If set to True the scale of the y axis is set to logarithmic
     save_path : string or Path
-        Where to save the image
+        Where to save the output graph. If None, it is not saved
     ax : matplotlib.axes class or None
         ax to plot on
     show : boolean
@@ -210,23 +208,19 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=True, save_path=None, ax=None,
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
-
-    if db:
-        units = r'db re 1V %s $\mu Pa^2/Hz$' % p_ref
-    else:
-        units = r'$\mu Pa^2/Hz$'
-
     if ax is None:
         fig, ax = plt.subplots()
 
-    plot_2d(ds=da_sxx, x='datetime', y='frequency_bins', cbar_label='[%s]' % units, ax=ax, xlabel='Time',
+    # Plot the evolution
+    # Extra axes for the colorbar and delete the unused one
+    plot_2d(ds[data_var], x='datetime', y='frequency', ax=ax,
+            cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
-
+    plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path)
     if show:
         plt.show()
-    plt.close()
 
     return ax
 
@@ -321,6 +315,100 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
         plt.show()
     if save_path is not None:
         plt.savefig(save_path, pad_inches=0.01)
+
+
+def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, ax=None,
+                                show=True, plot_kwargs=None):
+    """
+    Plot the daily rms patterns
+
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process. Should be an output of pypam, or similar structure
+    data_var : str
+        Name of the data variable to plot
+    interpolate: bool
+        Set to False if no interpolation is desired for the nan values
+    save_path : string or Path
+        Where to save the output graph. If None, it is not saved
+    ax : matplotlib.axes
+        Ax to plot on
+    show : bool
+        Set to True to show directly
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
+    daily_xr = ds.swap_dims(id='datetime')
+    daily_xr = daily_xr.sortby('datetime')
+
+    hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
+    date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values, hours_float.values],
+                                                  names=('date', 'time'))
+    daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
+
+    if interpolate:
+        daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
+                           cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
+                           ax=ax, cmap='magma', **plot_kwargs)
+    ax.set_ylabel('Hours of the day')
+    ax.set_xlabel('Days')
+
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
+
+
+def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
+    """
+    Plot the rms evolution
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process
+    save_path : string or Path
+        Where to save the image
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : boolean
+        Set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.plot(ds['rms'])
+    ax.set_xlabel('Time')
+
+    ax.set_title('Evolution of the broadband rms value')  # Careful when filter applied!
+    ax.set_ylabel(r'%s [%s]' % (ds['rms'].standard_name, ds['rms'].units))
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
 
 
 def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
