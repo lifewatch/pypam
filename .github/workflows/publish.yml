@@ -28,5 +28,5 @@ jobs:
       with:
         pypi_token: ${{ secrets.PYPI_TOKEN }}
       env:
-        repository_name: ${{ steps.check-tag.outputs.valid_tag == 'true' && 'testpypi' || '' }}
-        repository_url: ${{ steps.check-tag.outputs.valid_tag == 'true' && 'https://test.pypi.org/legacy/' || '' }}
+        repository_name: ${{ steps.check-tag.outputs.test_tag == 'true' && 'testpypi' || '' }}
+        repository_url: ${{ steps.check-tag.outputs.test_tag == 'true' && 'https://test.pypi.org/legacy/' || '' }}
