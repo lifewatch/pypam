@@ -37,8 +37,13 @@ coverage.xml
 result_images
 
 # Sphinx documentation
-doc/_build/
+docs/_build/
 .buildinfo
+docs/generated
+docs/_autosummary
+docs/_auto_examples
+docs/_auto_examples/**
+
 
 # Jupyter Notebook
 .ipynb_checkpoints
