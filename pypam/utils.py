@@ -693,7 +693,7 @@ def bin_aggregation(ds, data_var, band=None, freq='D'):
     Parameters
     ----------
     ds : xarray Dataset
-        Dataset to process
+        Dataset to process, has to have datetime as coords, not id
     data_var : str
         Name of the data variable to select datetime
     band : None, float or tuple
