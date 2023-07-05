@@ -3,7 +3,12 @@ pypam is a python package to analyze underwater sound.
 It is made to make easier the processing of underwater data stored in *.wav files. 
 The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a wav file together 
 with all the metadata needed to process the data (such as hydrophone used). The second one is the representation of a
-folder where all the files are stored. The Dataset is a combination of different AcousticSurveys in one dataset.
+folder where all the files are stored for one deployment. Here we consider a deployment deployment was defined as a 
+measurement interval corresponding to the time when a hydrophone was in the water, 
+without changing any recording parameters.
+The Dataset is a combination of different AcousticSurveys in one dataset. This is to be used if the user has made 
+several deployments and wants to process them with the same parameters.
+
 Then pypam allows to go through all the wav files from the deployments only with one line of code. 
 
 All the documentation can be found on [readthedocs](https://lifewatch-pypam.readthedocs.io)
@@ -29,12 +34,12 @@ All the documentation can be found on [readthedocs](https://lifewatch-pypam.read
     poetry build
     ```
 
+## News from version 0.2.0
+In version 0.2.0 we removed the detectors, because there are better maintained packages for these purposes. 
+
 ## Usage
 pypam can be used to analyze a single file, a folder with files or a group of different deployments.
 The available methods and features are: 
-- Events detection: 
-  - Ship detection 
-  - Pile driving detection 
 - Acoustic Indices: 
   - ACI 
   - BI 
@@ -55,8 +60,7 @@ The available methods and features are:
   - correlation coefficient
 - Frequency domain 
   - spectrogram (also octave bands spectrogram)
-  - spectrum
-  - spectral probability density (SPD)
+  - spectrum (density or power)
   - 1/n-octave bands
   - hybrid millidecade bands
 - Plots
@@ -72,31 +76,64 @@ The available methods and features are:
 - Other 
     - Calibration signal detection (and recalibration of the signal)
    
-pypam allows the user to choose a window bin size (in seconds), so all the features / methodologies are applied to that
-window. If set to None, the operations are performed along an entire file.
+pypam allows the user to choose a window chunk size (parameter binsize, in seconds), so all the features / methods 
+are applied to that window. If set to None, the operations are performed along an entire file.
 
-### Acoustic analysis
+
+### General structure 
+First, we need to define our metadata by defining the hydrophone used, using 
+[pyhydrophone](https://github.com/lifewatch/pyhydrophone). Check the docs of pyhydrophone to know the specific parameters needed for your hydrophone.
+
 ```python
 import pyhydrophone as pyhy
-from pypam import acoustic_survey
 
 # SoundTrap
-model = 'ST300HF'
+model = 'SoundTrap 300 STD'
 name = 'SoundTrap'
 serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+```
+
+### Acoustic File (acoustic_file.AcuFile)
+```python
+from pypam import acoustic_file
+
+acu_file = acoustic_file.AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
+acu_file.plot_power_spectrum()
+
+nfft = 8000  # Set to the same as sampling rate (or higher band limit, when downsampling) for 1s time resolution 
+acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
+                                               method='density', band=None)
+```
+
+### Acoustic Survey (acoustic_survey.ASA) 
+For example, to obtain several features on a certain binsize, at three different frequency bands:
+```python
+from pypam import acoustic_survey
 
 # Analysis parameters
 features = ['rms', 'sel', 'peak', 'aci']
 band_list = [[10, 100], [500, 1000], [500, 100000]]
+binsize = 60.0
+
+asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
+features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
+```
+
+Another example would be to obtain the third octave bands:
+```python
+from pypam import acoustic_survey
+
+# Analysis parameters
+binsize = 60.0
 third_octaves = None  # Calculate third octaves for the entire freq range
 
-asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=60.0)
-features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
+asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
 oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 ```
 
-### Acoustic Dataset
+
+### Acoustic Dataset (dataset.Dataset)
 To create an acoustic dataset made out of several deployments (with different metadata), first it is necessary to 
 create a csv file where each row is a deployment. You can find an example in docs/data_summary_example.csv. There is 
 also a test file in tests/test_data/data_summary.csv. 
@@ -156,40 +193,52 @@ upam = pyhy.uPam(name=upam_name, model=upam_name, serial_number=upam_serial_numb
 
 instruments = {'SoundTrap': soundtrap, 'uPam': upam, 'B&K': bk}
 
-# Acoustic params. Reference pressure 1 uPa
-REF_PRESSURE = 1e-6
-
 # SURVEY PARAMETERS
 nfft = 4096
+fft_overlap = 0.5
 binsize = 60.0
+bin_overlap = 0.0
 overlap = 0.5
 dc_subtract = False
 band_lf = [50, 500]
-band_mf = [500, 2000]
-band_hf = [2000, 20000]
 band_list = [band_lf]
 temporal_features = ['rms', 'sel', 'aci']
 frequency_features = ['third_octaves_levels']
 
-n_join_bins = 3
-
 # Create the dataset object
 ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
                            frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                           nfft=nfft, overlap=overlap, dc_subtract=dc_subtract, n_join_bins=n_join_bins)
+                           bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
 
 # Call the dataset creation. Will create the files in the corresponding folder
 ds()
 ```
 
-# TODO 
+## Plots 
+There are functions to plot compute and plot in one-go, such as: 
+
+```python
+h_db = 1
+percentiles = [1, 10, 50, 90, 95]
+min_val = 60
+max_val = 140
+
+# ASA defined before
+asa.plot_spd(db=True, h=h_db, percentiles=percentiles, min_val=min_val, max_val=max_val)
+```
+
+But there is also the module plots, which allows to pass the saved *.nc files to produce plots. 
+
+
+# Under development 
 Planned:
 - Add function to generate files per included folder (too big deployments)
-- Add options for the user to choose what to do when the blocksize is not multiple of the frames, and to deal with time 
-- keeping
-- Add Long Term Spectrograms (LTSA)
+- Add options for the user to choose what to do when the blocksize is not multiple of the frames, 
+and to deal with time keeping
 - Add a logger that logs the code that was run and the warnings together with the output
-- Add deep learning features (vggish and compatibility with koogu)
+- Add deep learning features (vggish and compatibility with koogu and AVES)
+- Add parallel processing options 
+- Add support for frequency calibration
    
 
 ## Cite
