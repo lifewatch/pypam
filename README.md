@@ -3,9 +3,8 @@ pypam is a python package to analyze underwater sound.
 It is made to make easier the processing of underwater data stored in *.wav files. 
 The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a wav file together 
 with all the metadata needed to process the data (such as hydrophone used). The second one is the representation of a
-folder where all the files are stored for one deployment. Here we consider a deployment deployment was defined as a 
-measurement interval corresponding to the time when a hydrophone was in the water, 
-without changing any recording parameters.
+folder where all the files are stored for one deployment. Here we consider a deployment as a measurement interval 
+corresponding to the time when a hydrophone was in the water, without changing any recording parameters.
 The Dataset is a combination of different AcousticSurveys in one dataset. This is to be used if the user has made 
 several deployments and wants to process them with the same parameters.
 
@@ -14,9 +13,9 @@ Then pypam allows to go through all the wav files from the deployments only with
 All the documentation can be found on [readthedocs](https://lifewatch-pypam.readthedocs.io)
 
 ## Installation
-# Using pip distribution 
-```
-    pip install lifewatch-pypam
+### Using pip distribution 
+```bash
+pip install lifewatch-pypam
 ```
 
 ### Using git clone
@@ -50,7 +49,7 @@ The available methods and features are:
   - ADI 
   - Zero crossing (average)
   - BN peaks 
-- Features: 
+- time-domain features: 
   - rms 
   - dynamic_range
   - sel
@@ -58,27 +57,28 @@ The available methods and features are:
   - rms_envelope
   - spectrum_slope
   - correlation coefficient
-- Frequency domain 
+- frequency-domain 
   - spectrogram (also octave bands spectrogram)
   - spectrum (density or power)
   - 1/n-octave bands
   - hybrid millidecade bands
-- Plots
-  - Signal and spectrogram 
-  - Spectrum evolution 
-  - SPD 
+  - long-term spectrogram
+- time and frequency 
+  - SPD
+
+   
+pypam allows the user to choose a window chunk size (parameter binsize, in seconds), so all the features / methods 
+are applied to that window. If set to None, the operations are performed along an entire file.
+
+Futheremore, there are several plotting functions available and some signal-based operations:
 - Signal operations
    - Noise reduction 
    - Downsample 
    - Band filter 
    - Envelope
    - DC noise removal
-- Other 
-    - Calibration signal detection (and recalibration of the signal)
-   
-pypam allows the user to choose a window chunk size (parameter binsize, in seconds), so all the features / methods 
-are applied to that window. If set to None, the operations are performed along an entire file.
 
+pypam deals with the calibration directly, so the output obtained is already in uPa or db! 
 
 ### General workflow 
 First, we need to define our metadata by defining the hydrophone used, using 
@@ -251,6 +251,7 @@ and to deal with time keeping
 - Add deep learning features (vggish and compatibility with koogu and AVES)
 - Add parallel processing options 
 - Add support for frequency calibration
+- Support for reading detections 
    
 
 ## Cite
