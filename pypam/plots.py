@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import xarray
 import numpy as np
 import pandas as pd
@@ -401,6 +402,52 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
 
     ax.set_title('Evolution of the broadband rms value')  # Careful when filter applied!
     ax.set_ylabel(r'%s [%s]' % (ds['rms'].standard_name, ds['rms'].units))
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
+
+
+def plot_aggregation_evolution(ds, data_var, mode, save_path=None, ax=None, show=True):
+    """
+    Plot the aggregation evolution with boxplot or violin, the limits of the box are Q1 and Q3
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process
+    data_var : str
+        Name of the data variable to plot
+    mode : str
+        'boxplot' or 'violin'
+    save_path : string or Path
+        Where to save the image
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : boolean
+        Set to True to show the plot
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    df_plot = ds.to_dataframe()
+    if mode == 'boxplot':
+        sns.boxplot(data=df_plot, x='time', y=data_var, whis=2.5, color='steelblue')
+    if mode == 'violin':
+        sns.violinplot(data=df_plot, x='time', y=data_var, color='steelblue')
+
+    ax.set_xlabel('Time')
+    ax.set_ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
+    plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+    plt.xticks(rotation=45)
     plt.tight_layout()
 
     if save_path is not None:
