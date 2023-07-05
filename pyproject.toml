@@ -55,6 +55,7 @@ docs = ["sphinx"]
 sphinx = "6.1.2"
 numpydoc = "^1.5.0"
 sphinx-rtd-theme = "^1.2.2"
+sphinx-gallery = "^0.13.0"
 
 [build-system]
 requires = ["setuptools","poetry"]

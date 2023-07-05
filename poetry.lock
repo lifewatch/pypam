@@ -2599,6 +2599,20 @@ lint = ["docutils-stubs", "flake8 (>=3.5.0)", "flake8-simplify", "isort", "mypy 
 test = ["cython", "html5lib", "pytest (>=4.6)"]
 
 [[package]]
+name = "sphinx-gallery"
+version = "0.13.0"
+description = "A `Sphinx <https://www.sphinx-doc.org/en/master/>`_ extension that builds an HTML gallery of examples from any set of Python scripts."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "sphinx-gallery-0.13.0.tar.gz", hash = "sha256:4756f92e079128b08cbc7a57922cc904b3d442b1abfa73ec6471ad24f3c5b4b2"},
+    {file = "sphinx_gallery-0.13.0-py3-none-any.whl", hash = "sha256:5bedfa4998b4158d5affc7d1df6796e4b1e834b16680001dac992af1304d8ed9"},
+]
+
+[package.dependencies]
+sphinx = ">=4"
+
+[[package]]
 name = "sphinx-rtd-theme"
 version = "1.2.2"
 description = "Read the Docs theme for Sphinx"
@@ -2999,4 +3013,4 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "9f61f95116e6b6b2f4522960708ea962484b9721e3e33122b16554805279f0d2"
+content-hash = "4758c835d73a6fec865e8349fef50c0681c6a3ad131cf40cc4b7862504abdc01"
