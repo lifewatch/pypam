@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Dataset
+====================
+
+This script is an example to process a DataSet class and save the output
+
+"""
+
 import pathlib
 
 import pyhydrophone as pyhy

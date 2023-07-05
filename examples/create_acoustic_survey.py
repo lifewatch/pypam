@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Acoustic Survey
+====================
+
+This script is an example to compute temporal features and third octave levels on an Acoustic Survey
+"""
+
 import pyhydrophone as pyhy
 import pypam
 

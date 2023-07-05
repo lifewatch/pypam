@@ -1,0 +1,1 @@
+.. autoclass:: pypam.acoustic_survey.ASA

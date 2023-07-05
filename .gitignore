@@ -39,10 +39,10 @@ result_images
 # Sphinx documentation
 docs/_build/
 .buildinfo
-docs/generated
 docs/_autosummary
-docs/_auto_examples
-docs/_auto_examples/**
+docs/source/_auto_examples/
+docs/source/_auto_examples/**
+docs/source/generated/
 
 
 # Jupyter Notebook

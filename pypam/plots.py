@@ -1,3 +1,21 @@
+"""
+Plots
+=====
+
+The module ``plots`` is an ensemble of functions to plot `pypam` output's in different ways
+
+
+.. autosummary::
+    :toctree: generated/
+
+    plot_spd
+    plot_spectrograms
+    plot_spectrum
+    plot_spectrum_mean
+    plot_hmb_ltsa
+
+"""
+
 import matplotlib.pyplot as plt
 import xarray
 import seaborn as sns
@@ -170,6 +188,7 @@ def plot_spectrum_mean(ds, units, col_name, output_name, save_path=None, log=Tru
 def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=False):
     """
     Plot the long-term spectrogram in hybrid millidecade bands
+
     Parameters
     ----------
     da_sxx : xarray DataArray
@@ -184,6 +203,7 @@ def plot_hmb_ltsa(da_sxx, db=True, p_ref=1.0, log=False, save_path=None, show=Fa
         Where to save the image
     show : boolean
         Set to True to show the plot
+
     """
 
     if db:

@@ -1,4 +1,0 @@
-.. currentmodule:: pypam
-
-Examples
-========

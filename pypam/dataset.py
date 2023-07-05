@@ -1,3 +1,9 @@
+__author__ = "Clea Parcerisas"
+__version__ = "0.1"
+__credits__ = "Clea Parcerisas"
+__email__ = "clea.parcerisas@vliz.be"
+__status__ = "Development"
+
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -11,39 +17,38 @@ from pypam import utils
 
 
 class DataSet:
+    """A DataSet object is a representation of a group of acoustic deployments.
+    It allows to calculate all the acoustic features from all the deployments and store them in a structured way
+    in the output folder. The structure is as follows:
+
+    - output_folder
+    - output_folder/deployments: a `*.nc` (netCDF) file for each deployment
+    - output_folder/detections: files resulting of the events detections. One folder per detection type
+    - output_folder/img: graphs and figures
+    - output_folder/img/temporal_features : temporal evolution of all features per deployment
+    - output_folder/img/data_overview : spatial and temporal coverage, and methods used
+    - output_folder/img/features_analysis : still to be discussed
+    - output_folder/img/spatial_features : spatial distribution of features
+
+    Parameters
+    ----------
+    summary_path : string or Path
+        Path to the csv file where all the metadata of the deployments is
+    output_folder : string or Path
+        Where to save the output files (`*.nc`) of the deployments with the processed data
+    instruments : dictionary of (name,  instrument_object) entries
+        A dictionary of all the instruments used in the deployments
+    temporal_features : list of strings
+        A list of all the features to be calculated
+    bands_list : list of tuples
+        A list of all the bands to consider (low_freq, high_freq)
+    frequency_features : list of strings
+        List of all the frequency features to compute
+    binsize : float
+        In seconds, duration of windows to consider
+    nfft : int
+        Number of samples of window to use for frequency analysis
     """
-     A DataSet object is a representation of a group of acoustic deployments.
-     It allows to calculate all the acoustic features from all the deployments and store them in a structured way
-     in the output folder. The structure is as follows:
-     output_folder
-       - deployments : a *.nc (netcdf) file for each deployment
-       - detections : files resulting of the events detections. One folder per detection type
-       - img : graphs and figures
-         - temporal_features : temporal evolution of all features per deployment
-         - data_overview : spatial and temporal coverage, and methods used
-         - features_analysis : still to be discussed
-         - spatial_features : spatial distribution of features
-
-     Parameters
-     ----------
-     summary_path : string or Path
-         Path to the csv file where all the metadata of the deployments is
-     output_folder : string or Path
-         Where to save the output files (nc) of the deployments with the processed data
-     instruments : dictionary of (name,  instrument_object) entries
-         A dictionary of all the instruments used in the deployments
-     temporal_features : list of strings
-         A list of all the features to be calculated
-     bands_list : list of tuples
-         A list of all the bands to consider (low_freq, high_freq)
-     frequency_features : list of strings
-         List of all the frequency features to compute
-     binsize : float
-         In seconds, duration of windows to consider
-     nfft : int
-         Number of samples of window to use for frequency analysis
-     """
-
     def __init__(self, summary_path, output_folder, instruments, temporal_features=None, frequency_features=None,
                  bands_list=None, binsize=60.0, bin_overlap=0.0, nfft=512, fft_overlap=0, dc_subtract=False):
         self.metadata = pd.read_csv(summary_path)
