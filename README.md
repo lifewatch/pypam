@@ -80,7 +80,7 @@ pypam allows the user to choose a window chunk size (parameter binsize, in secon
 are applied to that window. If set to None, the operations are performed along an entire file.
 
 
-### General structure 
+### General workflow 
 First, we need to define our metadata by defining the hydrophone used, using 
 [pyhydrophone](https://github.com/lifewatch/pyhydrophone). Check the docs of pyhydrophone to know the specific parameters needed for your hydrophone.
 
@@ -94,7 +94,9 @@ serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
 ```
 
-### Acoustic File (acoustic_file.AcuFile)
+Then, we need to process either a Signal, AcuFile or ASA: 
+
+#### Acoustic File (acoustic_file.AcuFile)
 ```python
 from pypam import acoustic_file
 
@@ -106,7 +108,7 @@ acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=0.5, binsize=None, bin_
                                                method='density', band=None)
 ```
 
-### Acoustic Survey (acoustic_survey.ASA) 
+#### Acoustic Survey (acoustic_survey.ASA) 
 For example, to obtain several features on a certain binsize, at three different frequency bands:
 ```python
 from pypam import acoustic_survey
@@ -132,8 +134,18 @@ asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', 
 oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
 ```
 
+#### Save the output 
+Finally, the output can be saved as a netCDF file. The output should contain all the metadata necessary to reproduce 
+the results, such as all the metadata passed to the functions. 
+
+The saved files can afterwards be loaded in pypam to produce plots.
+
+```python
+oct_ds.to_netcdf('path_to_the_file.nc')
+```
 
 ### Acoustic Dataset (dataset.Dataset)
+Alternatively, we can process several deployments at once using the Dataset class.
 To create an acoustic dataset made out of several deployments (with different metadata), first it is necessary to 
 create a csv file where each row is a deployment. You can find an example in docs/data_summary_example.csv. There is 
 also a test file in tests/test_data/data_summary.csv. 
