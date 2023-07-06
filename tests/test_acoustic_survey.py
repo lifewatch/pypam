@@ -152,10 +152,6 @@ class TestASA(unittest.TestCase):
         self.asa.plot_rms_evolution()
 
     @skip_unless_with_plots()
-    def test_plot_daily_patterns(self):
-        self.asa.plot_rms_daily_patterns()
-
-    @skip_unless_with_plots()
     def test_plot_millidecade_bands(self):
         # Set the frequency resolution to 1 Hz and the duration of 1 second
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='spectrum', band=[0, 4000], percentiles=None)
