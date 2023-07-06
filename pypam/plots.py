@@ -9,10 +9,12 @@ The module ``plots`` is an ensemble of functions to plot `pypam` output's in dif
     :toctree: generated/
 
     plot_spd
-    plot_spectrograms
-    plot_spectrum
     plot_spectrum_mean
-    plot_hmb_ltsa
+    plot_ltsa
+    plot_summary_dataset
+    plot_daily_patterns_from_ds
+    plot_rms_evolution
+    plot_aggregation_evolution
 
 """
 
@@ -252,7 +254,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     colorbar showing the day/night patterns
 
     Parameters
-    ---------
+    ----------
     ds: xarray Dataset
         dataset output of pypam
     data_var: string
@@ -408,6 +410,7 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
 def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
     """
     Plot the rms evolution
+
     Parameters
     ----------
     ds : xarray DataSet
@@ -445,6 +448,7 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
 def plot_aggregation_evolution(ds, data_var, mode, save_path=None, ax=None, show=True):
     """
     Plot the aggregation evolution with boxplot or violin, the limits of the box are Q1 and Q3
+
     Parameters
     ----------
     ds : xarray DataSet

@@ -20,6 +20,7 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, sensitivity=-172.8,
 
 # %%
 # Set the study parameters
+
 # First, decide band to study. The top frequency should not be higher than the nyquist frequency (sampling rate/2)
 band = [0, 4000]
 
