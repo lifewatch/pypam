@@ -89,3 +89,12 @@ class TestPlots(unittest.TestCase):
     def test_plot_rms_evolution(self):
         rms_evolution = self.asa.evolution('rms', db=True)
         pypam.plots.plot_rms_evolution(ds=rms_evolution, show=True)
+
+    @skip_unless_with_plots()
+    def test_plot_aggregation_evolution(self):
+        self.ds = self.ds.swap_dims({'id': 'datetime'})
+        ds_one_freq = pypam.utils.bin_aggregation(ds=self.ds, data_var='band_density', band=1000, freq='H')
+        ds_band = pypam.utils.bin_aggregation(ds=self.ds, data_var='band_density', band=(100, 10000), freq='H')
+        pypam.plots.plot_aggregation_evolution(ds=ds_one_freq, data_var='band_density', mode='violin', show=True)
+        pypam.plots.plot_aggregation_evolution(ds=ds_band, data_var='band_density', mode='violin', show=True)
+
