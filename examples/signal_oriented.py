@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Signal
-======
+Signal oriented processing
+==========================
 
 This script is an example to use a lower level of pypam by directly working with the Signal class, and computing
 the hybrid millidecade bands for it.
