@@ -36,7 +36,7 @@ binsize = 60.0
 include_dirs = False
 zipped_files = False
 dc_subtract = True
-asa = pypam.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=binsize, nfft=nfft,
+asa = pypam.ASA(hydrophone=soundtrap, folder_path='./tests/test_data', binsize=binsize, nfft=nfft,
                 timezone='UTC', include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
 # Compute the hybrid millidecade bands
@@ -44,6 +44,9 @@ asa = pypam.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsiz
 milli_psd = asa.hybrid_millidecade_bands(db=True, method='density',
                                          band=band,
                                          percentiles=None)
+print(milli_psd['millidecade_bands'])
 
 # Now, with the obtained hybrid millidecade bands, make some plots
-pypam.plots.plot_spd(milli_psd)
+milli_psd = milli_psd.drop_vars(['band_density', 'frequency'])
+milli_psd = milli_psd.rename({'frequency_bins': 'frequency'})
+pypam.plots.plot_spectrum_mean(milli_psd, data_var='millidecade_bands')
