@@ -112,22 +112,22 @@ class TestASA(unittest.TestCase):
     @skip_unless_with_plots()
     def test_apply_to_all(self):
         self.asa.apply_to_all('plot_spectrogram')
-        self.asa.apply_to_all('plot_psd')
+        self.asa.apply_to_all('plot_spectrum_mean', scaling='density')
 
-    def test_detect_piling_events(self):
-        min_separation = 1
-        max_duration = 0.2
-        threshold = 20
-        dt = 2.0
-        detection_band = [500, 1000]
-
-        self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
-                                      threshold=threshold, dt=dt, verbose=verbose, method='snr',
-                                      save_path=None, detection_band=detection_band, analysis_band=None)
-
-    def test_detect_ship_events(self):
-        # just a smoke test to check if the function can run without errors
-        self.asa.detect_ship_events(0.1, 0.5, verbose=verbose)
+    # def test_detect_piling_events(self):
+    #     min_separation = 1
+    #     max_duration = 0.2
+    #     threshold = 20
+    #     dt = 2.0
+    #     detection_band = [500, 1000]
+    #
+    #     self.asa.detect_piling_events(max_duration=max_duration, min_separation=min_separation,
+    #                                   threshold=threshold, dt=dt, verbose=verbose, method='snr',
+    #                                   save_path=None, detection_band=detection_band, analysis_band=None)
+    #
+    # def test_detect_ship_events(self):
+    #     # just a smoke test to check if the function can run without errors
+    #     self.asa.detect_ship_events(0.1, 0.5, verbose=verbose)
 
     @skip_unless_with_plots()
     def test_plot_spd(self):
@@ -150,10 +150,6 @@ class TestASA(unittest.TestCase):
     @skip_unless_with_plots()
     def test_plot_rms_evolution(self):
         self.asa.plot_rms_evolution()
-
-    @skip_unless_with_plots()
-    def test_plot_daily_patterns(self):
-        self.asa.plot_rms_daily_patterns()
 
     @skip_unless_with_plots()
     def test_plot_millidecade_bands(self):

@@ -50,12 +50,14 @@ import pandas as pd
 import pathlib
 from tqdm import tqdm
 
+from pypam import units as output_units
+
 G = 10.0 ** (3.0 / 10.0)
 f_ref = 1000
 
 
 @nb.njit
-def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.ndarray):
+def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
     """
     Return spd from the spectrogram
 
@@ -65,20 +67,14 @@ def sxx2spd(sxx: np.ndarray, h: float, percentiles: np.ndarray, bin_edges: np.nd
         Spectrogram
     h : float
         Histogram bin width
-    percentiles : list or None
-        List of floats with all the percentiles to be computed
     bin_edges : numpy array
         Limits of the histogram bins
     """
     spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
-    p = np.zeros((sxx.shape[0], percentiles.size), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
         spd[i, :] = np.histogram(sxx[i, :], bin_edges)[0] / ((sxx.shape[1]) * h)
-        cumsum = np.cumsum(spd[i, :])
-        for j in nb.prange(percentiles.size):
-            p[i, j] = bin_edges[np.argmax(cumsum > percentiles[j] * cumsum[-1])]
 
-    return spd, p
+    return spd
 
 
 @nb.njit
@@ -462,7 +458,7 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - limits_df[
         'lower_freq'] + psd.frequency.values[0]
     limits_df['upper_factor'] = limits_df['upper_freq'] - (
-                limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[0]
+            limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[0]
 
     psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [
         limits_df['lower_factor']] / fft_bin_width
@@ -566,15 +562,23 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
         max_val = pxx.max()
     # Calculate the bins of the psd values and compute spd using numba
     bin_edges = np.arange(start=max(0, min_val), stop=max_val, step=h)
-    spd, p = sxx2spd(sxx=pxx, h=h, percentiles=np.array(percentiles) / 100.0, bin_edges=bin_edges)
+    spd = sxx2spd(sxx=pxx, h=h, bin_edges=bin_edges)
+
+    p = np.nanpercentile(pxx, np.array(percentiles), axis=1)
+    percentiles_names = []
+    for level_p in percentiles:
+        percentiles_names.append('L%s' % str(100 - level_p))
+
     spd_arr = xarray.DataArray(data=spd,
                                coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
                                dims=['frequency', 'spl'])
-    p_arr = xarray.DataArray(data=p,
-                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles},
+    p_arr = xarray.DataArray(data=p.T,
+                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles_names},
                              dims=['frequency', 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
-
+    units_attrs = output_units.get_units_attrs(method_name='spd', log=False)
+    spd_ds['spd'].attrs.update(units_attrs)
+    spd_ds['spl'].attrs.update(psd_evolution['band_density'].attrs)
     return spd_ds
 
 
@@ -723,3 +727,51 @@ def reindexing_datetime(da, first_datetime, last_datetime, freq='10T', tolerance
     index = pd.date_range(start=first_datetime, end=last_datetime, freq=freq).round('T')
     da_reindex = da.reindex(datetime=index, tolerance=tolerance, method='nearest', fill_value=fill_value)
     return da_reindex
+
+
+def bin_aggregation(ds, data_var, band=None, freq='D'):
+    """
+    Parameters
+    ----------
+    ds : xarray Dataset
+        Dataset to process, has to have datetime as coords, not id
+    data_var : str
+        Name of the data variable to select datetime
+    band : None, float or tuple
+        If a float is given, this function compute aggregation for the frequency which is selected
+        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+        selected
+        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+        frequency dependence
+    freq : str
+        Resolution of the bin aggregation. Change to 'H' or 'W' to have an hourly or weekly frequency
+
+    Returns
+    -------
+    ds_new : xarray Dataset
+        Same Dataset with a new variable which represents the new time axis
+    """
+    ds_copy = ds.copy()
+    if band is not None:
+        if isinstance(band, tuple):
+            ds_copy = ds_copy.where((ds_copy.frequency >= band[0]) & (ds_copy.frequency <= band[1]), drop=True)
+        if isinstance(band, int):
+            band = float(band)
+        if isinstance(band, float):
+            band = ds_copy.frequency.values[min(range(len(ds_copy.frequency.values)),
+                                            key=lambda i: abs(ds_copy.frequency.values[i] - band))]
+            ds_copy = ds_copy.where(ds_copy.frequency.isin(band), drop=True)
+
+        ds_copy[data_var] = ds_copy[data_var].mean(dim='frequency')
+        ds_copy = ds_copy.drop_dims('frequency')
+
+    df = ds_copy[data_var].to_dataframe()
+    df_resampled = df.resample(freq).agg({data_var: list})
+    df_agg = pd.DataFrame({'time': df_resampled.index, data_var: df_resampled[data_var]})
+    df_agg = df_agg.explode(data_var)
+    df_agg[data_var] = df_agg[data_var].astype(float)
+
+    ds_new = ds_copy.assign({'time': ('datetime', df_agg.time.to_xarray().data)})
+    ds_new[data_var].attrs = ds[data_var].attrs
+
+    return ds_new

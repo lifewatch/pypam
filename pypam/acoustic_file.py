@@ -24,6 +24,7 @@ from pypam import nmf
 from pypam import plots
 from pypam import signal as sig
 from pypam import utils
+from pypam import units as output_units
 
 pd.plotting.register_matplotlib_converters()
 plt.rcParams.update({'pcolor.shading': 'auto'})
@@ -480,7 +481,10 @@ class AcuFile:
                     sorted_bands = [band] + sorted_bands
                 else:
                     sorted_bands = sorted_bands + [band]
-
+        log = True
+        if 'db' in kwargs.keys():
+            if not kwargs['db']:
+                log = False
         # Define an empty dataset
         ds = xarray.Dataset()
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
@@ -496,6 +500,9 @@ class AcuFile:
                         print('There was an error in band %s, feature %s. Setting to None. '
                               'Error: %s' % (band, method_name, e))
                         output = None
+
+                    units_attrs = output_units.get_units_attrs(method_name=method_name, log=log,
+                                                               p_ref=self.p_ref, **kwargs)
                     methods_output[method_name] = xarray.DataArray([[output]], coords={'id': [i],
                                                                                        'datetime': ('id', [time_bin]),
                                                                                        'start_sample': ('id',
@@ -506,7 +513,8 @@ class AcuFile:
                                                                                        'low_freq': ('band', [band[0]]),
                                                                                        'high_freq': (
                                                                                            'band', [band[1]])},
-                                                                   dims=['id', 'band'])
+                                                                   dims=['id', 'band'],
+                                                                   attrs=units_attrs)
                 if j == 0:
                     ds_bands = methods_output
                 else:
@@ -680,6 +688,7 @@ class AcuFile:
 
         # Create an empty dataset
         da = xarray.DataArray()
+        units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, log=db)
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
             signal.set_band(band, downsample=downsample)
             fbands, levels = signal.octave_levels(db, fraction)
@@ -687,12 +696,13 @@ class AcuFile:
                                          coords={'id': [i], 'start_sample': ('id', [start_sample]),
                                                  'end_sample': ('id', [end_sample]), 'datetime': ('id', [time_bin]),
                                                  'frequency': fbands},
-                                         dims=['id', 'frequency'])
+                                         dims=['id', 'frequency']
+                                         )
             if i == 0:
                 da = da_levels
             else:
                 da = xarray.concat((da, da_levels), 'id')
-
+        da.attrs.update(units_attrs)
         ds = xarray.Dataset(data_vars={oct_str: da}, attrs=self._get_metadata_attrs())
         return ds
 
@@ -790,6 +800,8 @@ class AcuFile:
                 da = da_sxx
             else:
                 da = xarray.concat((da, da_sxx), 'id')
+        units_attrs = output_units.get_units_attrs(method_name='spectrogram_' + scaling, p_ref=self.p_ref, log=db)
+        da.attrs.update(units_attrs)
         ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
         return ds
 
@@ -853,6 +865,9 @@ class AcuFile:
                 ds = ds_bin
             else:
                 ds = xarray.concat((ds, ds_bin), 'id')
+        units_attrs = output_units.get_units_attrs(method_name='spectrum_' + scaling, log=db, p_ref=self.p_ref)
+        ds[spectrum_str].attrs.update(units_attrs)
+        ds['value_percentiles'].attrs.update({'units': '%', 'standard_name': 'percentiles'})
         ds.attrs = self._get_metadata_attrs()
         return ds
 
@@ -1087,12 +1102,14 @@ class AcuFile:
                 ds = xarray.concat((ds, separation_ds), 'id')
         return ds
 
-    def plot_psd(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_mean(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
         Parameters
         ----------
+        scaling : str
+            'density' or 'spectrum'
         db : boolean
             If set to True the result will be given in db. Otherwise in upa^2/Hz
         log : boolean
@@ -1101,39 +1118,27 @@ class AcuFile:
             Where to save the images
         **kwargs : any attribute valid on psd() function
         """
-        psd = self.psd(db=db, **kwargs)
-        if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2/Hz]$' % self.p_ref
-        else:
-            units = r'$SPL_rms [\mu Pa^2/Hz]$'
-        self._plot_spectrum(ds=psd, col_name='density', units=units, log=log,
-                            save_path=save_path)
+        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        plots.plot_spectrum_mean(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
-    def plot_power_spectrum(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """
-        Plot the power spectrogram of all the file (units^2) re 1 V 1 upa
+        Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
         Parameters
         ----------
+        scaling : str
+            'density' or 'spectrum'
         db : boolean
             If set to True the result will be given in db. Otherwise in upa^2/Hz
         log : boolean
             If set to True the scale of the y axis is set to logarithmic
         save_path : string or Path
             Where to save the images
-        **kwargs : any attribute valid on power_spectrum() function
+        **kwargs : any attribute valid on psd() function
         """
-        power = self.power_spectrum(db=db, **kwargs)
-        if db:
-            units = r'$SPL_rms [dB %s \mu Pa^2]$' % self.p_ref
-        else:
-            units = r'$SPL_rms [\mu Pa^2]$'
-        self._plot_spectrum(ds=power, col_name='spectrum', units=units,
-                            log=log, save_path=save_path)
-
-    @staticmethod
-    def _plot_spectrum(ds, col_name, units, log=False, save_path=None):
-        plots.plot_spectrum(ds, 'band_' + col_name, log=log, ylabel=units, save_path=save_path)
+        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        plots.plot_spectrum_per_chunk(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
         """
@@ -1150,7 +1155,7 @@ class AcuFile:
         **kwargs : any attribute valid on spectrogram() function
         """
         ds_spectrogram = self.spectrogram(db=db, **kwargs)
-        plots.plot_spectrograms(ds_spectrogram, log, db, self.p_ref, save_path)
+        plots.plot_spectrogram_per_chunk(ds_spectrogram, log, save_path)
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """

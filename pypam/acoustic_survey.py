@@ -530,21 +530,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db)
-        plt.figure()
-        plt.plot(rms_evolution['rms'])
-        plt.xlabel('Time')
-        if db:
-            units = r'db re 1V %s $\mu Pa$' % self.p_ref
-        else:
-            units = r'$\mu Pa$'
-        plt.title('Evolution of the broadband rms value')  # Careful when filter applied!
-        plt.ylabel('rms [%s]' % units)
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
+        plots.plot_rms_evolution(ds=rms_evolution, save_path=save_path)
 
     def plot_rms_daily_patterns(self, db=True, save_path=None):
         """
@@ -558,61 +544,7 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
-        if db:
-            units = r'db re 1V %s $\mu Pa $' % self.p_ref
-        else:
-            units = r'$\mu Pa $'
-        self.plot_daily_patterns_from_ds(ds=rms_evolution, save_path=save_path, data_var='rms', units=units)
-
-    @staticmethod
-    def plot_daily_patterns_from_ds(ds, save_path=None, ax=None, show=False,
-                                    data_var='rms', units=r'$\mu Pa $', interpolate=True, plot_kwargs=None):
-        """
-        Plot the daily rms patterns
-
-        Parameters
-        ----------
-        ds: xarray DataSet
-            Dataset to process. Should be an output of pypam, or similar structure
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        ax : matplotlib.axes
-            Ax to plot on
-        show : bool
-            Set to True to show directly
-        data_var: str
-            Name of the data variable to plot
-        units: str
-            Name of the units to show on the colorbar
-        interpolate: bool
-            Set to False if no interpolation is desired for the nan values
-        """
-        if plot_kwargs is None:
-            plot_kwargs = {}
-        daily_xr = ds.swap_dims(id='datetime')
-        daily_xr = daily_xr.sortby('datetime')
-
-        hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
-        date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values,
-                                                       hours_float.values],
-                                                      names=('date', 'time'))
-        daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
-
-        if interpolate:
-            daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
-
-        if ax is None:
-            fig, ax = plt.subplots()
-
-        xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
-                               cbar_kwargs={'label': units}, ax=ax, cmap='magma', **plot_kwargs)
-        ax.set_ylabel('Hours of the day')
-        ax.set_xlabel('Days')
-        if save_path is not None:
-            plt.tight_layout()
-            plt.savefig(save_path)
-        if show:
-            plt.show()
+        plots.plot_daily_patterns_from_ds(ds=rms_evolution, data_var='rms', save_path=save_path)
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -629,13 +561,8 @@ class ASA:
         **kwargs : Any accepted for the power_spectrum method
         """
         power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
 
-        return plots.plot_spectrum_mean(ds=power, units=units, col_name='band_spectrum',
-                                        output_name='SPLrms', save_path=save_path, log=log)
+        return plots.plot_spectrum_mean(ds=power, data_var='band_spectrum', log=log, save_path=save_path)
 
     def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
@@ -652,13 +579,8 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
 
-        return plots.plot_spectrum_mean(ds=psd, units=units, col_name='band_density',
-                                        output_name='PSD', save_path=save_path, log=log)
+        return plots.plot_spectrum_mean(ds=psd, data_var='band_density', log=log, save_path=save_path)
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
@@ -673,12 +595,7 @@ class ASA:
         **kwargs : Any accepted for the power spectrum method
         """
         power_evolution = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2$'
-        self._plot_ltsa(ds=power_evolution, col_name='spectrum',
-                        output_name='SPLrms', units=units, save_path=save_path)
+        plots.plot_ltsa(ds=power_evolution, data_var='band_spectrum', save_path=save_path)
 
         return power_evolution
 
@@ -695,43 +612,9 @@ class ASA:
         **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
-        if db:
-            units = r'db re 1V %s $\mu Pa^2/Hz$' % self.p_ref
-        else:
-            units = r'$\mu Pa^2/Hz$'
-        self._plot_ltsa(ds=psd_evolution, col_name='density',
-                        output_name='PSD', units=units, save_path=save_path)
+        plots.plot_ltsa(ds=psd_evolution, data_var='band_density', save_path=save_path)
 
         return psd_evolution
-
-    @staticmethod
-    def _plot_ltsa(ds, col_name, output_name, units, save_path=None):
-        """
-        Plot the evolution of the ds containing percentiles and band values
-
-        Parameters
-        ----------
-        ds : xarray DataSet
-            Output of evolution
-        units : string
-            Units of the spectrum
-        col_name : string
-            Column name of the value to plot. Can be 'density' or 'spectrum'
-        output_name : string
-            Name of the label. 'PSD' or 'SPLrms'
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        """
-        # Plot the evolution
-        # Extra axes for the colorbar and delete the unused one
-        plots.plot_2d(ds['band_' + col_name], x='datetime', y='frequency', title='Long Term Spectrogram',
-                      cbar_label='%s [%s]' % (output_name, units), xlabel='Time', ylabel='Frequency [Hz]')
-        plt.tight_layout()
-        if save_path is not None:
-            plt.savefig(save_path)
-        else:
-            plt.show()
-        plt.close()
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """
@@ -748,7 +631,7 @@ class ASA:
         **kwargs : Any accepted for the spd method
         """
         spd_ds = self.spd(db=db, **kwargs)
-        plots.plot_spd(spd_ds, db=db, log=log, save_path=save_path, p_ref=self.p_ref)
+        plots.plot_spd(spd_ds, log=log, save_path=save_path)
 
     def save(self, file_path):
         """
