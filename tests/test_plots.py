@@ -72,9 +72,13 @@ class TestPlots(unittest.TestCase):
         # Only necessary while compute_spd not updated
         pctlev = [1, 10, 25, 50, 75, 90, 99]
         pypam.plots.plot_summary_dataset(ds=self.ds, percentiles=pctlev,
-                                         min_val=40, max_val=130, location=[112.186, 36.713], show=True)
+                                         min_val=40, max_val=130, location=[112.186, 36.713], show=True,
+                                         save_path='tests/test_data/data_exploration/img/data_overview/'
+                                                   'summary_plot_test1.png')
         pypam.plots.plot_summary_dataset(ds=self.ds, percentiles=pctlev,
-                                         min_val=40, max_val=130, location=None, show=True)
+                                         min_val=40, max_val=130, location=None, show=True,
+                                         save_path='tests/test_data/data_exploration/img/data_overview/'
+                                                   'summary_plot_test2.png')
 
     @skip_unless_with_plots()
     def test_plot_daily_patterns_from_ds(self):

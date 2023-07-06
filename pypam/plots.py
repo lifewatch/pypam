@@ -258,16 +258,15 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
         [latitude, longitude] in decimal coordinates. If location is passed, a bar with the sun position is going
         to be added below the time axis
     """
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(12, 7))
     gs = gridspec.GridSpec(2, 2, height_ratios=[10, 0.5], width_ratios=[3, 2])
 
     ax0 = plt.subplot(gs[0])
     ax1 = plt.subplot(gs[1], sharey=ax0)
 
-
     # LTSA plot
     xarray.plot.pcolormesh(ds[data_var], x=time_coord, y=freq_coord, add_colorbar=True,
-                           cbar_kwargs={'label': '%s [%s]' % ('Spectrum Level', units),
+                           cbar_kwargs={'label': r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units),
                                         'location': 'top', 'orientation': 'horizontal', 'shrink': 2/3}, ax=ax0,
                            extend='neither', cmap='YlGnBu_r')
 
@@ -275,7 +274,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     spd = pypam.utils.compute_spd(ds, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     xarray.plot.pcolormesh(spd['spd'], x='spl', y=freq_coord, cmap='binary', add_colorbar=True,
-                           cbar_kwargs={'label': 'Empirical Probability Density',
+                           cbar_kwargs={'label': r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
                                         'location': 'top', 'orientation': 'horizontal'}, ax=ax1,
                            extend='neither', vmin=0, robust=False)
 
@@ -314,19 +313,20 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     # Adjust the axis names and visibilities
     ax0.set_ylabel('Frequency [Hz]')
     ax1.get_yaxis().set_visible(False)
-    ax1.set_xlabel('Spectrum Level %s' % units)
+    ax1.set_xlabel(r'%s [$%s$]' % (spd['spl'].standard_name, spd['spl'].units))
 
     if log:
         ax0.set_yscale('symlog')
 
     ax1.legend(loc='upper right')
-    plt.subplots_adjust(wspace=0.05, hspace=0.01)
     plt.tight_layout()
+    if location is not None:
+        plt.subplots_adjust(wspace=0.05, hspace=0.01)
 
+    if save_path is not None:
+        plt.savefig(save_path)
     if show:
         plt.show()
-    if save_path is not None:
-        plt.savefig(save_path, pad_inches=0.01)
 
 
 def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, ax=None,
