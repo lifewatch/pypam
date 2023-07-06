@@ -1060,7 +1060,10 @@ class AcuFile:
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize):
             events_df = detector.detect_events(signal, verbose=verbose)
             events_df['start_datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
-            seconds_start = binsize * i
+            if binsize is None:
+                seconds_start = 0
+            else:
+                seconds_start = binsize * i
             events_df['start_seconds'] = events_df['start_seconds'] + seconds_start
             events_df['end_seconds'] = events_df['end_seconds'] + seconds_start
             total_events = pd.concat([total_events, events_df])
