@@ -226,24 +226,37 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
 
 
 def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='datetime', freq_coord='frequency',
-                         min_val=None, max_val=None, p_ref=1.0, show=True, log=True, save_path=None,
+                         min_val=None, max_val=None, show=True, log=True, save_path=None,
                          location=None):
     """
-    :param ds: dataset output of pypam
-    :param data_var: strig, name of the data variable to plot as a spectrogram. default band_density.
-    :param time_coord: string, name of the coordinate which represents time (has to be type np.datetime64)
-    :param freq_coord: string, name of the coordinate which represents frequency.
-    :param percentiles: list or numpy array of the percentiles to compute and plot (1 to 100).
-    :param min_val: minimum value (SPL) in db to compute the SPD. If None, minimum of the dataset will be used
-    :param max_val: maximum value (SPL) in db to compute the SPD. If None, maximum of the dataset will be used
-    :param p_ref: pressure reference in uPa. Default to 1uPa
-    :param show: bool. Set to True to show the plot
-    :param log: set to True to set the frequencies axis in a log scale
-    :param save_path: None, string or Path. Where to save the plot. If None, the plot is not saved.
-    :param location: tuple or list [latitude, longitude] in decimal coordinates. If location is passed, a bar with
-    the sun position is going to be added below the time axis
+    Plots a summary of the data combining the LTSA and a SPD. If location is given, it also plots an extra
+    colorbar showing the day/night patterns
 
-    :return:
+    Parameters
+    ---------
+    ds: xarray Dataset
+        dataset output of pypam
+    data_var: string
+        name of the data variable to plot as a spectrogram. default band_density.
+    time_coord: string
+        name of the coordinate which represents time (has to be type np.datetime64)
+    freq_coord: string
+        name of the coordinate which represents frequency.
+    percentiles: list or numpy array
+        percentiles to compute and plot (1 to 100).
+    min_val: float
+        minimum value (SPL) in db to compute the SPD. If None, minimum of the dataset will be used
+    max_val: float
+        maximum value (SPL) in db to compute the SPD. If None, maximum of the dataset will be used
+    show: bool.
+        Set to True to show the plot
+    log: bool
+        Set to True to set the frequencies axis in a log scale
+    save_path: None, string or Path.
+        Where to save the plot. If None, the plot is not saved.
+    location: tuple or list
+        [latitude, longitude] in decimal coordinates. If location is passed, a bar with the sun position is going
+        to be added below the time axis
     """
     plt.figure(figsize=(12, 8))
     gs = gridspec.GridSpec(2, 2, height_ratios=[10, 0.5], width_ratios=[3, 2])
@@ -251,7 +264,6 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     ax0 = plt.subplot(gs[0])
     ax1 = plt.subplot(gs[1], sharey=ax0)
 
-    units = r'db re 1V %s $\mu Pa^2/Hz$' % p_ref
 
     # LTSA plot
     xarray.plot.pcolormesh(ds[data_var], x=time_coord, y=freq_coord, add_colorbar=True,
