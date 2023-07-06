@@ -452,6 +452,7 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
     if db:
         psd_bands = 10 * np.log10(psd_bands)
 
+    psd_bands.attrs.update(psd.attrs)
     return psd_bands
 
 
