@@ -143,7 +143,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
     if log:
         xscale = 'log'
 
-    freq_coord = ds[data_var]
+    freq_coord = ds[data_var].dims[1]
     for id_n in ds.id:
         ds_id = ds[data_var].sel(id=id_n)
         ds_id.plot.line(xscale=xscale)
