@@ -52,7 +52,7 @@ print(milli_psd['millidecade_bands'])
 # We will first load some pre-computed data
 import xarray
 
-milli_psd_day = xarray.open_dataset('./tests/test_data/test_day.nc')
+milli_psd_day = xarray.open_dataset('../tests/test_data/test_day.nc')
 milli_psd_day = milli_psd_day.where(milli_psd_day.frequency_bins > 10, drop=True)
 
 # Plot the spectrum mean with the standard deviation
