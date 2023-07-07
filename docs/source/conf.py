@@ -56,7 +56,6 @@ autosummary_generate = True
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',  # path to your example scripts
     'gallery_dirs': '_auto_examples',  # path to where to save gallery generated output,
-    'ignore_pattern': 'detect_events.py',
     'capture_repr': (),
     # define which output is captured https://sphinx-gallery.github.io/stable/configuration.html#capture-repr
     'ignore_repr_types': r'matplotlib[text, axes]',
