@@ -53,7 +53,8 @@ REF_PRESSURE = 1e-6
 # SURVEY PARAMETERS
 nfft = 4096
 binsize = 60.0
-overlap = 0.5
+fft_overlap = 0.5
+bin_overlap = 0.0
 dc_subtract = False
 band_lf = [50, 500]
 band_mf = [500, 2000]
@@ -68,6 +69,6 @@ if __name__ == "__main__":
     # Create the dataset object
     ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
                                frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                               nfft=nfft, overlap=overlap, dc_subtract=dc_subtract, n_join_bins=n_join_bins)
+                               bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
     # Call the dataset creation. Will create the files in the corresponding folder
     ds()
