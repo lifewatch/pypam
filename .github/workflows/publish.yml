@@ -1,0 +1,32 @@
+name: Release package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  package-release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3.5.2
+    - name: Check tag syntax and set environmental variable
+      id: check-tag
+      run: |
+        if [[ ${{ github.ref }} =~ ^refs/tags/t[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Tag syntax is for testing"
+          echo "::set-output name=test_tag::true"
+        else
+          echo "Tag syntax is for release"
+          echo "::set-output name=test_tag::false"
+        fi
+    - name: Build and publish to pypi
+      uses: JRubics/poetry-publish@v1.17
+      with:
+        pypi_token: ${{ secrets.PYPI_TOKEN }}
+      env:
+        repository_name: ${{ steps.check-tag.outputs.test_tag == 'true' && 'testpypi' || '' }}
+        repository_url: ${{ steps.check-tag.outputs.test_tag == 'true' && 'https://test.pypi.org/legacy/' || '' }}
