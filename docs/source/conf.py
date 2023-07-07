@@ -30,8 +30,8 @@ author = 'Clea Parcerisas'
 
 # release = pypam_version.__version__
 # version = pypam_version.__version__
-release = '0.1.10'
-version = '0.1.10'
+release = '0.2.0'
+version = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 
