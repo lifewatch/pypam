@@ -13,7 +13,9 @@ import pathlib
 import pyhydrophone as pyhy
 import pypam
 
-
+# %%
+# First it is necessary to create a csv with all the metadata. You can have a look at an example at
+# examples/data_summary_example.csv
 # Acoustic Data
 summary_path = pathlib.Path('./data_summary_example.csv')
 include_dirs = False
@@ -63,12 +65,11 @@ band_list = [band_lf]
 temporal_features = ['rms', 'sel', 'aci']
 frequency_features = ['third_octaves_levels']
 
-n_join_bins = 3
 
-if __name__ == "__main__":
-    # Create the dataset object
-    ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
-                               frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                               bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
-    # Call the dataset creation. Will create the files in the corresponding folder
-    ds()
+# %%
+# Create the dataset object
+ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
+                           frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
+                           bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
+# Call the dataset creation. Will create the files in the corresponding folder
+ds()
