@@ -37,7 +37,7 @@ binsize = 60.0
 include_dirs = False
 zipped_files = False
 dc_subtract = True
-asa = pypam.ASA(hydrophone=soundtrap, folder_path='../tests/test_data', binsize=binsize, nfft=nfft,
+asa = pypam.ASA(hydrophone=soundtrap, folder_path='./../tests/test_data', binsize=binsize, nfft=nfft,
                 timezone='UTC', include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
 
 # Compute the hybrid millidecade bands
@@ -52,7 +52,7 @@ print(milli_psd['millidecade_bands'])
 # We will first load some pre-computed data
 import xarray
 
-milli_psd_day = xarray.open_dataset('../tests/test_data/test_day.nc')
+milli_psd_day = xarray.open_dataset('./../tests/test_data/test_day.nc')
 milli_psd_day = milli_psd_day.where(milli_psd_day.frequency_bins > 10, drop=True)
 
 # Plot the spectrum mean with the standard deviation
