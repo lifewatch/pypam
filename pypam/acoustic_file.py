@@ -18,8 +18,6 @@ import soundfile as sf
 import xarray
 from tqdm.auto import tqdm
 
-from pypam import impulse_detector
-from pypam import loud_event_detector
 from pypam import nmf
 from pypam import plots
 from pypam import signal as sig
@@ -981,94 +979,6 @@ class AcuFile:
         psd_evolution = self.psd(binsize=binsize, nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
                                  bin_overlap=bin_overlap, band=band)
         return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
-
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt, binsize=None,
-                             verbose=False, save_path=None, detection_band=None, analysis_band=None, method=None):
-        """
-        Detect piling events
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        min_separation : float
-            Minimum separation of the event, in seconds
-        max_duration : float
-            Maximum duration of the event, in seconds
-        threshold : float
-            Threshold above ref value which one it is considered piling, in db
-        dt : float
-            Window size in seconds for the analysis (time resolution). Has to be smaller
-            than min_duration!
-        verbose : bool
-            Set to True to get plots of the detections
-        save_path: Path or str
-            Path where to save the images of the detections'
-        detection_band : list or tuple or None
-            Band used to detect the pulses [low_freq, high_freq]
-        analysis_band : list or tuple or None
-            Band used to analyze the pulses [low_freq, high_freq]
-        method : str
-            Method to use for the detection. Can be 'snr', 'dt' or 'envelope'
-        """
-        if type(save_path) == str:
-            save_path = pathlib.Path(save_path)
-
-        detector = impulse_detector.PilingDetector(min_separation=min_separation,
-                                                   max_duration=max_duration,
-                                                   threshold=threshold, dt=dt, detection_band=detection_band,
-                                                   analysis_band=analysis_band)
-        total_events = pd.DataFrame()
-        for _, time_bin, signal, start_sample, end_sample in self._bins(binsize):
-            signal.set_band(band=analysis_band, downsample=False)
-            if save_path is not None:
-                file_path = save_path.joinpath('%s.png' % datetime.datetime.strftime(time_bin, "%y%m%d_%H%M%S"))
-            else:
-                file_path = None
-            events_df = detector.detect_events(signal, method=method, verbose=verbose, save_path=file_path)
-            events_df['datetime'] = pd.to_timedelta(events_df[('temporal', 'start_seconds')],
-                                                    unit='seconds') + time_bin
-            events_df = events_df.set_index('datetime')
-            total_events = pd.concat([total_events, events_df])
-        if save_path is not None:
-            csv_path = save_path.joinpath('%s.csv' % datetime.datetime.strftime(self.date, "%y%m%d_%H%M%S"))
-            total_events.to_csv(csv_path)
-        return total_events
-
-    def detect_ship_events(self, binsize=None, threshold=160.0, min_duration=10.0, detector=None,
-                           verbose=False):
-        """
-        Find the loud events of the file
-        Parameters
-        ----------
-        binsize : float
-            Time window considered, in seconds. If set to None, only one value is returned
-        threshold : float
-            Threshold above which it is considered loud
-        min_duration : float
-            Minimum duration of the event, in seconds
-        detector : loud_event_detector object
-            The detector to be used
-        verbose : boolean
-            Set to True to see the spectrograms of the detections
-        """
-        if detector is None:
-            detector = loud_event_detector.ShipDetector(min_duration=min_duration,
-                                                        threshold=threshold)
-
-        total_events = pd.DataFrame()
-        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize):
-            events_df = detector.detect_events(signal, verbose=verbose)
-            events_df['start_datetime'] = pd.to_timedelta(events_df.start_seconds, unit='seconds') + time_bin
-            if binsize is None:
-                seconds_start = 0
-            else:
-                seconds_start = binsize * i
-            events_df['start_seconds'] = events_df['start_seconds'] + seconds_start
-            events_df['end_seconds'] = events_df['end_seconds'] + seconds_start
-            total_events = pd.concat([total_events, events_df])
-
-        return total_events
 
     def source_separation(self, window_time=1.0, n_sources=15, binsize=None, save_path=None, verbose=False, band=None):
         """

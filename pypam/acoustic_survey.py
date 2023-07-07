@@ -19,7 +19,6 @@ import xarray
 from tqdm import tqdm
 
 from pypam import acoustic_file
-from pypam import loud_event_detector
 from pypam import plots
 from pypam import utils
 
@@ -423,76 +422,6 @@ class ASA:
                 else:
                     pass
         return 0
-
-    def detect_piling_events(self, min_separation, max_duration, threshold, dt=None, verbose=False, detection_band=None,
-                             analysis_band=None, **kwargs):
-        """
-        Return a DataFrame with all the piling events and their rms, sel and peak values
-
-        Parameters
-        ----------
-        min_separation : float
-            Minimum separation of the event, in seconds
-        max_duration : float
-            Maximum duration of the event, in seconds
-        threshold : float
-            Threshold above ref value which one it is considered piling, in db
-        detection_band : list or tuple or None
-            Band used to detect the pulses [low_freq, high_freq]
-        analysis_band : list or tuple or None
-            Band used to analyze the pulses [low_freq, high_freq]
-        dt : float
-            Window size in seconds for the analysis (time resolution). Has to be smaller
-            than min_duration!
-        verbose : boolean
-            Set to True to plot the detected events per bin
-        """
-        df = pd.DataFrame()
-        for sound_file in self._files():
-            df_output = sound_file.detect_piling_events(min_separation=min_separation,
-                                                        threshold=threshold,
-                                                        max_duration=max_duration,
-                                                        dt=dt, binsize=self.binsize,
-                                                        detection_band=detection_band,
-                                                        analysis_band=analysis_band,
-                                                        verbose=verbose, **kwargs)
-            df = pd.concat([df, df_output])
-        return df
-
-    def detect_ship_events(self, min_duration, threshold, verbose=False):
-        """
-        Return a xarray DataSet with all the piling events and their rms, sel and peak values
-
-        Parameters
-        ----------
-        min_duration : float
-            Minimum separation of the event, in seconds
-        threshold : float
-            Threshold above ref value which one it is considered piling, in db
-        verbose: bool
-            Set to True to make plots of the process
-        """
-        df = pd.DataFrame()
-        last_end = None
-        detector = loud_event_detector.ShipDetector(min_duration=min_duration,
-                                                    threshold=threshold)
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            print(wav_file)
-            sound_file = self._hydro_file(wav_file)
-            start_datetime = sound_file.date
-            end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
-            if last_end is not None:
-                if (last_end - start_datetime).total_seconds() < min_duration:
-                    detector.reset()
-            last_end = end_datetime
-            if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
-                df_output = sound_file.detect_ship_events(min_duration=min_duration,
-                                                          threshold=threshold,
-                                                          binsize=self.binsize, detector=detector,
-                                                          verbose=verbose)
-                df = pd.concat([df, df_output])
-        return df
 
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
         """
