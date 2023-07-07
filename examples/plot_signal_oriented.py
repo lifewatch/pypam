@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import pypam.utils as utils
 import pypam.signal as sig
 
+plt.rcParams.update(plt.rcParamsDefault)
+
 N_CHUNKS = 5
 
 # Create artificial data of 1 second
