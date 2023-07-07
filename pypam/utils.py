@@ -553,8 +553,9 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     return ds
 
 
-def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=None):
-    pxx = psd_evolution['band_density'].to_numpy().T
+def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None, max_val=None, min_val=None):
+    pxx = psd_evolution[data_var].to_numpy().T
+    freq_axis = psd_evolution[data_var].dims[1]
     if percentiles is None:
         percentiles = []
     if min_val is None:
@@ -571,15 +572,15 @@ def compute_spd(psd_evolution, h=1.0, percentiles=None, max_val=None, min_val=No
         percentiles_names.append('L%s' % str(100 - level_p))
 
     spd_arr = xarray.DataArray(data=spd,
-                               coords={'frequency': psd_evolution.frequency, 'spl': bin_edges[:-1]},
-                               dims=['frequency', 'spl'])
+                               coords={freq_axis: psd_evolution[freq_axis].values, 'spl': bin_edges[:-1]},
+                               dims=[freq_axis, 'spl'])
     p_arr = xarray.DataArray(data=p.T,
-                             coords={'frequency': psd_evolution.frequency, 'percentiles': percentiles_names},
-                             dims=['frequency', 'percentiles'])
+                             coords={freq_axis: psd_evolution[freq_axis].values, 'percentiles': percentiles_names},
+                             dims=[freq_axis, 'percentiles'])
     spd_ds = xarray.Dataset(data_vars={'spd': spd_arr, 'value_percentiles': p_arr})
     units_attrs = output_units.get_units_attrs(method_name='spd', log=False)
     spd_ds['spd'].attrs.update(units_attrs)
-    spd_ds['spl'].attrs.update(psd_evolution['band_density'].attrs)
+    spd_ds['spl'].attrs.update(psd_evolution[data_var].attrs)
     return spd_ds
 
 
@@ -750,29 +751,32 @@ def bin_aggregation(ds, data_var, band=None, freq='D'):
     Returns
     -------
     ds_new : xarray Dataset
-        Same Dataset with a new variable which represents the new time axis
+        Same Dataset with a new variable which represents the new time axis. The frequency axis disappears when the
+        mean in the specified frequency band is computed
     """
-    ds_copy = ds.copy()
+    ds_copy = ds[data_var].copy()
+    freq_coord = ds_copy.dims[1]
     if band is not None:
         if isinstance(band, tuple):
-            ds_copy = ds_copy.where((ds_copy.frequency >= band[0]) & (ds_copy.frequency <= band[1]), drop=True)
+            ds_copy = ds_copy.where((ds_copy[freq_coord] >= band[0]) & (ds_copy[freq_coord] <= band[1]), drop=True)
         if isinstance(band, int):
             band = float(band)
         if isinstance(band, float):
-            band = ds_copy.frequency.values[min(range(len(ds_copy.frequency.values)),
-                                            key=lambda i: abs(ds_copy.frequency.values[i] - band))]
-            ds_copy = ds_copy.where(ds_copy.frequency.isin(band), drop=True)
+            band = ds_copy[freq_coord].values[min(range(len(ds_copy[freq_coord].values)),
+                                                  key=lambda i: abs(ds_copy[freq_coord].values[i] - band))]
+            ds_copy = ds_copy.where(ds_copy[freq_coord].isin(band), drop=True)
 
-        ds_copy[data_var] = ds_copy[data_var].mean(dim='frequency')
-        ds_copy = ds_copy.drop_dims('frequency')
+        ds_copy = ds_copy.mean(dim=freq_coord)
 
-    df = ds_copy[data_var].to_dataframe()
+    df = ds_copy.to_dataframe()
     df_resampled = df.resample(freq).agg({data_var: list})
     df_agg = pd.DataFrame({'time': df_resampled.index, data_var: df_resampled[data_var]})
     df_agg = df_agg.explode(data_var)
     df_agg[data_var] = df_agg[data_var].astype(float)
 
-    ds_new = ds_copy.assign({'time': ('datetime', df_agg.time.to_xarray().data)})
+    ds_new = xarray.Dataset()
+    ds_new[data_var] = ds_copy
+    ds_new = ds_new.assign({'time': ('datetime', df_agg.time.to_xarray().data)})
     ds_new[data_var].attrs = ds[data_var].attrs
 
     return ds_new

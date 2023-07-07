@@ -46,9 +46,10 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
     Parameters
     ----------
     spd : xarray DataArray
-        Data array with 2D data frequency-sound_pressure
+        Data array with 2D data frequency-sound_pressure. Frequency needs to be the first dimension. It is prepared to
+        be used with the output of pypam.utils.compute_spd()
     log : boolean
-        If set to True the scale of the y axis is set to logarithmic
+        If set to True the scale of the y-axis is set to logarithmic
     save_path : string or Path
         Where to save the images
     ax : matplotlib.axes class or None
@@ -64,12 +65,13 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
     # Plot the EPD
     if ax is None:
         fig, ax = plt.subplots()
-    plot_2d(spd['spd'], x='frequency', y='spl', cmap='CMRmap_r',
+    freq_axis = spd['spd'].dims[0]
+    plot_2d(spd['spd'], x=freq_axis, y='spl', cmap='CMRmap_r',
             cbar_label=r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
             ax=ax, ylabel=r'%s [$%s$]' % (spd['spl'].standard_name, spd['spl'].units), xlabel='Frequency [Hz]',
             title='Spectral Probability Density (SPD)', vmin=0, robust=False)
     if len(spd.percentiles) > 0:
-        ax.plot(spd['value_percentiles'].frequency, spd['value_percentiles'],
+        ax.plot(spd['value_percentiles'][freq_axis], spd['value_percentiles'],
                 label=spd['value_percentiles'].percentiles.values, linewidth=1)
         plt.legend(loc='upper right')
     if log:
@@ -90,9 +92,9 @@ def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=Tr
     Parameters
     ----------
     ds_spectrogram : xarray DataArray
-        Data array with 3D data (datetime, frequency and time_bin as dimensions)
+        Data array with 3D data (datetime, frequency and time as dimensions)
     log : boolean
-        If set to True the scale of the y axis is set to logarithmic
+        If set to True the scale of the y-axis is set to logarithmic
     save_path : string or Path
         Where to save the images (folder)
     show : bool
@@ -131,7 +133,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
     data_var : string
         Name of the data variable to use
     log : boolean
-        If set to True the scale of the y axis is set to logarithmic
+        If set to True the scale of the y-axis is set to logarithmic
     save_path: string or Path
         Where to save the image
     show : bool
@@ -141,6 +143,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
     if log:
         xscale = 'log'
 
+    freq_coord = ds[data_var].dims[1]
     for id_n in ds.id:
         ds_id = ds[data_var].sel(id=id_n)
         ds_id.plot.line(xscale=xscale)
@@ -148,7 +151,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
         plt.ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
 
         # Plot the percentiles as horizontal lines
-        plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds.frequency.min(), xmax=ds.frequency.max(),
+        plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds[freq_coord].min(), xmax=ds[freq_coord].max(),
                    label=ds['percentiles'])
 
         if save_path is not None:
@@ -168,7 +171,7 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
     data_var : string
         Name of the data variable to use
     log : boolean
-        If set to True, y axis in logarithmic scale
+        If set to True, y-axis in logarithmic scale
     save_path : string or Path
         Where to save the output graph. If None, it is not saved
     ax : matplotlib.axes class or None
@@ -184,9 +187,9 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
     if ax is None:
         fig, ax = plt.subplots()
 
-    sns.lineplot(x='frequency', y='value', ax=ax, data=ds[data_var].to_pandas().melt(), errorbar='sd')
+    sns.lineplot(x=ds[data_var].dims[1], y='value', ax=ax, data=ds[data_var].to_pandas().melt(), errorbar='sd')
 
-    if len(ds['percentiles']) > 0:
+    if ('percentiles' in ds) and (len(ds['percentiles']) > 0):
         # Add the percentiles values
         ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)
 
@@ -216,7 +219,7 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
     data_var : string
         Column name of the value to plot. Can be 'density' or 'spectrum' or 'millidecade_bands
     log : boolean
-        If set to True the scale of the y axis is set to logarithmic
+        If set to True the scale of the y-axis is set to logarithmic
     save_path : string or Path
         Where to save the output graph. If None, it is not saved
     ax : matplotlib.axes class or None
@@ -234,7 +237,7 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
 
     # Plot the evolution
     # Extra axes for the colorbar and delete the unused one
-    plot_2d(ds[data_var], x='datetime', y='frequency', ax=ax,
+    plot_2d(ds[data_var], x='datetime', y=ds[data_var].dims[1], ax=ax,
             cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
     plt.tight_layout()
@@ -292,14 +295,14 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
                            extend='neither', cmap='YlGnBu_r')
 
     # SPD plot
-    spd = pypam.utils.compute_spd(ds, percentiles=percentiles, min_val=min_val, max_val=max_val)
+    spd = pypam.utils.compute_spd(ds, data_var=data_var, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     xarray.plot.pcolormesh(spd['spd'], x='spl', y=freq_coord, cmap='binary', add_colorbar=True,
                            cbar_kwargs={'label': r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
                                         'location': 'top', 'orientation': 'horizontal'}, ax=ax1,
                            extend='neither', vmin=0, robust=False)
 
-    ax1.plot(spd['value_percentiles'], spd['value_percentiles'].frequency,
+    ax1.plot(spd['value_percentiles'], spd['value_percentiles'][freq_coord],
              label=spd['value_percentiles'].percentiles.values, linewidth=1)
 
     if location is not None:

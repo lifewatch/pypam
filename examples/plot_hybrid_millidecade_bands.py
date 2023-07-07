@@ -47,7 +47,22 @@ milli_psd = asa.hybrid_millidecade_bands(db=True, method='density',
                                          percentiles=None)
 print(milli_psd['millidecade_bands'])
 
+# %%
 # Now, with the obtained hybrid millidecade bands, make some plots
-milli_psd = milli_psd.drop_vars(['band_density', 'frequency'])
-milli_psd = milli_psd.rename({'frequency_bins': 'frequency'})
-pypam.plots.plot_spectrum_mean(milli_psd, data_var='millidecade_bands')
+# We will first load some pre-computed data
+import xarray
+
+milli_psd_day = xarray.open_dataset('./tests/test_data/test_day.nc')
+milli_psd_day = milli_psd_day.where(milli_psd_day.frequency_bins > 10, drop=True)
+
+# Plot the spectrum mean with the standard deviation
+pypam.plots.plot_spectrum_mean(milli_psd_day, data_var='millidecade_bands')
+
+# Plot the SPD with percentiles
+percentiles = [10, 50, 90]
+spd = pypam.utils.compute_spd(milli_psd_day, data_var='millidecade_bands', percentiles=percentiles)
+pypam.plots.plot_spd(spd)
+
+# Plot a summary
+pypam.plots.plot_summary_dataset(milli_psd_day, data_var='millidecade_bands',
+                                 percentiles=percentiles, freq_coord='frequency_bins')
