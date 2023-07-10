@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pypam"
+name = "lifewatch-pypam"
 version = "0.2.0"
 description = 'Facilitate acoustic processing from underwater acoustic recorders'
 authors = ["Clea Parcerisas <cleap@vliz.be>"]
@@ -11,7 +11,7 @@ classifiers =[
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent"]
-    
+
 [tool.poetry.dependencies]
 python = "^3.8.1"
 matplotlib = "^3.7.1"
