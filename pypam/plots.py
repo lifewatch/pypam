@@ -310,7 +310,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
             raise Exception('To use this feature it is necessary to install pvlib ')
         ax2 = plt.subplot(gs[2], sharex=ax0)
         solpos = pvlib.solarposition.get_solarposition(
-            time=ds.datetime,
+            time=ds[time_coord],
             latitude=location[1],
             longitude=location[0],
             altitude=0,
