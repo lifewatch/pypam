@@ -780,3 +780,20 @@ def bin_aggregation(ds, data_var, band=None, freq='D'):
     ds_new[data_var].attrs = ds[data_var].attrs
 
     return ds_new
+
+
+def update_freq_cal(hydrophone, ds, data_var):
+
+    index_coord = ds[data_var].dims[0]
+    freq_coord = ds[data_var].dims[1]
+    frequencies = ds[freq_coord].values
+
+    hydrophone.get_freq_cal()
+    df = hydrophone.freq_cal_inc(frequencies=frequencies)
+    ds_copy = ds.copy(deep=True)
+
+    for i in range(ds[index_coord].size):
+
+        ds_copy.millidecade_bands[i] = ds.millidecade_bands[i] + df['inc_value'].values
+
+    return ds_copy
