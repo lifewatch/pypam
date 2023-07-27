@@ -1086,3 +1086,6 @@ class AcuFile:
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, db=db, log=log, p_ref=self.p_ref, save_path=save_path)
+
+    def update_freq_cal(self, ds, data_var):
+        return utils.update_freq_cal(hydrophone=self.hydrophone, ds=ds, data_var=data_var)

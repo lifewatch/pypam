@@ -692,6 +692,9 @@ class AcousticFolder:
                 n_files = len(zipped_folder.namelist())
         return n_files
 
+    def update_freq_cal(self, ds, data_var):
+        return utils.update_freq_cal(hydrophone=self.hydrophone, ds=ds, data_var=data_var)
+
 
 def move_file(file_path, new_folder_path):
     """
