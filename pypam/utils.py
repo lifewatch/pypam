@@ -788,12 +788,13 @@ def update_freq_cal(hydrophone, ds, data_var):
     freq_coord = ds[data_var].dims[1]
     frequencies = ds[freq_coord].values
 
-    hydrophone.get_freq_cal()
+    if hydrophone.freq_cal is None:
+        hydrophone.get_freq_cal()
     df = hydrophone.freq_cal_inc(frequencies=frequencies)
     ds_copy = ds.copy(deep=True)
 
     for i in range(ds[index_coord].size):
 
-        ds_copy.millidecade_bands[i] = ds.millidecade_bands[i] + df['inc_value'].values
+        ds_copy[data_var][i] = ds[data_var][i] + df['inc_value'].values
 
     return ds_copy
