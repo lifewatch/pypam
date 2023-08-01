@@ -21,6 +21,7 @@ import numba as nb
 import numpy as np
 from scipy import fftpack
 from scipy import signal as sig
+import maad.features
 
 
 # def compute_aci(sxx, j_bin):
@@ -106,34 +107,9 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     -------
     Bioacoustic Index (BI) value
     """
-    # min freq in samples (or bin)
-    min_freq_bin = int(np.argmin(np.abs(frequencies - min_freq)))
-    # max freq in samples (or bin)
-    max_freq_bin = int(np.ceil(np.argmin(np.abs(frequencies - max_freq))))
-
-    # alternative value to follow the R code
-    # min_freq_bin = min_freq_bin - 1
-
-    #  Use of decibel values. Equivalent in the R code to:
-    #  spec_left <- spectro(left, f = samplingrate, wl = fft_w, plot = FALSE, db = "max0")$amp
-    spectro_bi = 10 * np.log10(sxx ** 2 / np.max(sxx ** 2))
-
-    # Compute the mean for each frequency (the output is a spectre).
-    # This is not exactly the mean, but it is equivalent to the R code to: return(a*log10(mean(10^(x/a))))
-    spectre_bi_mean = np.zeros(spectro_bi.shape[0])
-    for k in np.arange(spectro_bi.shape[0]):
-        spectre_bi_mean[k] = 10 * np.log10(np.mean(10 ** (spectro_bi[k] / 10)))
-
-    # Segment between min_freq and max_freq
-    spectre_bi_mean_segment = spectre_bi_mean[min_freq_bin:max_freq_bin]
-
-    # Normalization: set the minimum value of the frequencies to zero.
-    spectre_bi_mean_segment_normalized = spectre_bi_mean_segment - np.min(spectre_bi_mean_segment)
-
-    # Compute the area under the spectre curve.
-    # Equivalent in the R code to: left_area <- sum(specA_left_segment_normalized * rows_width)
-    area = np.sum(spectre_bi_mean_segment_normalized / (frequencies[1] - frequencies[0]))
-    return area
+    bi = maad.features.alpha_indices.bioacoustics_index(Sxx=sxx, fn=frequencies, flim=(min_freq, max_freq),
+                                                        R_compatible='soundecology')
+    return bi
 
 
 @nb.njit
@@ -151,15 +127,8 @@ def compute_sh(sxx):
     -------
     Spectral Entropy (SH)
     """
-    n = sxx.shape[0]
-    spec = np.sum(sxx, axis=1)
-    spec = spec / np.sum(spec)  # Normalization by the sum of the values
-    main_value = 0
-    for y in spec:
-        main_value += y * np.log2(y)
-    # Equivalent in the R code to: z <- -sum(spec*log(spec))/log(n)
-    # temporal_values = [- sum([y * np.log2(y) for y in frame]) / (np.sum(frame) * np.log2(n)) for frame in sxx.T]
-    return - main_value / np.log2(n)
+    sh, _ = maad.features.alpha_indices.frequency_entropy(X=sxx)
+    return sh
 
 
 def compute_th(s):
@@ -172,16 +141,8 @@ def compute_th(s):
     s: np.array
         Signal
     """
-    # Modulo of the Hilbert Envelope, computed with the next fast length window
-    env = np.abs(sig.hilbert(s, fftpack.helper.next_fast_len(len(s))))
-
-    # Normalization
-    env = env / np.sum(env)
-    n = len(env)
-    th = 0
-    for y in env:
-        th += y * np.log2(y)
-    return - th / np.log2(n)
+    th = maad.features.alpha_indices.temporal_entropy(s=s)
+    return th
 
 
 def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
@@ -325,34 +286,9 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     freq_step: int
         Size of frequency bands to compute AEI (in Hertz)
     """
-    bands_hz = np.arange(min_freq, max_freq, freq_step)
-
-    spec_adi = 10 * np.log10(sxx ** 2 / np.max(sxx ** 2))
-    values = np.zeros(bands_hz.size)
-    for k in range(bands_hz.size - 1):
-        spec_adi_band = spec_adi[np.where((frequencies > bands_hz[k]) & (frequencies < bands_hz[k + 1]))]
-        values[k] = np.sum(spec_adi_band > db_threshold) / float(spec_adi_band.size)
-
-    # Shannon Entropy of the values
-    # shannon = - sum([y * np.log(y) for y in values]) / len(values)  # Follows the R code.
-    # But log is generally log2 for Shannon entropy. Equivalent to shannon = False in soundecology.
-
-    # The following is equivalent to shannon = True (default) in soundecology.
-    # Compute the Shannon diversity index from the R function diversity {vegan}.
-    # v = [x/np.sum(values) for x in values]
-    # v2 = [-i * j  for i,j in zip(v, np.log(v))]
-    # return np.sum(v2)
-
-    # Remove zero values (Jan 2016)
-    # values = [value for value in values if value != 0]
-    values = values[np.nonzero(values)]
-
-    # replace zero values by 1e-07 (closer to R code, but results quite similars)
-    # values = [x if x != 0 else 1e-07 for x in values]
-    adi = 0
-    for i in values:
-        adi += -i / np.sum(values) * np.log(i / np.sum(values))
-    # adi = np.sum([-i / np.sum(values) * np.log(i / np.sum(values)) for i in values])
+    adi = maad.features.alpha_indices.acoustic_diversity_index(Sxx=sxx, fn=frequencies, fmin=min_freq, fmax=max_freq,
+                                                               bin_step=freq_step, dB_threshold=db_threshold,
+                                                               index='shannon')
     return adi
 
 
