@@ -197,3 +197,31 @@ def compute_zcr(s, fs):
     """
     zcr = maad.features.temporal.zero_crossing_rate(s=s, fs=fs) / fs
     return zcr
+
+
+def compute_zcr_avg(s, fs, window_length=512, window_hop=256):
+    """
+    Compute the Zero Crossing Rate of an audio signal.
+
+    Parameters
+    ----------
+    s: np.array
+        Signal to process
+    fs : int
+        Sampling frequency in Hz
+    window_length: int
+        Size of the sliding window (samples)
+    window_hop: int
+        Size of the lag window (samples)
+
+    Returns
+    -------
+    A list of values (number of zero crossing for each window)
+    """
+    times = np.arange(0, len(s) - window_length + window_hop)
+    zcr_bins = np.zeros(times.size)
+    for k, i in enumerate(times):
+        x = s[i: i + window_length]
+        zcr_bins[k] = compute_zcr(s=x, fs=fs)
+
+    return np.mean(zcr_bins)
