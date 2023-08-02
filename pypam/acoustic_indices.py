@@ -205,29 +205,6 @@ def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
     return ndsi
 
 
-@nb.njit
-def gini(values):
-    """
-    Compute the Gini index of values.
-    Inspired by http://mathworld.wolfram.com/GiniCoefficient.html and
-    http://en.wikipedia.org/wiki/Gini_coefficient
-
-    Parameters
-    ----------
-    values: np.array or list
-        A list of values
-
-    """
-    y = np.sort(values)
-    n = len(y)
-    g = 0
-    for i, j in zip(y, np.arange(1, n + 1)):
-        g += i * j
-    g = 2 * g / np.sum(y) - (n + 1)
-    return g / n
-
-
-@nb.njit
 def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Evenness Index of an audio signal.
@@ -250,15 +227,9 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     freq_step: int
         Size of frequency bands to compute AEI (in Hertz)
     """
-    bands_hz = np.arange(min_freq, max_freq, freq_step)
-
-    spec_aei = 10 * np.log10(sxx ** 2 / np.max(sxx) ** 2)
-    values = np.zeros(bands_hz.size)
-    for k in np.arange(bands_hz.size - 1):
-        spec_aei_band = spec_aei[np.where((frequencies > bands_hz[k]) & (frequencies < bands_hz[k + 1]))]
-        values[k] = np.sum(spec_aei_band > db_threshold) / float(spec_aei_band.size)
-
-    return gini(values)
+    aei = maad.features.alpha_indices.acoustic_eveness_index(Sxx=sxx, fn=frequencies, fmin=min_freq, fmax=max_freq,
+                                                             bin_step=freq_step, dB_threshold=db_threshold)
+    return aei
 
 
 def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
