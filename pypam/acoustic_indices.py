@@ -100,7 +100,7 @@ def compute_th(s):
     return th
 
 
-def compute_ndsi(sxx, frequencies, anthrophony=None, biophony=None):
+def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 11000)):
     """
     Compute Normalized Difference Sound Index from power spectrogram.
     Reference: Kasten, Eric P., Stuart H. Gage, Jordan Fox, and Wooyeong Joo. 2012.
@@ -116,14 +116,10 @@ def compute_ndsi(sxx, frequencies, anthrophony=None, biophony=None):
     frequencies: np.array 1D
         List of the frequencies of the spectrogram
     anthrophony: list of ints
-        list of two values containing the minimum and maximum frequencies (in Hertz) for antrophony.
+        Tuple of two values containing the minimum and maximum frequencies (in Hertz) for antrophony.
     biophony: list of ints
-        list of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
+        Tuple of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
-    if biophony is None:
-        biophony = [2000, 11000]
-    if anthrophony is None:
-        anthrophony = [1000, 2000]
     ndsi = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
                                                         flim_antroPh=anthrophony, R_compatible='soundecology')
     return ndsi
