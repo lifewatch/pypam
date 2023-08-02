@@ -43,3 +43,6 @@ class TestAcousticIndices(unittest.TestCase):
 
     def test_compute_zcr(self):
         pypam.acoustic_indices.compute_zcr(s=self.signal.signal, fs=self.signal.fs)
+
+    def test_compute_zcr_avg(self):
+        pypam.acoustic_indices.compute_zcr_avg(s=self.signal.signal, fs=self.signal.fs)
