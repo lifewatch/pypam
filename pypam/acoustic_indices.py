@@ -17,43 +17,10 @@ __credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
 __email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
 __status__ = "Development"
 
-import numba as nb
 import numpy as np
-from scipy import fftpack
-from scipy import signal as sig
 import maad.features
 
 
-# def compute_aci(sxx, j_bin):
-#     """
-#     Compute the Acoustic Complexity Index from the spectrogram of an audio signal.
-#     Reference: Pieretti N, Farina A, Morri FD (2011) A new methodology to infer the singing activity of an avian
-#     community: the Acoustic Complexity Index (ACI). Ecological Indicators, 11, 868-873.
-#     Ported from the soundecology R package.
-#
-#     Parameters
-#     ----------
-#     sxx:
-#         the spectrogram of the audio signal
-#     j_bin:
-#         temporal size of the frame (in samples)
-#     """
-#     # relevant time indices
-#     # times = range(0, sxx.shape[1], j_bin)
-#     # alternative time indices to follow the R code
-#     times = range(0, sxx.shape[1] - 10, j_bin)
-#
-#     # sub-spectros of temporal size j
-#     jspecs = [np.array(sxx[:, i:i + j_bin]) for i in times]
-#     aci = [sum((np.sum(abs(np.diff(jspec)), axis=1) / np.sum(jspec, axis=1))) for jspec in jspecs]
-#     # list of ACI values on each jspecs
-#     main_value = sum(aci)
-#     temporal_values = aci
-#
-#     return main_value, temporal_values
-
-
-@nb.njit
 def compute_aci(sxx: np.ndarray):
     """
     Return the aci of the signal
@@ -67,17 +34,7 @@ def compute_aci(sxx: np.ndarray):
     -------
     ACI value
     """
-    aci_evo = np.zeros(sxx.shape[1], dtype=np.float64)
-    for j in np.arange(sxx.shape[1]):
-        d = 0
-        i = 0
-        for k in np.arange(1, sxx.shape[0]):
-            dk = np.abs(sxx[k][j] - sxx[k - 1][j])
-            d = d + dk
-            i = i + sxx[k][j]
-        aci_evo[j] = d / i
-
-    aci_val = np.sum(aci_evo)
+    _, _, aci_val = maad.features.alpha_indices.acoustic_complexity_index(Sxx=sxx)
     return aci_val
 
 
@@ -143,65 +100,32 @@ def compute_th(s):
     return th
 
 
-def compute_ndsi(s, fs, window_length=1024, anthrophony=None, biophony=None):
+def compute_ndsi(sxx, frequencies, anthrophony=None, biophony=None):
     """
-    Compute Normalized Difference Sound Index from an audio signal.
-    This function computes an estimate power spectral density using Welch's method.
+    Compute Normalized Difference Sound Index from power spectrogram.
     Reference: Kasten, Eric P., Stuart H. Gage, Jordan Fox, and Wooyeong Joo. 2012.
-    The Remote Environ- mental Assessment Laboratory's Acoustic Library: An Archive for Studying
+    The Remote Environmental Assessment Laboratory's Acoustic Library: An Archive for Studying
     Soundscape Ecology.
     Ecological Informatics 12: 50-67.
     Inspired by the seewave R package, the soundecology R package and the original matlab code from the authors.
 
     Parameters
     ----------
-    s: np.array
-        Signal
-    fs : int
-        Sampling rate
-    window_length: int
-        the length of the window for the Welch's method.
+    sxx: np.array 2D
+        The spectrogram of the audio signal
+    frequencies: np.array 1D
+        List of the frequencies of the spectrogram
     anthrophony: list of ints
         list of two values containing the minimum and maximum frequencies (in Hertz) for antrophony.
     biophony: list of ints
         list of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
-    # frequencies, pxx = signal.welch(file.sig_float, fs=file.sr, window='hamming',
-    # nperseg=window_length,
-    # noverlap=window_length/2, nfft=window_length, detrend=False, return_onesided=True,
-    # scaling='density', axis=-1)
-    # Estimate power spectral density using Welch's method
-    # TODO change of detrend for apollo
-    # Estimate power spectral density using Welch's method
     if biophony is None:
         biophony = [2000, 11000]
     if anthrophony is None:
         anthrophony = [1000, 2000]
-    frequencies, pxx = sig.welch(s, fs=fs, window='hamming', nperseg=window_length,
-                                 noverlap=int(window_length / 2), nfft=window_length, detrend='constant',
-                                 return_onesided=True, scaling='density', axis=-1)
-    avgpow = pxx * frequencies[1]
-    # use a rectangle approximation of the integral of the signal's power spectral density (PSD)
-    # avgpow = avgpow / np.linalg.norm(avgpow, ord=2)
-    # Normalization (doesn't change the NDSI values. Slightly differ from the matlab code).
-
-    # min freq of anthrophony in samples (or bin) (closest bin)
-    min_anthro_bin = np.argmin(np.abs(frequencies - anthrophony[0]))
-
-    # max freq of anthrophony in samples (or bin)
-    max_anthro_bin = np.argmin(np.abs(frequencies - anthrophony[1]))
-
-    # min freq of biophony in samples (or bin)
-    min_bio_bin = np.argmin(np.abs(frequencies - biophony[0]))
-
-    # max freq of biophony in samples (or bin)
-    max_bio_bin = np.argmin(np.abs(frequencies - biophony[1]))
-
-    min_anthro_bin = np.argmin(min_anthro_bin)
-    anthro = np.sum(avgpow[min_anthro_bin:max_anthro_bin])
-    bio = np.sum(avgpow[min_bio_bin:max_bio_bin])
-
-    ndsi = (bio - anthro) / (bio + anthro)
+    ndsi = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
+                                                        flim_antroPh=anthrophony, R_compatible='soundecology')
     return ndsi
 
 
@@ -260,34 +184,6 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return adi
 
 
-@nb.njit
-def compute_zcr_avg(s, window_length=512, window_hop=256):
-    """
-    Compute the Zero Crossing Rate of an audio signal.
-
-    Parameters
-    ----------
-    s: np.array
-        Signal to process
-    window_length: int
-        Size of the sliding window (samples)
-    window_hop: int
-        Size of the lag window (samples)
-
-    Returns
-    -------
-    A list of values (number of zero crossing for each window)
-    """
-    times = np.arange(0, len(s) - window_length + window_hop)
-    zcr_bins = np.zeros(times.size)
-    for k, i in enumerate(times):
-        x = s[i: i + window_length]
-        zcr_bins[k] = len(np.where(np.diff(np.signbit(x)))[0]) / float(window_length)
-
-    return np.mean(zcr_bins)
-
-
-@nb.njit
 def compute_zcr(s):
     """
     Compute the Zero Crossing Rate of an audio signal.
@@ -300,4 +196,5 @@ def compute_zcr(s):
     -------
     A list of values (number of zero crossing for each window)
     """
-    return len(np.where(np.diff(np.signbit(s)))[0]) / float(len(s))
+    zcr = maad.features.temporal.zero_crossing_rate(s=s.signal, fs=s.fs) / s.fs
+    return zcr
