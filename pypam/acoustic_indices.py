@@ -81,7 +81,6 @@ def compute_aci(sxx: np.ndarray):
     return aci_val
 
 
-@nb.njit
 def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     """
     Compute the Bioacoustic Index from the spectrogram of an audio signal.
@@ -112,7 +111,6 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     return bi
 
 
-@nb.njit
 def compute_sh(sxx):
     """
     Compute Spectral Entropy of Shannon from the spectrogram of an audio signal.
@@ -263,7 +261,6 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return gini(values)
 
 
-@nb.njit
 def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
     """
     Compute Acoustic Diversity Index.
