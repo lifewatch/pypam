@@ -180,17 +180,20 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     return adi
 
 
-def compute_zcr(s):
+def compute_zcr(s, fs):
     """
     Compute the Zero Crossing Rate of an audio signal.
 
     Parameters
     ----------
     s: np.array
+        Signal
+    fs : int
+        Sampling frequency in Hz
 
     Returns
     -------
     A list of values (number of zero crossing for each window)
     """
-    zcr = maad.features.temporal.zero_crossing_rate(s=s.signal, fs=s.fs) / s.fs
+    zcr = maad.features.temporal.zero_crossing_rate(s=s, fs=fs) / fs
     return zcr
