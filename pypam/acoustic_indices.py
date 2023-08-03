@@ -28,7 +28,7 @@ def compute_aci(sxx: np.ndarray):
     Parameters
     ----------
     sxx : np.array 2D
-        Spectrogram of the signal
+        Spectrogram of the signal in linear units
 
     Returns
     -------
@@ -51,7 +51,7 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     Parameters
     ----------
     sxx: np.array 2D
-        The spectrogram of the audio signal
+        The spectrogram of the audio signal in linear units
     frequencies: np.array 1D
         List of the frequencies of the spectrogram
     min_freq: int
@@ -76,7 +76,7 @@ def compute_sh(sxx):
     Parameters
     ----------
     sxx: np.array 2D
-     The spectrogram of the audio signal
+     The spectrogram of the audio signal in linear units
 
     Returns
     -------
@@ -112,7 +112,7 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
     Parameters
     ----------
     sxx: np.array 2D
-        The spectrogram of the audio signal
+        The spectrogram of the audio signal in linear units
     frequencies: np.array 1D
         List of the frequencies of the spectrogram
     anthrophony: list of ints
@@ -135,7 +135,7 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     Parameters
     ----------
     sxx: 2d np array
-        Spectrogram of the audio signal
+        Spectrogram of the audio signal in linear units
     frequencies: list of ints
         Frequencies list of the spectrogram
     max_freq: int
@@ -162,7 +162,7 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     Parameters
     ----------
     sxx:
-        Spectrogram of the audio signal
+        Spectrogram of the audio signal in linear units
     frequencies: list of ints
         Frequencies list of the spectrogram
     max_freq: int
