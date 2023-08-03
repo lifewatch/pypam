@@ -120,8 +120,8 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
     biophony: tuple of ints
         Tuple of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
-    ndsi = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
-                                                        flim_antroPh=anthrophony, R_compatible='soundecology')
+    ndsi, _, _, _ = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
+                                                                 flim_antroPh=anthrophony, R_compatible='soundecology')
     return ndsi
 
 
