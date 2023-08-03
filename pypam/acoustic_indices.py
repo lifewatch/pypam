@@ -115,9 +115,9 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
         The spectrogram of the audio signal in linear units
     frequencies: np.array 1D
         List of the frequencies of the spectrogram
-    anthrophony: list of ints
+    anthrophony: tuple of ints
         Tuple of two values containing the minimum and maximum frequencies (in Hertz) for antrophony.
-    biophony: list of ints
+    biophony: tuple of ints
         Tuple of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
     ndsi = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
