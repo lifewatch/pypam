@@ -42,3 +42,26 @@ class TestSignal(unittest.TestCase):
         separation_ds = separator(s, verbose=with_plots())
         reconstructed_sources = separator.reconstruct_sources(separation_ds)
         separator.return_filtered_signal(s, reconstructed_sources['C_tf'])
+
+    def test_acoustic_indices(self):
+        s = sig.Signal(self.data, fs=fs)
+        aci = s.aci()
+        assert aci >= 0
+        bi = s.bi()
+        assert bi >= 0
+        sh = s.sh()
+        assert np.logical_and(sh >= 0, sh <= 1)
+        th = s.th()
+        assert np.logical_and(th >= 0, th <= 1)
+        ndsi = s.ndsi()
+        assert np.logical_and(ndsi >= -1, ndsi <= 1)
+        aei = s.aei()
+        assert np.logical_and(aei >= 0, aei <= 1)
+        adi = s.adi()
+        assert adi >= 0
+        zcr = s.zcr()
+        assert np.logical_and(zcr >= 0, zcr <= 1)
+        zcr_avg = s.zcr_avg()
+        assert np.logical_and(zcr_avg >= 0, zcr_avg <= 1)
+
+
