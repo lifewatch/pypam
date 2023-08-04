@@ -550,7 +550,7 @@ class Signal:
         error = metrics.mean_squared_error(np.log10(self.psd), y_pred)
         return slope, error
 
-    def aci(self, nfft, overlap=0, **kwargs):
+    def aci(self, nfft=512, overlap=0, **kwargs):
         """
         Calculation of root mean squared value (rms) of the signal in uPa for each bin
         Returns Dataframe with 'datetime' as index and 'rms' value as a column
