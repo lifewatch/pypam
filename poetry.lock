@@ -1981,13 +1981,18 @@ plugins = ["importlib-metadata"]
 
 [[package]]
 name = "pyhydrophone"
-version = "0.1.4"
+version = "0.1.5"
 description = "Python scripts to read hydrophones files"
 optional = false
 python-versions = ">=3.6"
-files = [
-    {file = "pyhydrophone-0.1.4.tar.gz", hash = "sha256:4d513ecb176bba962c5ea92c0393092d9bdfa65f1b2fc3520e1e050e2fe1fe71"},
-]
+files = []
+develop = false
+
+[package.source]
+type = "git"
+url = "https://github.com/SimLrt32/pyhydrophone.git"
+reference = "HEAD"
+resolved_reference = "3ec5e53777dd51d18e4b035be53c3a5634fa8602"
 
 [[package]]
 name = "pyparsing"
@@ -3013,4 +3018,4 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "4758c835d73a6fec865e8349fef50c0681c6a3ad131cf40cc4b7862504abdc01"
+content-hash = "59fbfb2d58f766251f35a35004207956716e2e8f73cdce5b36632810a4f1302f"
