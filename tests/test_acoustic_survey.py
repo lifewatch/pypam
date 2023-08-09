@@ -1,6 +1,7 @@
 import unittest
 import pathlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pypam.acoustic_survey import ASA
 import pyhydrophone as pyhy
@@ -27,6 +28,7 @@ band_lf = [50, 500]
 band_hf = [500, 4000]
 band_list = [band_lf, band_hf]
 # features = ['rms', 'peak', 'sel', 'dynamic_range', 'aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg']
+acoustic_indices_features = ['aci', 'bi', 'sh', 'th', 'ndsi', 'aei', 'adi', 'zcr', 'zcr_avg']
 fast_features = ['rms', 'peak', 'sel']
 third_octaves = None
 dc_subtract = True
@@ -61,6 +63,17 @@ class TestASA(unittest.TestCase):
 
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
+        ds = self.asa.evolution_multiple(method_list=acoustic_indices_features, min_freq=0, max_freq=4000,
+                                         anthrophony=(1000, 2000), biophony=(2000, 4000))
+        assert (ds.aci.values >= 0).all()
+        assert (ds.bi.values >= 0).all()
+        assert np.logical_and(ds.sh.values >= 0, ds.sh.values <= 1).all()
+        assert np.logical_and(ds.th.values >= 0, ds.th.values <= 1).all()
+        assert np.logical_and(ds.ndsi.values >= -1, ds.ndsi.values <= 1).all()
+        assert np.logical_and(ds.aei.values >= 0, ds.aei.values <= 1).all()
+        assert (ds.adi.values >= 0).all()
+        assert np.logical_and(ds.zcr.values >= 0, ds.zcr.values <= 1).all()
+        assert np.logical_and(ds.zcr_avg.values >= 0, ds.zcr_avg.values <= 1).all()
 
     def test_third_oct(self):
         ds = self.asa.evolution_freq_dom('spectrogram', band=third_octaves, db=True)

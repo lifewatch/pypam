@@ -550,7 +550,7 @@ class Signal:
         error = metrics.mean_squared_error(np.log10(self.psd), y_pred)
         return slope, error
 
-    def aci(self, nfft, overlap=0, **kwargs):
+    def aci(self, nfft=512, overlap=0, **kwargs):
         """
         Calculation of root mean squared value (rms) of the signal in uPa for each bin
         Returns Dataframe with 'datetime' as index and 'rms' value as a column
@@ -562,7 +562,7 @@ class Signal:
         overlap : float [0, 1]
             Percentage (in 1) to overlap
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=True)
+        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
         aci_val = self.acoustic_index('aci', sxx=sxx)
 
         return aci_val
@@ -624,33 +624,32 @@ class Signal:
         th_val = self.acoustic_index('th', s=self.signal)
         return th_val
 
-    def ndsi(self, window_length=1024, anthrophony=None, biophony=None, **kwargs):
+    def ndsi(self, nfft=512, overlap=0, anthrophony=(1000, 2000), biophony=(2000, 11000), **kwargs):
         """
         Compute the Normalized Difference Sound Index
         Parameters
         ----------
-        window_length: int
-            Length of the window to use in samples
-        anthrophony: list or tuple
-            Band to consider the anthrophony. If set to None, the default is [1000, 2000] Hz
-        biophony: list or tuple
-            Band to consider the biophony. If set to None, the default is [2000, 11000] Hz
+        nfft: int
+            FFT number
+        overlap : float [0, 1]
+            Percentage (in 1) to overlap
+        anthrophony: tuple
+            Band to consider the anthrophony.
+        biophony: tuple
+            Band to consider the biophony.
 
         Returns
         -------
         NDSI value
         """
-        if anthrophony is None:
-            anthrophony = [1000, 2000]
-        if biophony is None:
-            biophony = [2000, 11000]
         if self.band[1] < anthrophony[1] or self.band[1] < biophony[1]:
             print('The band %s does not include anthrophony %s or biophony %s. '
                   'NDSI will be set to nan' % (self.band, anthrophony, biophony))
             return np.nan
         else:
-            ndsi_val = self.acoustic_index('ndsi', s=self.signal, fs=self.fs, window_length=window_length,
-                                           anthrophony=anthrophony, biophony=biophony)
+            _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
+            ndsi_val = self.acoustic_index('ndsi', sxx=sxx, frequencies=self.freq, anthrophony=anthrophony,
+                                           biophony=biophony)
             return ndsi_val
 
     def aei(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
@@ -706,7 +705,7 @@ class Signal:
         -------
         A list of values (number of zero crossing for each window)
         """
-        zcr = self.acoustic_index('zcr', s=self.signal)
+        zcr = self.acoustic_index('zcr', s=self.signal, fs=self.fs)
         return zcr
 
     def zcr_avg(self, window_length=512, window_hop=256, **kwargs):
@@ -723,7 +722,8 @@ class Signal:
         -------
         ZCR average
         """
-        zcr = self.acoustic_index('zcr_avg', s=self.signal, window_length=window_length, window_hop=window_hop)
+        zcr = self.acoustic_index('zcr_avg', s=self.signal, fs=self.fs, window_length=window_length,
+                                  window_hop=window_hop)
         return zcr
 
     def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, overlap=0, **kwargs):
