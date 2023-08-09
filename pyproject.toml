@@ -26,7 +26,7 @@ scikit-learn = "^1.2.2"
 python-dateutil = "^2.8.2"
 poetry = "^1.5.0"
 xarray = "2023.01.0"
-pyhydrophone = {git = "https://github.com/SimLrt32/pyhydrophone.git"}
+pyhydrophone = {git = "https://github.com/SimLrt32/pyhydrophone.git", rev = "5b66e11"}
 
 # Development tools
 pre-commit = {version = "^3.3.1", optional = true}

@@ -1991,8 +1991,8 @@ develop = false
 [package.source]
 type = "git"
 url = "https://github.com/SimLrt32/pyhydrophone.git"
-reference = "HEAD"
-resolved_reference = "3ec5e53777dd51d18e4b035be53c3a5634fa8602"
+reference = "5b66e11"
+resolved_reference = "5b66e110b1224320f739cb2f37da11e8213a60ba"
 
 [[package]]
 name = "pyparsing"
@@ -3018,4 +3018,4 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "59fbfb2d58f766251f35a35004207956716e2e8f73cdce5b36632810a4f1302f"
+content-hash = "79d05b333fa902abe30987f5c0a5f5af86b04f94784cc928ddc1a69acf0787c0"
