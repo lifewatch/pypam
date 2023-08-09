@@ -46,6 +46,7 @@ pytest-cov = {version = "^4.1.0", optional = true}
 #   compatible with extras, widely used in the python-verse.
 netcdf4 = "^1.6.4"
 syrupy = "^4.0.4"
+openpyxl = "^3.1.2"
 [tool.poetry.extras]
 dev = ["pre-commit", "isort", "black", "flake8"]
 tests = ["pyyaml","pytest", "coverage", "python-dotenv", "pytest-cov"]
