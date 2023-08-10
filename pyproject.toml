@@ -13,7 +13,7 @@ classifiers =[
     "Operating System :: OS Independent"]
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = ">=3.8.1, <3.12.0"
 matplotlib = "^3.7.1"
 numpy = "^1.24.3"
 pandas = "^2.0.2"
@@ -26,7 +26,7 @@ scikit-learn = "^1.2.2"
 python-dateutil = "^2.8.2"
 poetry = "^1.5.0"
 xarray = "2023.01.0"
-pyhydrophone = {git = "https://github.com/SimLrt32/pyhydrophone.git", rev = "5b66e11"}
+pyhydrophone = "^0.1.6"
 
 # Development tools
 pre-commit = {version = "^3.3.1", optional = true}
