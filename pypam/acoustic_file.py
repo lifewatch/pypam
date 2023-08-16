@@ -467,7 +467,7 @@ class AcuFile:
 
         # Bands selected to study
         if band_list is None:
-            band_list = [[None, self.fs / 2]]
+            band_list = [[0, self.fs / 2]]
 
         # Sort bands to diminish downsampling efforts!
         sorted_bands = []

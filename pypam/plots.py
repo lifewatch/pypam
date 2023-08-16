@@ -279,7 +279,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     save_path: None, string or Path.
         Where to save the plot. If None, the plot is not saved.
     location: tuple or list
-        [latitude, longitude] in decimal coordinates. If location is passed, a bar with the sun position is going
+        [longitude, latitude] in decimal coordinates. If location is passed, a bar with the sun position is going
         to be added below the time axis
     """
     plt.figure(figsize=(12, 7))
