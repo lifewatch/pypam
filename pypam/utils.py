@@ -782,14 +782,14 @@ def bin_aggregation(ds, data_var, band=None, freq='D'):
     return ds_new
 
 
-def update_freq_cal(hydrophone, ds, data_var):
+def update_freq_cal(hydrophone, ds, data_var, **kwargs):
 
     index_coord = ds[data_var].dims[0]
     freq_coord = ds[data_var].dims[1]
     frequencies = ds[freq_coord].values
 
     if hydrophone.freq_cal is None:
-        hydrophone.get_freq_cal()
+        hydrophone.get_freq_cal(**kwargs)
     df = hydrophone.freq_cal_inc(frequencies=frequencies)
     ds_copy = ds.copy(deep=True)
 
