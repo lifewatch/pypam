@@ -19,7 +19,7 @@ serial_number = 67416073
 calibration_file = pathlib.Path("tests/test_data/calibration_data.xlsx")
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number,
                                      calibration_file=calibration_file, val='sensitivity', freq_col_id=1,
-                                     sens_col_id=29, start_data_id=6)
+                                     val_col_id=29, start_data_id=6)
 
 # Acoustic params. Reference pressure 1 uPa
 REF_PRESSURE = 1e-6
