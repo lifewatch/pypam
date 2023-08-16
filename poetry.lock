@@ -3246,4 +3246,4 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1, <3.12.0"
-content-hash = "3f1fa73b9ce91eaaceded25ccfe6b049df480106b494db4d022b325b1ae34614"
+content-hash = "7f612052ff4a537fd6d95d723443eecf09e18e1f28076f1a57878a7f661b0897"
