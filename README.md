@@ -16,6 +16,10 @@ group of different deployments.
 
 All the documentation can be found on [readthedocs](https://lifewatch-pypam.readthedocs.io)
 
+> **Warning**
+> This package is under active development, use with caution.
+
+
 ## Installation
 ### Using pip distribution 
 ```bash
@@ -37,8 +41,9 @@ pip install lifewatch-pypam
     poetry build
     ```
 
-## News from version 0.2.0
+## News from version 0.2.1
 In version 0.2.0 we removed the detectors, because there are better maintained packages for these purposes. 
+In version 0.2.1 we added the frequency-dependent calibration! 
 
 ## Quickstart
 The package is imported as `pypam`. The wav files must comply with the needs of 
