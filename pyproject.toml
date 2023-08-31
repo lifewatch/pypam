@@ -49,6 +49,8 @@ syrupy = "^4.0.4"
 openpyxl = "^3.1.2"
 scikit-maad = "^1.4.0"
 setuptools = "^68.1.0"
+certifi = "^2023.7.22"
+cryptography = "^41.0.2"
 [tool.poetry.extras]
 dev = ["pre-commit", "isort", "black", "flake8"]
 tests = ["pyyaml","pytest", "coverage", "python-dotenv", "pytest-cov"]
