@@ -7,6 +7,7 @@ from pypam.acoustic_survey import ASA
 import pyhydrophone as pyhy
 from tests import skip_unless_with_plots, with_plots
 
+plt.rcParams.update(plt.rcParamsDefault)
 
 # Data information
 folder_path = pathlib.Path('tests/test_data')
@@ -16,7 +17,10 @@ folder_path = pathlib.Path('tests/test_data')
 model = 'ST300HF'
 name = 'SoundTrap'
 serial_number = 67416073
-soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+calibration_file = pathlib.Path("tests/test_data/calibration_data.xlsx")
+soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number,
+                                     calibration_file=calibration_file, val='sensitivity', freq_col_id=1,
+                                     val_col_id=29, start_data_id=6)
 
 # Acoustic params. Reference pressure 1 uPa
 REF_PRESSURE = 1e-6
@@ -159,6 +163,12 @@ class TestASA(unittest.TestCase):
         milli_psd = self.asa.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
         milli_psd['millidecade_bands'].plot()
         plt.show()
+
+    def test_update_freq_cal(self):
+        ds_psd = self.asa.evolution_freq_dom('psd')
+        ds_psd_updated = self.asa.update_freq_cal(ds=ds_psd, data_var='band_density')
+        print(ds_psd['band_density'].values)
+        print(ds_psd_updated['band_density'].values)
 
 
 if __name__ == '__main__':

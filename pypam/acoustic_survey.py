@@ -570,6 +570,9 @@ class ASA:
 
         """
 
+    def update_freq_cal(self, ds, data_var, **kwargs):
+        return utils.update_freq_cal(hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs)
+
 
 class AcousticFolder:
     """
