@@ -51,6 +51,11 @@ import pathlib
 from tqdm import tqdm
 from functools import partial
 
+try:
+    import dask
+except ModuleNotFoundError:
+    dask = None
+
 from pypam import units as output_units
 
 G = 10.0 ** (3.0 / 10.0)
@@ -585,7 +590,7 @@ def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None,
     return spd_ds
 
 
-def _swap_dimensions_if_not_coord(ds, datetime_coord):
+def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
     """
     Swap the coordinates between ds and datetime_coord
 
@@ -601,13 +606,15 @@ def _swap_dimensions_if_not_coord(ds, datetime_coord):
     -------
     xarray.Dataset
     """
-    if datetime_coord not in ds.coords:
-        ds = ds.swap_dims({'id': 'datetime_coord'})
+    if datetime_coord not in ds.dims:
+        ds = ds.swap_dims({'id': datetime_coord})
+    if data_vars is not None:
+        ds = ds[data_vars]
     return ds
 
 
-def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coord='datetime', drop=False,
-                                  join_only_if_contains=None):
+def join_all_ds_output_deployment(deployment_path, data_vars=None,
+                                  datetime_coord='datetime', join_only_if_contains=None):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -615,7 +622,7 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coor
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
-    data_vars : None, str or list
+    data_vars : str or list
         Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
     datetime_coord : str
         Name of the time coordinate to join the datasets along
@@ -627,8 +634,9 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coor
 
     Returns
     -------
-    da_tot : DataArray
-        Data joined of one deployment
+    ds_tot : DataArray
+        Data joined of one deployment, in an xarray dask dataset.
+        To load the full dataset into memory, use afterwards ds_tot.load()
     """
 
     deployment_path = pathlib.Path(deployment_path)
@@ -641,12 +649,10 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coor
                 clean_list_path.append(path)
         list_path = clean_list_path
 
-    if data_vars is None:
-        data_vars = 'all'
-
-    partial_func = partial(_swap_dimensions_if_not_coord, datetime_coord)
-    ds_tot = xarray.open_mfdataset(list_path, parallel=True, concat_dim=datetime_coord, data_vars=data_vars,
-                                   preprocess=partial_func, combine='nested')
+    partial_func = partial(_swap_dimensions_if_not_dim, datetime_coord=datetime_coord, data_vars=data_vars)
+    if dask is None:
+        raise Exception('This function requires dask to be installed.')
+    ds_tot = xarray.open_mfdataset(list_path, parallel=True, preprocess=partial_func)
 
     return ds_tot
 
