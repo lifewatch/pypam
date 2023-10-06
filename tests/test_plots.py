@@ -62,6 +62,13 @@ class TestPlots(unittest.TestCase):
         pypam.plots.plot_spectrum_mean(ds=psd, data_var='band_density', show=True)
 
     @skip_unless_with_plots()
+    def test_plot_multiple_spectrum_mean(self):
+        psd = self.asa.hybrid_millidecade_bands(band=[10,2000])
+        ds_dict = {'asa': psd, 'test_day': self.ds}
+        pypam.plots.plot_multiple_spectrum_mean(ds_dict=ds_dict, data_var='millidecade_bands', show=True,
+                                                frequency_coord='frequency_bins')
+
+    @skip_unless_with_plots()
     def test_plot_ltsa(self):
         pypam.plots.plot_ltsa(ds=self.ds, data_var='millidecade_bands', show=True)
 
