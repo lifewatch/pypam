@@ -160,6 +160,52 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
             plt.show()
 
 
+def plot_multiple_spectrum_mean(ds_dict, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
+                                log=True, save_path=None, ax=None, show=True, **kwargs):
+    """
+    Same than plot_spectrum_mean but instead of one ds you can pass a dictionary of label: ds so they are all plot
+    on one figure.
+
+    Parameters
+    ----------
+    ds_dict : xarray DataSet
+        Dataset to plot
+    data_var : string
+        Name of the data variable to use
+    percentiles: Tuple or 'default'
+        list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
+    time_coord: str
+        Name of the coordinate representing time
+    frequency_coord: str
+        Name of the coordinate representing frequency
+    log : boolean
+        If set to True, y-axis in logarithmic scale
+    save_path : string or Path
+        Where to save the output graph. If None, it is not saved
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : bool
+        set to True to show the plot
+
+    Returns
+    -------
+    matplotlib.axes
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+    for label, ds in ds_dict.items():
+        kwargs.update({'label': label})
+        plot_spectrum_mean(ds, data_var, percentiles=percentiles, frequency_coord=frequency_coord,
+                           time_coord=time_coord, log=log, save_path=None, ax=ax, show=False, **kwargs)
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
+
+
 def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
                        log=True, save_path=None, ax=None, show=True, **kwargs):
     """
@@ -198,7 +244,7 @@ def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='fre
 
     pxx = ds[data_var].to_numpy().T
     p = np.nanpercentile(a=pxx, q=np.array(percentiles), axis=1)
-    ax.plot(ds.frequency.values, ds[data_var].mean(dim=time_coord).values, **kwargs)
+    ax.plot(ds[frequency_coord].values, ds[data_var].mean(dim=time_coord).values, **kwargs)
     if 'color' in kwargs.keys():
         ax.fill_between(x=ds[frequency_coord].values, y1=p[0], y2=p[1], alpha=0.2, color=kwargs['color'])
     else:
