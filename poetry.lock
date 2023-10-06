@@ -61,9 +61,6 @@ files = [
     {file = "Babel-2.12.1.tar.gz", hash = "sha256:cc2d99999cd01d44420ae725a21c9e3711b3aadc7976d6147f622d8581963455"},
 ]
 
-[package.dependencies]
-pytz = {version = ">=2015.7", markers = "python_version < \"3.9\""}
-
 [[package]]
 name = "black"
 version = "23.3.0"
@@ -1063,8 +1060,6 @@ files = [
 
 [package.dependencies]
 attrs = ">=17.4.0"
-importlib-resources = {version = ">=1.4.0", markers = "python_version < \"3.9\""}
-pkgutil-resolve-name = {version = ">=1.3.10", markers = "python_version < \"3.9\""}
 pyrsistent = ">=0.14.0,<0.17.0 || >0.17.0,<0.17.1 || >0.17.1,<0.17.2 || >0.17.2"
 
 [package.extras]
@@ -1084,7 +1079,6 @@ files = [
 
 [package.dependencies]
 importlib-metadata = {version = ">=4.11.4", markers = "python_version < \"3.12\""}
-importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
 "jaraco.classes" = "*"
 jeepney = {version = ">=0.4.2", markers = "sys_platform == \"linux\""}
 pywin32-ctypes = {version = ">=0.2.0", markers = "sys_platform == \"win32\""}
@@ -1605,7 +1599,6 @@ files = [
 ]
 
 [package.dependencies]
-importlib-metadata = {version = "*", markers = "python_version < \"3.9\""}
 llvmlite = "==0.40.*"
 numpy = ">=1.21,<1.25"
 
@@ -1873,17 +1866,6 @@ files = [
 
 [package.extras]
 testing = ["pytest", "pytest-cov"]
-
-[[package]]
-name = "pkgutil-resolve-name"
-version = "1.3.10"
-description = "Resolve a name to an object."
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "pkgutil_resolve_name-1.3.10-py3-none-any.whl", hash = "sha256:ca27cc078d25c5ad71a9de0a7a330146c4e014c2462d9af19c6b828280649c5e"},
-    {file = "pkgutil_resolve_name-1.3.10.tar.gz", hash = "sha256:357d6c9e6a755653cfd78893817c0853af365dd51ec97f3d358a819373bbd174"},
-]
 
 [[package]]
 name = "platformdirs"
@@ -3121,25 +3103,25 @@ files = [
 
 [[package]]
 name = "xarray"
-version = "2023.1.0"
+version = "2023.8.0"
 description = "N-D labeled arrays and datasets in Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "xarray-2023.1.0-py3-none-any.whl", hash = "sha256:7e530b1deafdd43e5c2b577d0944e6b528fbe88045fd849e49a8d11871ecd522"},
-    {file = "xarray-2023.1.0.tar.gz", hash = "sha256:7bee552751ff1b29dab8b7715726e5ecb56691ac54593cf4881dff41978ce0cd"},
+    {file = "xarray-2023.8.0-py3-none-any.whl", hash = "sha256:eb42b56aea2c7d5db2a7d0c33fb005b78eb5c4421eb747f2ced138c70b5c204e"},
+    {file = "xarray-2023.8.0.tar.gz", hash = "sha256:825c6d64202a731a4e49321edd1e9dfabf4be06802f1b8c8a3c00a3ebfc8cedf"},
 ]
 
 [package.dependencies]
-numpy = ">=1.20"
+numpy = ">=1.21"
 packaging = ">=21.3"
-pandas = ">=1.3"
+pandas = ">=1.4"
 
 [package.extras]
 accel = ["bottleneck", "flox", "numbagg", "scipy"]
-complete = ["bottleneck", "cfgrib", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "matplotlib", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "rasterio", "scipy", "seaborn", "zarr"]
-docs = ["bottleneck", "cfgrib", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "ipykernel", "ipython", "jupyter-client", "matplotlib", "nbsphinx", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "rasterio", "scanpydoc", "scipy", "seaborn", "sphinx-autosummary-accessors", "sphinx-rtd-theme", "zarr"]
-io = ["cfgrib", "cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap", "rasterio", "scipy", "zarr"]
+complete = ["bottleneck", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "matplotlib", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "scipy", "seaborn", "zarr"]
+docs = ["bottleneck", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "ipykernel", "ipython", "jupyter-client", "matplotlib", "nbsphinx", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "scanpydoc", "scipy", "seaborn", "sphinx-autosummary-accessors", "sphinx-rtd-theme", "zarr"]
+io = ["cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap", "scipy", "zarr"]
 parallel = ["dask[complete]"]
 viz = ["matplotlib", "nc-time-axis", "seaborn"]
 
@@ -3249,5 +3231,5 @@ tests = ["coverage", "pytest", "pytest-cov", "python-dotenv", "pyyaml"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.8.1, <3.12.0"
-content-hash = "2aadbd7ba6760ad5ddbffe86fc53538aaf6f8bb7662fbaa99ea56e0937444c14"
+python-versions = ">=3.9, <3.12.0"
+content-hash = "868ab164f115bef9263ab5eb9f491d9b7ba4d8b4dfdac635ff37c714ca9cb481"
