@@ -160,16 +160,23 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
             plt.show()
 
 
-def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=True):
+def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
+                       log=True, save_path=None, ax=None, show=True, **kwargs):
     """
     Plot the mean spectrum
 
     Parameters
     ----------
     ds : xarray DataSet
-        Output of evolution
+        Dataset to plot
     data_var : string
         Name of the data variable to use
+    percentiles: Tuple or 'default'
+        list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
+    time_coord: str
+        Name of the coordinate representing time
+    frequency_coord: str
+        Name of the coordinate representing frequency
     log : boolean
         If set to True, y-axis in logarithmic scale
     save_path : string or Path
@@ -186,20 +193,24 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
     """
     if ax is None:
         fig, ax = plt.subplots()
+    if percentiles == 'default':
+        percentiles = [10, 90]
 
-    sns.lineplot(x=ds[data_var].dims[1], y='value', ax=ax, data=ds[data_var].to_pandas().melt(), errorbar='sd')
-
-    if ('percentiles' in ds) and (len(ds['percentiles']) > 0):
-        # Add the percentiles values
-        ds['value_percentiles'].mean(dim='id').plot.line(hue='percentiles', ax=ax)
+    pxx = ds[data_var].to_numpy().T
+    p = np.nanpercentile(a=pxx, q=np.array(percentiles), axis=1)
+    ax.plot(ds.frequency.values, ds[data_var].mean(dim=time_coord).values, **kwargs)
+    if 'color' in kwargs.keys():
+        ax.fill_between(x=ds[frequency_coord].values, y1=p[0], y2=p[1], alpha=0.2, color=kwargs['color'])
+    else:
+        ax.fill_between(x=ds[frequency_coord].values, y1=p[0], y2=p[1], alpha=0.2)
 
     ax.set_facecolor('white')
-    plt.title(data_var.replace('_', ' ').capitalize())
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
+    ax.set_title(data_var.replace('_', ' ').capitalize())
+    ax.set_xlabel('Frequency [Hz]')
+    ax.set_ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
 
     if log:
-        plt.xscale('log')
+        ax.set_xscale('log')
     if save_path is not None:
         plt.savefig(save_path)
     if show:
