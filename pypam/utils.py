@@ -616,7 +616,7 @@ def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
 
 
 def join_all_ds_output_deployment(deployment_path, data_vars=None,
-                                  datetime_coord='datetime', join_only_if_contains=None, load=False):
+                                  datetime_coord='datetime', join_only_if_contains=None, load=False, parallel=True):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -633,6 +633,8 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
     join_only_if_contains: str
         String which needs to be contained in the path name to be joined. If set to None (default), all the files are
         joined
+    parallel: bool
+        Set to True to speed up loading
 
     Returns
     -------
@@ -654,7 +656,7 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
         list_path = clean_list_path
 
     partial_func = partial(_swap_dimensions_if_not_dim, datetime_coord=datetime_coord, data_vars=data_vars)
-    ds_tot = xarray.open_mfdataset(list_path, parallel=True, preprocess=partial_func)
+    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func)
 
     if load:
         with ProgressBar():
