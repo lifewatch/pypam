@@ -640,6 +640,8 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
         Data joined of one deployment, in an xarray dask dataset.
         To load the full dataset into memory, use afterwards ds_tot.load()
     """
+    if dask is None:
+        raise ModuleNotFoundError('This function requires dask to be installed.')
 
     deployment_path = pathlib.Path(deployment_path)
     list_path = list(deployment_path.glob('*.nc'))
@@ -652,8 +654,6 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
         list_path = clean_list_path
 
     partial_func = partial(_swap_dimensions_if_not_dim, datetime_coord=datetime_coord, data_vars=data_vars)
-    if dask is None:
-        raise Exception('This function requires dask to be installed.')
     ds_tot = xarray.open_mfdataset(list_path, parallel=True, preprocess=partial_func)
 
     if load:
