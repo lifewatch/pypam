@@ -208,7 +208,7 @@ def plot_spectrum_mean(ds, data_var, log=True, save_path=None, ax=None, show=Tru
     return ax
 
 
-def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
+def plot_ltsa(ds, data_var, time_coord='id', freq_coord='frequency', log=True, save_path=None, ax=None, show=True):
     """
     Plot the evolution of the ds containing percentiles and band values
 
@@ -218,6 +218,10 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
         Output of evolution
     data_var : string
         Column name of the value to plot. Can be 'density' or 'spectrum' or 'millidecade_bands
+    time_coord: string
+        name of the coordinate which represents time (has to be type np.datetime64)
+    freq_coord: string
+        name of the coordinate which represents frequency.
     log : boolean
         If set to True the scale of the y-axis is set to logarithmic
     save_path : string or Path
@@ -237,7 +241,7 @@ def plot_ltsa(ds, data_var, log=True, save_path=None, ax=None, show=True):
 
     # Plot the evolution
     # Extra axes for the colorbar and delete the unused one
-    plot_2d(ds[data_var], x='datetime', y=ds[data_var].dims[1], ax=ax,
+    plot_2d(ds[data_var], x=time_coord, y=freq_coord, ax=ax,
             cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
     plt.tight_layout()
