@@ -14,6 +14,7 @@ To merge or re-index output
     join_all_ds_output_station
     join_all_ds_output_deployment
     select_datetime_range
+    select_frequency_range
     merge_ds
 
 
@@ -666,6 +667,30 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     da_sxx = da_sxx.where(da_sxx.datetime <= end_datetime, drop=True)
 
     return da_sxx, old_start_datetime, old_end_datetime
+
+
+def select_frequency_range(ds, min_freq, max_freq, frequency_coord='frequency'):
+    """
+    Crop the dataset to the specified band between min freq and max freq.
+
+    Parameters
+    ----------
+    ds: Dataset or DataArray
+        Data to crop
+    min_freq: float
+        Minimum frequency in Hz
+    max_freq: float
+        Maximum frequency in Hz
+    frequency_coord: string
+        Name of the frequency coordinate
+
+    Returns
+    -------
+    The dataset cropped
+    """
+    ds_cropped = ds.sel(frequency=ds[frequency_coord][
+        (ds[frequency_coord] > min_freq) & (ds[frequency_coord] < max_freq)])
+    return ds_cropped
 
 
 def join_all_ds_output_station(directory_path, station, data_var_name, drop=False):
