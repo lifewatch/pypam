@@ -53,6 +53,8 @@ from functools import partial
 
 try:
     import dask
+    from dask.diagnostics import ProgressBar
+
 except ModuleNotFoundError:
     dask = None
 
@@ -614,7 +616,7 @@ def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
 
 
 def join_all_ds_output_deployment(deployment_path, data_vars=None,
-                                  datetime_coord='datetime', join_only_if_contains=None):
+                                  datetime_coord='datetime', join_only_if_contains=None, load=False):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -626,8 +628,8 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
         Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
     datetime_coord : str
         Name of the time coordinate to join the datasets along
-    drop : boolean
-        Set to True if you want to drop other coords
+    load : boolean
+        Set to True to load the entire dataset in memory. Otherwise it will return a dask xarray
     join_only_if_contains: str
         String which needs to be contained in the path name to be joined. If set to None (default), all the files are
         joined
@@ -653,6 +655,10 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
     if dask is None:
         raise Exception('This function requires dask to be installed.')
     ds_tot = xarray.open_mfdataset(list_path, parallel=True, preprocess=partial_func)
+
+    if load:
+        with ProgressBar():
+            ds_tot = ds_tot.compute()
 
     return ds_tot
 
