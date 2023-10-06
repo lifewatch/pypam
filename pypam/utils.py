@@ -49,6 +49,7 @@ import xarray
 import pandas as pd
 import pathlib
 from tqdm import tqdm
+from functools import partial
 
 from pypam import units as output_units
 
@@ -584,7 +585,28 @@ def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None,
     return spd_ds
 
 
-def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord='datetime', drop=False,
+def _swap_dimensions_if_not_coord(ds, datetime_coord):
+    """
+    Swap the coordinates between ds and datetime_coord
+
+    Parameters
+    ----------
+    ds: xarray.Dataset
+        Dataset to swap dimensions of
+    datetime_coord: str
+        Name of the datetime dimension
+
+
+    Returns
+    -------
+    xarray.Dataset
+    """
+    if datetime_coord not in ds.coords:
+        ds = ds.swap_dims({'id': 'datetime_coord'})
+    return ds
+
+
+def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coord='datetime', drop=False,
                                   join_only_if_contains=None):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
@@ -593,8 +615,8 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
-    data_var_name : str
-        Name of the data that you want to keep for joining ds
+    data_vars : None, str or list
+        Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
     datetime_coord : str
         Name of the time coordinate to join the datasets along
     drop : boolean
@@ -611,31 +633,22 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord
 
     deployment_path = pathlib.Path(deployment_path)
     list_path = list(deployment_path.glob('*.nc'))
+    # Remove files not matching the pattern
+    if join_only_if_contains is not None:
+        clean_list_path = []
+        for path in list_path:
+            if str(join_only_if_contains) in str(path):
+                clean_list_path.append(path)
+        list_path = clean_list_path
 
-    for path in tqdm(list_path):
-        add_file = True
-        if join_only_if_contains is not None:
-            if not (str(join_only_if_contains) in str(path)):
-                add_file = False
-        if add_file:
-            ds = xarray.open_dataset(path)
-            if datetime_coord not in ds.coords:
-                ds = ds.swap_dims({'id': 'datetime_coord'})
-            da = ds[data_var_name]
+    if data_vars is None:
+        data_vars = 'all'
 
-            if drop:
-                coords_to_drop = list(da.coords)
-                for dims in list(da.dims):
-                    coords_to_drop.remove(dims)
-                da = da.drop_vars(coords_to_drop)
+    partial_func = partial(_swap_dimensions_if_not_coord, datetime_coord)
+    ds_tot = xarray.open_mfdataset(list_path, parallel=True, concat_dim=datetime_coord, data_vars=data_vars,
+                                   preprocess=partial_func)
 
-            if path == list_path[0]:
-                da_tot = da.copy()
-            else:
-                da_tot = xarray.concat([da_tot, da], datetime_coord)
-            ds.close()
-
-    return da_tot
+    return ds_tot
 
 
 def select_datetime_range(da_sxx, start_datetime, end_datetime):
