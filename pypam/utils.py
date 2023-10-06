@@ -636,8 +636,8 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
 
     Returns
     -------
-    ds_tot : DataArray
-        Data joined of one deployment, in an xarray dask dataset.
+    ds_tot : Dataset
+        Data joined of one deployment, if load=False, returns a xarray dask dataset. Otherwise it loads into memory.
         To load the full dataset into memory, use afterwards ds_tot.load()
     """
     if dask is None:
