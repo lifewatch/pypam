@@ -50,6 +50,14 @@ import xarray
 import pandas as pd
 import pathlib
 from tqdm import tqdm
+from functools import partial
+
+try:
+    import dask
+    from dask.diagnostics import ProgressBar
+
+except ModuleNotFoundError:
+    dask = None
 
 from pypam import units as output_units
 
@@ -585,8 +593,31 @@ def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None,
     return spd_ds
 
 
-def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord='datetime', drop=False,
-                                  join_only_if_contains=None):
+def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
+    """
+    Swap the coordinates between ds and datetime_coord
+
+    Parameters
+    ----------
+    ds: xarray.Dataset
+        Dataset to swap dimensions of
+    datetime_coord: str
+        Name of the datetime dimension
+
+
+    Returns
+    -------
+    xarray.Dataset
+    """
+    if datetime_coord not in ds.dims:
+        ds = ds.swap_dims({'id': datetime_coord})
+    if data_vars is not None:
+        ds = ds[data_vars]
+    return ds
+
+
+def join_all_ds_output_deployment(deployment_path, data_vars=None,
+                                  datetime_coord='datetime', join_only_if_contains=None, load=False, parallel=True):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -594,49 +625,45 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
-    data_var_name : str
-        Name of the data that you want to keep for joining ds
+    data_vars : str or list
+        Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
     datetime_coord : str
         Name of the time coordinate to join the datasets along
-    drop : boolean
-        Set to True if you want to drop other coords
+    load : boolean
+        Set to True to load the entire dataset in memory. Otherwise it will return a dask xarray
     join_only_if_contains: str
         String which needs to be contained in the path name to be joined. If set to None (default), all the files are
         joined
+    parallel: bool
+        Set to True to speed up loading
 
     Returns
     -------
-    da_tot : DataArray
-        Data joined of one deployment
+    ds_tot : Dataset
+        Data joined of one deployment, if load=False, returns a xarray dask dataset. Otherwise it loads into memory.
+        To load the full dataset into memory, use afterwards ds_tot.load()
     """
+    if dask is None:
+        raise ModuleNotFoundError('This function requires dask to be installed.')
 
     deployment_path = pathlib.Path(deployment_path)
     list_path = list(deployment_path.glob('*.nc'))
+    # Remove files not matching the pattern
+    if join_only_if_contains is not None:
+        clean_list_path = []
+        for path in list_path:
+            if str(join_only_if_contains) in str(path):
+                clean_list_path.append(path)
+        list_path = clean_list_path
 
-    for path in tqdm(list_path):
-        add_file = True
-        if join_only_if_contains is not None:
-            if not (str(join_only_if_contains) in str(path)):
-                add_file = False
-        if add_file:
-            ds = xarray.open_dataset(path)
-            if datetime_coord not in ds.coords:
-                ds = ds.swap_dims({'id': 'datetime_coord'})
-            da = ds[data_var_name]
+    partial_func = partial(_swap_dimensions_if_not_dim, datetime_coord=datetime_coord, data_vars=data_vars)
+    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func)
 
-            if drop:
-                coords_to_drop = list(da.coords)
-                for dims in list(da.dims):
-                    coords_to_drop.remove(dims)
-                da = da.drop_vars(coords_to_drop)
+    if load:
+        with ProgressBar():
+            ds_tot = ds_tot.compute()
 
-            if path == list_path[0]:
-                da_tot = da.copy()
-            else:
-                da_tot = xarray.concat([da_tot, da], datetime_coord)
-            ds.close()
-
-    return da_tot
+    return ds_tot
 
 
 def select_datetime_range(da_sxx, start_datetime, end_datetime):
