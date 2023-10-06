@@ -646,7 +646,7 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None, datetime_coor
 
     partial_func = partial(_swap_dimensions_if_not_coord, datetime_coord)
     ds_tot = xarray.open_mfdataset(list_path, parallel=True, concat_dim=datetime_coord, data_vars=data_vars,
-                                   preprocess=partial_func)
+                                   preprocess=partial_func, combine='nested')
 
     return ds_tot
 
