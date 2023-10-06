@@ -584,7 +584,8 @@ def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None,
     return spd_ds
 
 
-def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
+def join_all_ds_output_deployment(deployment_path, data_var_name, datetime_coord='datetime', drop=False,
+                                  join_only_if_contains=None):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -594,8 +595,13 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
         Where all the netCDF files of a deployment are stored
     data_var_name : str
         Name of the data that you want to keep for joining ds
+    datetime_coord : str
+        Name of the time coordinate to join the datasets along
     drop : boolean
         Set to True if you want to drop other coords
+    join_only_if_contains: str
+        String which needs to be contained in the path name to be joined. If set to None (default), all the files are
+        joined
 
     Returns
     -------
@@ -607,20 +613,27 @@ def join_all_ds_output_deployment(deployment_path, data_var_name, drop=False):
     list_path = list(deployment_path.glob('*.nc'))
 
     for path in tqdm(list_path):
-        ds = xarray.open_dataset(path)
-        ds = ds.swap_dims({'id': 'datetime'})
-        da = ds[data_var_name]
+        add_file = True
+        if join_only_if_contains is not None:
+            if not (str(join_only_if_contains) in str(path)):
+                add_file = False
+        if add_file:
+            ds = xarray.open_dataset(path)
+            if datetime_coord not in ds.coords:
+                ds = ds.swap_dims({'id': 'datetime_coord'})
+            da = ds[data_var_name]
 
-        if drop:
-            coords_to_drop = list(da.coords)
-            for dims in list(da.dims):
-                coords_to_drop.remove(dims)
-            da = da.drop_vars(coords_to_drop)
+            if drop:
+                coords_to_drop = list(da.coords)
+                for dims in list(da.dims):
+                    coords_to_drop.remove(dims)
+                da = da.drop_vars(coords_to_drop)
 
-        if path == list_path[0]:
-            da_tot = da.copy()
-        else:
-            da_tot = xarray.concat([da_tot, da], 'datetime')
+            if path == list_path[0]:
+                da_tot = da.copy()
+            else:
+                da_tot = xarray.concat([da_tot, da], datetime_coord)
+            ds.close()
 
     return da_tot
 
