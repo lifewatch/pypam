@@ -70,7 +70,7 @@ class TestPlots(unittest.TestCase):
 
     @skip_unless_with_plots()
     def test_plot_ltsa(self):
-        pypam.plots.plot_ltsa(ds=self.ds, data_var='millidecade_bands', show=True)
+        pypam.plots.plot_ltsa(ds=self.ds, data_var='millidecade_bands', show=True, freq_coord='frequency_bins')
 
     @skip_unless_with_plots()
     def test_summary_plot(self):
@@ -90,6 +90,7 @@ class TestPlots(unittest.TestCase):
     @skip_unless_with_plots()
     def test_plot_daily_patterns_from_ds(self):
         ds = self.ds.mean(dim='frequency_bins', keep_attrs=True)
+        ds = ds.swap_dims({'id': 'datetime'})
         pypam.plots.plot_daily_patterns_from_ds(ds=ds, data_var='millidecade_bands', show=True)
 
     @skip_unless_with_plots()
