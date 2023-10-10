@@ -74,9 +74,11 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
         ax.plot(spd['value_percentiles'][freq_axis], spd['value_percentiles'],
                 label=spd['value_percentiles'].percentiles.values, linewidth=1)
         plt.legend(loc='upper right')
-    if log:
-        plt.xscale('symlog')
 
+    if log:
+        ax.set_xscale('symlog')
+
+    ax.set_facecolor('white')
     if save_path is not None:
         plt.savefig(save_path)
     if show:
@@ -85,7 +87,7 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
     return ax
 
 
-def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=True, datetime_coord='datetime',
+def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=True, datetime_coord='time',
                                freq_coord='frequency'):
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
@@ -101,7 +103,8 @@ def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=Tr
     show : bool
         set to True to show the plot
     datetime_coord : str
-        Name of the coordinate representing time
+        Name of the coordinate representing time for the spectrogram (not for each chunk)
+    freq_coord
     """
 
     for id_n in ds_spectrogram.id:
@@ -156,7 +159,6 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
         # Plot the percentiles as horizontal lines
         plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds[freq_coord].min(), xmax=ds[freq_coord].max(),
                    label=ds['percentiles'])
-
         if save_path is not None:
             plt.savefig(save_path)
         if show:
@@ -304,6 +306,8 @@ def plot_ltsa(ds, data_var, time_coord='id', freq_coord='frequency', log=True, s
     plot_2d(ds[data_var], x=time_coord, y=freq_coord, ax=ax,
             cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
             ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
+    ax.set_facecolor('white')
+
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path)
@@ -406,6 +410,8 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     if log:
         ax0.set_yscale('symlog')
 
+    ax0.set_facecolor('white')
+    ax1.set_facecolor('white')
     ax1.legend(loc='upper right')
     plt.tight_layout()
     if location is not None:
@@ -464,7 +470,7 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
                            ax=ax, cmap='magma', **plot_kwargs)
     ax.set_ylabel('Hours of the day')
     ax.set_xlabel('Days')
-
+    ax.set_facecolor('white')
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path)
@@ -499,7 +505,7 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
 
     ax.plot(ds['rms'])
     ax.set_xlabel('Time')
-
+    ax.set_facecolor('white')
     ax.set_title('Evolution of the broadband rms value')  # Careful when filter applied!
     ax.set_ylabel(r'%s [%s]' % (ds['rms'].standard_name, ds['rms'].units))
     plt.tight_layout()
@@ -547,6 +553,7 @@ def _plot_aggregation_evolution(df_plot, data_var, standard_name, units, mode='b
 
     ax.set_xlabel('Time [%s]' % aggregation_time)
     ax.set_ylabel(r'%s [$%s$]' % (standard_name, units))
+    ax.set_facecolor('white')
     plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -723,3 +730,4 @@ def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    ax.set_facecolor('white')
