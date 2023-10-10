@@ -1,14 +1,14 @@
 # PyPAM
 `pypam` is a python package to analyze underwater sound. 
-It is made to make easier the processing of underwater data stored in *.wav files. 
-The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a wav file together 
+It is made to make easier the processing of underwater data stored in audio files. 
+The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a audio file together 
 with all the metadata needed to process the data (such as hydrophone used). The second one is the representation of a
 folder where all the files are stored for one deployment. Here we consider a deployment as a measurement interval 
 corresponding to the time when a hydrophone was in the water, without changing any recording parameters.
 The Dataset is a combination of different AcousticSurveys in one dataset. This is to be used if the user has made 
 several deployments and wants to process them with the same parameters.
 
-Then `pypam` allows to go through all the wav files from the deployments only with one line of code and store the output
+Then `pypam` allows to go through all the audio files from the deployments only with one line of code and store the output
 in netCDF files, including metadata. The package can be used to analyze a single file, a folder with files or a 
 group of different deployments. 
 `pypam` deals with the calibration directly, so the output obtained is already in uPa or db! 
@@ -46,7 +46,7 @@ In version 0.2.0 we removed the detectors, because there are better maintained p
 In version 0.2.1 we added the frequency-dependent calibration! 
 
 ## Quickstart
-The package is imported as `pypam`. The wav files must comply with the needs of 
+The package is imported as `pypam`. The audio files must comply with the needs of 
 [pyhydrophone](https://github.com/lifewatch/pyhydrophone) to be able to read the datetime information. 
 
 The user can choose a window chunk size (parameter binsize, in seconds), so all the features / methods 

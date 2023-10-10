@@ -48,6 +48,9 @@ class TestASA(unittest.TestCase):
     def setUp(self) -> None:
         self.asa = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
                        include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract)
+        self.asa_flac = ASA(hydrophone=soundtrap, folder_path=folder_path.joinpath('flac_data'), binsize=binsize,
+                            nfft=nfft, timezone='UTC', include_dirs=include_dirs, zipped=zipped_files,
+                            dc_subtract=dc_subtract, extension='.flac')
 
     def test_empty_directory(self):
         with self.assertRaises(ValueError) as context:
@@ -78,6 +81,10 @@ class TestASA(unittest.TestCase):
         assert (ds.adi.values >= 0).all()
         assert np.logical_and(ds.zcr.values >= 0, ds.zcr.values <= 1).all()
         assert np.logical_and(ds.zcr_avg.values >= 0, ds.zcr_avg.values <= 1).all()
+
+    def test_third_oct_flac(self):
+        ds = self.asa_flac.evolution_freq_dom('spectrogram', band=third_octaves, db=True)
+        print(ds)
 
     def test_third_oct(self):
         ds = self.asa.evolution_freq_dom('spectrogram', band=third_octaves, db=True)

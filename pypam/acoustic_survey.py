@@ -37,6 +37,8 @@ class ASA:
         Where all the sound files are
     zipped : boolean
         Set to True if the directory is zipped
+    extension: str
+        Default to .wav, extension of the sound files to process
     include_dirs : boolean
         Set to True if the folder contains other folders with sound files
     p_ref : float
@@ -63,6 +65,7 @@ class ASA:
                  hydrophone: object,
                  folder_path,
                  zipped=False,
+                 extension='.wav',
                  include_dirs=False,
                  p_ref=1.0,
                  binsize=None,
@@ -78,7 +81,7 @@ class ASA:
 
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(folder_path=folder_path, zipped=zipped,
-                                        include_dirs=include_dirs)
+                                        include_dirs=include_dirs, extension=extension)
         self.p_ref = p_ref
         self.binsize = binsize
         self.nfft = nfft
@@ -349,80 +352,6 @@ class ASA:
         spectra_ds['millidecade_bands'] = milli_spectra
         return spectra_ds
 
-    def cut_and_place_files_period(self, period, folder_name, extensions=None):
-        """
-        Cut the files in the specified periods and store them in the right folder
-
-        Parameters
-        ----------
-        period: Tuple or list
-            Tuple or list with (start, stop)
-        folder_name: str or Path
-            Path to the location of the files to cut
-        extensions: list of strings
-            the extensions that want to be moved (csv will be split, log will just be moved)
-        """
-        if extensions is None:
-            extensions = []
-        start_date = parser.parse(period[0])
-        end_date = parser.parse(period[1])
-        print(start_date, end_date)
-        folder_path = self.acu_files.folder_path.joinpath(folder_name)
-        self.acu_files.extensions = extensions
-        for file_list in tqdm(self.acu_files):
-            wav_file = file_list[0]
-            sound_file = self._hydro_file(wav_file)
-            if sound_file.contains_date(start_date) and sound_file.file.frames > 0:
-                print('start!', wav_file)
-                # Split the sound file in two files
-                first, second = sound_file.split(start_date)
-                move_file(second, folder_path)
-                # Split the metadata files
-                for i, metadata_file in enumerate(file_list[1:]):
-                    if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
-                        ds = pd.read_csv(metadata_file)
-                        ds['datetime'] = pd.to_datetime(ds['unix time'] * 1e9)
-                        ds_first = ds[ds['datetime'] < start_date]
-                        ds_second = ds[ds['datetime'] >= start_date]
-                        ds_first.to_csv(metadata_file)
-                        new_metadata_path = second.parent.joinpath(
-                            second.name.replace('.wav', extensions[i]))
-                        ds_second.to_csv(new_metadata_path)
-                        # Move the file
-                        move_file(new_metadata_path, folder_path)
-                    else:
-                        move_file(metadata_file, folder_path)
-
-            elif sound_file.contains_date(end_date):
-                print('end!', wav_file)
-                # Split the sound file in two files
-                first, second = sound_file.split(end_date)
-                move_file(first, folder_path)
-                # Split the metadata files
-                for i, metadata_file in enumerate(file_list[1:]):
-                    if extensions[i] not in ['.log.xml', '.sud', '.bcl', '.dwv']:
-                        ds = pd.read_csv(metadata_file)
-                        ds['datetime'] = pd.to_datetime(ds['unix time'] * 1e9)
-                        ds_first = ds[ds['datetime'] < start_date]
-                        ds_second = ds[ds['datetime'] >= start_date]
-                        ds_first.to_csv(metadata_file)
-                        new_metadata_path = second.parent.joinpath(
-                            second.name.replace('.wav', extensions[i]))
-                        ds_second.to_csv(new_metadata_path)
-                    # Move the file (also if log)
-                    move_file(metadata_file, folder_path)
-
-            else:
-                if sound_file.is_in_period([start_date, end_date]):
-                    print('moving', wav_file)
-                    sound_file.file.close()
-                    move_file(wav_file, folder_path)
-                    for metadata_file in file_list[1:]:
-                        move_file(metadata_file, folder_path)
-                else:
-                    pass
-        return 0
-
     def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
         """
         Separate the signal in n_sources sources, using non-negative matrix factorization
@@ -581,7 +510,7 @@ class AcousticFolder:
     Class to help through the iterations of the acoustic folder.
     """
 
-    def __init__(self, folder_path, zipped=False, include_dirs=False, extensions=None):
+    def __init__(self, folder_path, zipped=False, include_dirs=False, extension='.wav', extra_extensions=None):
         """
         Store the information about the folder.
         It will create an iterator that returns all the pairs of extensions having the same name than the wav file
@@ -594,21 +523,24 @@ class AcousticFolder:
             Set to True if the subfolders are zipped
         include_dirs : boolean
             Set to True if the subfolders are included in the study
-        extensions : list
-            List of strings with all the extensions that will be returned (.wav is automatic)
+        extension : str
+            Default to .wav, sound file extension
+        extra_extensions : list
+            List of strings with all the extra extensions that will be returned
             i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
         """
         self.folder_path = pathlib.Path(folder_path)
+        self.extension = extension
         if not self.folder_path.exists():
             raise FileNotFoundError('The path %s does not exist. Please choose another one.' % folder_path)
-        if len(list(self.folder_path.glob('**/*.wav'))) == 0:
-            raise ValueError('The directory %s is empty. Please select another directory with *.wav files' %
-                             folder_path)
+        if len(list(self.folder_path.glob('**/*%s' % self.extension))) == 0:
+            raise ValueError('The directory %s is empty. Please select another directory with *.%s files' %
+                             (folder_path, self.extension))
         self.zipped = zipped
         self.recursive = include_dirs
-        if extensions is None:
-            extensions = []
-        self.extensions = extensions
+        if extra_extensions is None:
+            extra_extensions = []
+        self.extra_extensions = extra_extensions
 
     def __getitem__(self, n):
         """
@@ -625,14 +557,14 @@ class AcousticFolder:
         self.n = 0
         if not self.zipped:
             if self.recursive:
-                self.files_list = sorted(self.folder_path.glob('**/*.wav'))
+                self.files_list = sorted(self.folder_path.glob('**/*%s' % self.extension))
             else:
-                self.files_list = sorted(self.folder_path.glob('*.wav'))
+                self.files_list = sorted(self.folder_path.glob('*%s' % self.extension))
         else:
             if self.recursive:
                 self.folder_list = sorted(self.folder_path.iterdir())
                 self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
-                                                       extensions=self.extensions,
+                                                       extra_extensions=self.extra_extensions,
                                                        zipped=self.zipped,
                                                        include_dirs=self.recursive)
             else:
@@ -658,7 +590,7 @@ class AcousticFolder:
                     except StopIteration:
                         self.n += 1
                         self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
-                                                               extensions=self.extensions,
+                                                               extra_extensions=self.extra_extensions,
                                                                zipped=self.zipped,
                                                                include_dirs=self.recursive)
                 else:
@@ -666,17 +598,17 @@ class AcousticFolder:
                     zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
                     wav_file = zipped_folder.open(file_name)
                     files_list.append(wav_file)
-                    for extension in self.extensions:
+                    for extension in self.extra_extensions:
                         ext_file_name = file_name.parent.joinpath(
-                            file_name.name.replace('.wav', extension))
+                            file_name.name.replace(self.extension, extension))
                         files_list.append(zipped_folder.open(ext_file_name))
                     self.n += 1
                     return files_list
             else:
                 wav_path = self.files_list[self.n]
                 files_list.append(wav_path)
-                for extension in self.extensions:
-                    files_list.append(pathlib.Path(str(wav_path).replace('.wav', extension)))
+                for extension in self.extra_extensions:
+                    files_list.append(pathlib.Path(str(wav_path).replace(self.extension, extension)))
 
                 self.n += 1
                 return files_list
@@ -686,9 +618,9 @@ class AcousticFolder:
     def __len__(self):
         if not self.zipped:
             if self.recursive:
-                n_files = len(list(self.folder_path.glob('**/*.wav')))
+                n_files = len(list(self.folder_path.glob('**/*%s' % self.extension)))
             else:
-                n_files = len(list(self.folder_path.glob('*.wav')))
+                n_files = len(list(self.folder_path.glob('*%s' % self.extension)))
         else:
             if self.recursive:
                 n_files = len(list(self.folder_path.iterdir()))

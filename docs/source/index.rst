@@ -8,7 +8,7 @@ Description
 The goal of `pypam` is to allow easy reading and processing of acoustic underwater data.
 `pypam` further depends on `pyhydrophone`_ for hydrophone metadata management and calibration.
 
-`pypam` facilitates processing of `*.wav` files resulting from underwater acoustic deployments.
+`pypam` facilitates processing of audio files resulting from underwater acoustic deployments.
 It enables application of existing methods of acoustic data processing, and it allows the processing of several
 deployments with one line of code, so it is easy to create datasets to work with.
 `pypam` is oriented to extracting features that can be used for machine learning algorithms or to the extraction of
