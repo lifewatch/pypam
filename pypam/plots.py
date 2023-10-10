@@ -85,7 +85,8 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
     return ax
 
 
-def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=True):
+def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=True, datetime_coord='datetime',
+                               freq_coord='frequency'):
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
 
@@ -99,11 +100,13 @@ def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=Tr
         Where to save the images (folder)
     show : bool
         set to True to show the plot
+    datetime_coord : str
+        Name of the coordinate representing time
     """
 
     for id_n in ds_spectrogram.id:
         sxx = ds_spectrogram['spectrogram'].sel(id=id_n)
-        time_bin = sxx.datetime
+        time_bin = sxx[datetime_coord]
         title = 'Spectrogram of bin %s' % time_bin.values
         if save_path is not None:
             if type(save_path) == str:
@@ -111,7 +114,7 @@ def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=Tr
             file_name = pathlib.Path(ds_spectrogram.attrs['file_path']).name
             spectrogram_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
-        plot_2d(ds=sxx, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
+        plot_2d(ds=sxx, x=datetime_coord, y=freq_coord, xlabel='Time [s]', ylabel='Frequency [Hz]',
                 cbar_label=r'%s [$%s$]' % (ds_spectrogram['spectrogram'].standard_name,
                                            ds_spectrogram['spectrogram'].units), ylog=log, title=title)
 
@@ -168,8 +171,8 @@ def plot_multiple_spectrum_mean(ds_dict, data_var, percentiles='default', freque
 
     Parameters
     ----------
-    ds_dict : xarray DataSet
-        Dataset to plot
+    ds_dict : dict
+        Dictionary of label: ds with all the ds to plot
     data_var : string
         Name of the data variable to use
     percentiles: Tuple or 'default'
@@ -415,7 +418,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
 
 
 def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, ax=None,
-                                show=True, plot_kwargs=None):
+                                show=True, plot_kwargs=None, datetime_coord='datetime'):
     """
     Plot the daily rms patterns
 
@@ -433,6 +436,8 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
         Ax to plot on
     show : bool
         Set to True to show directly
+    datetime_coord : str
+        Name of the coordinate representing time
 
     Returns
     -------
@@ -442,21 +447,19 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
     if plot_kwargs is None:
         plot_kwargs = {}
 
-    daily_xr = ds.swap_dims(id='datetime')
-    daily_xr = daily_xr.sortby('datetime')
-
-    hours_float = daily_xr.datetime.dt.hour + daily_xr.datetime.dt.minute / 60
-    date_minute_index = pd.MultiIndex.from_arrays([daily_xr.datetime.dt.floor('D').values, hours_float.values],
-                                                  names=('date', 'time'))
-    daily_xr = daily_xr.assign(datetime=date_minute_index).unstack('datetime')
+    daily_xr = ds.copy()
+    hours_float = daily_xr[datetime_coord].dt.hour + daily_xr[datetime_coord].dt.minute / 60
+    date_minute_index = pd.MultiIndex.from_arrays([daily_xr[datetime_coord].dt.floor('D').values, hours_float.values],
+                                                  names=('date', 'hours'))
+    daily_xr = daily_xr.assign({datetime_coord: date_minute_index}).unstack(datetime_coord)
 
     if interpolate:
-        daily_xr = daily_xr.interpolate_na(dim='time', method='linear')
+        daily_xr = daily_xr.interpolate_na(dim='hours', method='linear')
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='time', robust=True,
+    xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='hours', robust=True,
                            cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
                            ax=ax, cmap='magma', **plot_kwargs)
     ax.set_ylabel('Hours of the day')
@@ -509,14 +512,102 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
     return ax
 
 
-def plot_aggregation_evolution(ds, data_var, mode, save_path=None, ax=None, show=True):
+def _plot_aggregation_evolution(df_plot, data_var, standard_name, units, mode='boxplot', ax=None, save_path=None,
+                                show=False, aggregation_time='D', **kwargs):
+    if ax is None:
+        fig, ax = plt.subplots()
+    if mode == 'boxplot':
+        sns.boxplot(data=df_plot, x='aggregated_time', y=data_var, whis=2.5, ax=ax, **kwargs)
+    elif mode == 'violin':
+        sns.violinplot(data=df_plot, x='aggregated_time', y=data_var, ax=ax, **kwargs)
+    elif mode == 'quantiles':
+        if 'hue' in kwargs.keys():
+            df_plot_list = df_plot.groupby(kwargs['hue'])
+            kwargs.pop('hue')
+        else:
+            df_plot_list = [(0, df_plot)]
+        for _, df_plot_i in df_plot_list:
+            quantiles_plot = df_plot_i.groupby('aggregated_time').quantile([0.1, 0.5, 0.9], numeric_only=True)
+            quantiles_plot = quantiles_plot.unstack()
+            quantiles_plot = quantiles_plot[data_var]
+            sns.lineplot(data=quantiles_plot, y=0.5, x='aggregated_time', ax=ax, **kwargs)
+
+            if 'color' in kwargs.keys():
+                ax.fill_between(x=quantiles_plot.index,
+                                y1=quantiles_plot[0.1].values,
+                                y2=quantiles_plot[0.9].values,
+                                alpha=0.2, color=kwargs['color'])
+            else:
+                ax.fill_between(x=quantiles_plot.index,
+                                y1=quantiles_plot[0.1].values,
+                                y2=quantiles_plot[0.9].values,
+                                alpha=0.2)
+    else:
+        raise ValueError('mode %s is not implemented. Only boxplot, quantiles and violin' % mode)
+
+    ax.set_xlabel('Time [%s]' % aggregation_time)
+    ax.set_ylabel(r'%s [$%s$]' % (standard_name, units))
+    plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+
+    return ax
+
+
+def _prepare_aggregation_plot_data(ds, data_var, aggregation_freq_band=None, aggregation_time='D',
+                                   freq_coord='frequency', datetime_coord='datetime'):
     """
-    Plot the aggregation evolution with boxplot or violin, the limits of the box are Q1 and Q3
+    Prepare the data for the aggregation plot
 
     Parameters
     ----------
-    ds : xarray DataSet
-        Dataset to process
+    ds : Dataset
+        Dataset with all the ds to plot
+    data_var : str
+        Name of the data variable to plot
+    datetime_coord : str
+        Name of the coordinate representing time
+    aggregation_time : str
+        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+    freq_coord : str
+        Name of the frequency coordinate
+    aggregation_freq_band : None, float or tuple
+        If a float is given, this function compute aggregation for the frequency which is selected
+        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+        selected
+        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+        frequency dependence
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+    ds_copy = pypam.utils.freq_band_aggregation(ds, data_var,
+                                                aggregation_freq_band=aggregation_freq_band,
+                                                freq_coord=freq_coord)
+    df_plot = ds_copy[data_var].to_dataframe()
+    df_plot['aggregated_time'] = pd.to_datetime(ds_copy[datetime_coord].values).to_period(aggregation_time).start_time
+
+    return df_plot
+
+
+def plot_multiple_aggregation_evolution(ds_dict, data_var, mode, save_path=None, ax=None, show=True,
+                                        datetime_coord='datetime', aggregation_time='D', freq_coord='frequency',
+                                        aggregation_freq_band=None, **kwargs):
+    """
+    Same than plot_aggregation_evolution but instead of one ds you can pass a dictionary of label: ds so they are
+    all plot on one figure.
+
+    Parameters
+    ----------
+    ds_dict : dict
+        Dictionary of label: ds with all the ds to plot
     data_var : str
         Name of the data variable to plot
     mode : str
@@ -527,31 +618,90 @@ def plot_aggregation_evolution(ds, data_var, mode, save_path=None, ax=None, show
         ax to plot on
     show : boolean
         Set to True to show the plot
+    datetime_coord : str
+        Name of the coordinate representing time
+    aggregation_time : str
+        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+    freq_coord : str
+        Name of the frequency coordinate
+    aggregation_freq_band : None, float or tuple
+        If a float is given, this function compute aggregation for the frequency which is selected
+        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+        selected
+        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+        frequency dependence
+    kwargs:
+        Any other argument which can be passed to the seaborn plot function
 
     Returns
     -------
     ax : matplotlib.axes class
         The ax with the plot if something else has to be plotted on the same
     """
-    if ax is None:
-        fig, ax = plt.subplots()
+    total_df = pd.DataFrame()
+    for label, ds in ds_dict.items():
+        df_plot = _prepare_aggregation_plot_data(ds, data_var=data_var, aggregation_freq_band=aggregation_freq_band,
+                                                 aggregation_time=aggregation_time, freq_coord=freq_coord,
+                                                 datetime_coord=datetime_coord)
+        df_plot['Data series'] = label
+        total_df = pd.concat([total_df, df_plot])
 
-    df_plot = ds.to_dataframe()
-    if mode == 'boxplot':
-        sns.boxplot(data=df_plot, x='time', y=data_var, whis=2.5, color='steelblue')
-    if mode == 'violin':
-        sns.violinplot(data=df_plot, x='time', y=data_var, color='steelblue')
+    kwargs.update({'hue': 'Data series'})
+    _plot_aggregation_evolution(total_df, data_var, standard_name=ds[data_var].standard_name, units=ds[data_var].units,
+                                mode=mode, ax=ax, save_path=save_path,
+                                show=show, aggregation_time=aggregation_time, **kwargs)
 
-    ax.set_xlabel('Time')
-    ax.set_ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
-    plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+    return ax
 
-    if save_path is not None:
-        plt.savefig(save_path)
-    if show:
-        plt.show()
+
+def plot_aggregation_evolution(ds, data_var, mode, save_path=None, ax=None, show=True, datetime_coord='datetime',
+                               aggregation_time='D', freq_coord='frequency', aggregation_freq_band=None, **kwargs):
+    """
+    Plot the aggregation evolution with boxplot, violin or quartiles, the limits of the box are Q1 and Q3.
+    It will compute the median of all the values included in the frequency band specified in 'aggregation_freq_band'.
+    Then it will plot the evolution considering the specified aggregation_time
+
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Dataset to process
+    data_var : str
+        Name of the data variable to plot
+    mode : str
+        'boxplot', 'violin' or 'quartiles'
+    save_path : string or Path
+        Where to save the image
+    ax : matplotlib.axes class or None
+        ax to plot on
+    show : boolean
+        Set to True to show the plot
+    datetime_coord : str
+        Name of the coordinate representing time
+    aggregation_time : str
+        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+    freq_coord : str
+        Name of the frequency coordinate
+    aggregation_freq_band : None, float or tuple
+        If a float is given, this function compute aggregation for the frequency which is selected
+        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+        selected
+        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+        frequency dependence
+    kwargs:
+        Any parameter which can be passed to the plot function of seaborn
+
+    Returns
+    -------
+    ax : matplotlib.axes class
+        The ax with the plot if something else has to be plotted on the same
+    """
+
+    df_plot = _prepare_aggregation_plot_data(ds, data_var=data_var, aggregation_freq_band=aggregation_freq_band,
+                                             aggregation_time=aggregation_time, freq_coord=freq_coord,
+                                             datetime_coord=datetime_coord)
+    _plot_aggregation_evolution(df_plot, data_var, standard_name=ds[data_var].standard_name, units=ds[data_var].units,
+                                mode=mode, ax=ax, save_path=save_path,
+                                show=show, aggregation_time=aggregation_time, **kwargs)
 
     return ax
 

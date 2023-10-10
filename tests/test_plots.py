@@ -63,7 +63,7 @@ class TestPlots(unittest.TestCase):
 
     @skip_unless_with_plots()
     def test_plot_multiple_spectrum_mean(self):
-        psd = self.asa.hybrid_millidecade_bands(band=[10,2000])
+        psd = self.asa.hybrid_millidecade_bands(band=[10, 2000])
         ds_dict = {'asa': psd, 'test_day': self.ds}
         pypam.plots.plot_multiple_spectrum_mean(ds_dict=ds_dict, data_var='millidecade_bands', show=True,
                                                 frequency_coord='frequency_bins')
@@ -99,9 +99,20 @@ class TestPlots(unittest.TestCase):
 
     @skip_unless_with_plots()
     def test_plot_aggregation_evolution(self):
-        self.ds = self.ds.swap_dims({'id': 'datetime'})
-        ds_one_freq = pypam.utils.bin_aggregation(ds=self.ds, data_var='millidecade_bands', band=1000, freq='H')
-        ds_band = pypam.utils.bin_aggregation(ds=self.ds, data_var='millidecade_bands', band=(100, 10000), freq='H')
-        pypam.plots.plot_aggregation_evolution(ds=ds_one_freq, data_var='millidecade_bands', mode='violin', show=True)
-        pypam.plots.plot_aggregation_evolution(ds=ds_band, data_var='millidecade_bands', mode='violin', show=True)
+        pypam.plots.plot_aggregation_evolution(ds=self.ds, data_var='millidecade_bands', mode='quantiles', show=True,
+                                               datetime_coord='datetime', aggregation_time='H',
+                                               freq_coord='frequency_bins', aggregation_freq_band=(100, 1000))
+        pypam.plots.plot_aggregation_evolution(ds=self.ds, data_var='millidecade_bands', mode='boxplot', show=True,
+                                               datetime_coord='datetime', aggregation_time='D',
+                                               freq_coord='frequency_bins', aggregation_freq_band=(100, 1000))
+        pypam.plots.plot_aggregation_evolution(ds=self.ds, data_var='millidecade_bands', mode='violin', show=True,
+                                               datetime_coord='datetime', aggregation_time='H',
+                                               freq_coord='frequency_bins', aggregation_freq_band=1000)
 
+    @skip_unless_with_plots()
+    def test_plot_multiple_aggregation_evolution(self):
+        psd = self.asa.hybrid_millidecade_bands(band=[10, 2000])
+        ds_dict = {'asa': psd, 'test_day': self.ds}
+        pypam.plots.plot_multiple_aggregation_evolution(ds_dict=ds_dict, data_var='millidecade_bands', mode='quantiles',
+                                                        show=True, datetime_coord='datetime', aggregation_time='H',
+                                                        freq_coord='frequency_bins', aggregation_freq_band=(100, 1000))
