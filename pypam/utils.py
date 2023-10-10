@@ -835,6 +835,7 @@ def freq_band_aggregation(ds, data_var, aggregation_freq_band=None, freq_coord=N
             ds_copy = ds_copy.where(ds_copy[freq_coord].isin(aggregation_freq_band), drop=True)
 
     ds_copy = ds_copy.median(dim=freq_coord)
+    ds_copy[data_var].attrs = ds[data_var].attrs
 
     return ds_copy
 
