@@ -529,7 +529,7 @@ def _plot_aggregation_evolution(df_plot, data_var, standard_name, units, mode='b
         for _, df_plot_i in df_plot_list:
             quantiles_plot = df_plot_i.groupby('aggregated_time').quantile([0.1, 0.5, 0.9], numeric_only=True)
             quantiles_plot = quantiles_plot.unstack()
-            quantiles_plot.columns = quantiles_plot.columns.droplevel(0)
+            quantiles_plot = quantiles_plot[data_var]
             sns.lineplot(data=quantiles_plot, y=0.5, x='aggregated_time', ax=ax, **kwargs)
 
             if 'color' in kwargs.keys():

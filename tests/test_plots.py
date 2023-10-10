@@ -109,6 +109,7 @@ class TestPlots(unittest.TestCase):
                                                datetime_coord='datetime', aggregation_time='H',
                                                freq_coord='frequency_bins', aggregation_freq_band=1000)
 
+    @skip_unless_with_plots()
     def test_plot_multiple_aggregation_evolution(self):
         psd = self.asa.hybrid_millidecade_bands(band=[10, 2000])
         ds_dict = {'asa': psd, 'test_day': self.ds}
