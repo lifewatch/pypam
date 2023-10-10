@@ -473,7 +473,9 @@ class ASA:
             Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution('rms', db=db).sel(band=0)
-        plots.plot_daily_patterns_from_ds(ds=rms_evolution, data_var='rms', save_path=save_path)
+        daily_xr = rms_evolution.swap_dims(id='datetime')
+        daily_xr = daily_xr.sortby('datetime')
+        plots.plot_daily_patterns_from_ds(ds=daily_xr, data_var='rms', save_path=save_path, datetime_coord='datetime')
 
     def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """

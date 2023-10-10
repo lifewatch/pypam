@@ -720,7 +720,7 @@ def select_frequency_range(ds, min_freq, max_freq, frequency_coord='frequency'):
     return ds_cropped
 
 
-def join_all_ds_output_station(directory_path, station, data_var_name, drop=False):
+def join_all_ds_output_station(directory_path, station, data_var_name):
     """
     Return a DataArray by joining the data you selected from all the output ds for one station
 
@@ -732,8 +732,6 @@ def join_all_ds_output_station(directory_path, station, data_var_name, drop=Fals
         Name of the station to compute the spectrogram
     data_var_name : str
         Name of the data that you want to keep for joining ds
-    drop : boolean
-        Set to True if you want to drop other coords
 
     Returns
     -------
@@ -749,7 +747,7 @@ def join_all_ds_output_station(directory_path, station, data_var_name, drop=Fals
             list_path_deployment_station.append(deployment_path)
 
     for deployment_station_path in tqdm(list_path_deployment_station):
-        da_deployment = join_all_ds_output_deployment(deployment_station_path, data_var_name=data_var_name, drop=drop)
+        da_deployment = join_all_ds_output_deployment(deployment_station_path, data_vars=data_var_name)
 
         if deployment_station_path == list_path_deployment_station[0]:
             da_tot = da_deployment.copy()
@@ -796,59 +794,52 @@ def reindexing_datetime(da, first_datetime, last_datetime, freq='10T', tolerance
     return da_reindex
 
 
-def bin_aggregation(ds, data_var, band=None, freq='D'):
+def freq_band_aggregation(ds, data_var, aggregation_freq_band=None, freq_coord=None):
     """
-    Parameters
-    ----------
-    ds : xarray Dataset
-        Dataset to process, has to have datetime as coords, not id
-    data_var : str
-        Name of the data variable to select datetime
-    band : None, float or tuple
-        If a float is given, this function compute aggregation for the frequency which is selected
-        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
-        selected
-        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
-        frequency dependence
-    freq : str
-        Resolution of the bin aggregation. Change to 'H' or 'W' to have an hourly or weekly frequency
+     It will compute the median of all the values included in the frequency band specified in 'aggregation_freq_band'.
 
-    Returns
-    -------
-    ds_new : xarray Dataset
-        Same Dataset with a new variable which represents the new time axis. The frequency axis disappears when the
-        mean in the specified frequency band is computed
-    """
-    ds_copy = ds[data_var].copy()
-    freq_coord = ds_copy.dims[1]
-    if band is not None:
-        if isinstance(band, tuple):
-            ds_copy = ds_copy.where((ds_copy[freq_coord] >= band[0]) & (ds_copy[freq_coord] <= band[1]), drop=True)
-        if isinstance(band, int):
-            band = float(band)
-        if isinstance(band, float):
-            band = ds_copy[freq_coord].values[min(range(len(ds_copy[freq_coord].values)),
-                                                  key=lambda i: abs(ds_copy[freq_coord].values[i] - band))]
-            ds_copy = ds_copy.where(ds_copy[freq_coord].isin(band), drop=True)
+     Parameters
+     ----------
+     ds : xarray Dataset
+         Dataset to process, has to have datetime as coords, not id
+     data_var : str
+         Name of the data variable to select datetime
+     freq_coord : str
+         Name of the frequency coordinate
+     aggregation_freq_band : None, float or tuple
+         If a float is given, this function compute aggregation for the frequency which is selected
+         If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+         selected
+         If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+         frequency dependence
 
-        ds_copy = ds_copy.mean(dim=freq_coord)
 
-    df = ds_copy.to_dataframe()
-    df_resampled = df.resample(freq).agg({data_var: list})
-    df_agg = pd.DataFrame({'time': df_resampled.index, data_var: df_resampled[data_var]})
-    df_agg = df_agg.explode(data_var)
-    df_agg[data_var] = df_agg[data_var].astype(float)
+     Returns
+     -------
+     ds_new : xarray Dataset
+         Same Dataset but the frequency axi is replaced by the median value
+     """
+    ds_copy = ds.copy()
+    if freq_coord is None:
+        freq_coord = ds_copy[data_var].dims[1]
+    if aggregation_freq_band is not None:
+        if isinstance(aggregation_freq_band, tuple):
+            ds_copy = ds_copy.where((ds_copy[freq_coord] >= aggregation_freq_band[0]) &
+                                    (ds_copy[freq_coord] <= aggregation_freq_band[1]), drop=True)
+        if isinstance(aggregation_freq_band, int):
+            aggregation_freq_band = float(aggregation_freq_band)
+        if isinstance(aggregation_freq_band, float):
+            aggregation_freq_band = ds_copy[freq_coord].values[min(range(len(ds_copy[freq_coord].values)),
+                                                                   key=lambda i: abs(ds_copy[freq_coord].values[
+                                                                                         i] - aggregation_freq_band))]
+            ds_copy = ds_copy.where(ds_copy[freq_coord].isin(aggregation_freq_band), drop=True)
 
-    ds_new = xarray.Dataset()
-    ds_new[data_var] = ds_copy
-    ds_new = ds_new.assign({'time': ('datetime', df_agg.time.to_xarray().data)})
-    ds_new[data_var].attrs = ds[data_var].attrs
+    ds_copy= ds_copy.median(dim=freq_coord)
 
-    return ds_new
+    return ds_copy
 
 
 def update_freq_cal(hydrophone, ds, data_var, **kwargs):
-
     index_coord = ds[data_var].dims[0]
     freq_coord = ds[data_var].dims[1]
     frequencies = ds[freq_coord].values
@@ -859,7 +850,6 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
     ds_copy = ds.copy(deep=True)
 
     for i in range(ds[index_coord].size):
-
         ds_copy[data_var][i] = ds[data_var][i] + df['inc_value'].values
 
     return ds_copy
