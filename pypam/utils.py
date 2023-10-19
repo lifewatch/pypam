@@ -593,7 +593,7 @@ def compute_spd(psd_evolution, data_var='band_density', h=1.0, percentiles=None,
     return spd_ds
 
 
-def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
+def _swap_dimensions_if_not_dim(ds, datetime_coord):
     """
     Swap the coordinates between ds and datetime_coord
 
@@ -611,13 +611,38 @@ def _swap_dimensions_if_not_dim(ds, datetime_coord, data_vars):
     """
     if datetime_coord not in ds.dims:
         ds = ds.swap_dims({'id': datetime_coord})
-    if data_vars is not None:
-        ds = ds[data_vars]
+    return ds
+
+
+def _selection_when_joining(ds, datetime_coord, time_resample=None, freq_band=None, freq_coord='frequency'):
+    """
+
+    Parameters
+    ----------
+    ds
+    datetime_coord
+    time_resample: None or str
+        String indicating the unit to resample to in time
+    freq_band: None or tuple
+        tuple or list with (min_freq, max_freq) to include
+    freq_coord: str
+        Name of the frequency coordinate
+    Returns
+    -------
+
+    """
+    ds = _swap_dimensions_if_not_dim(ds, datetime_coord)
+    if freq_band is not None:
+        ds = select_frequency_range(ds, freq_band[0], freq_band[1], freq_coord=freq_coord)
+    if time_resample is not None:
+        ds = ds.resample({datetime_coord: time_resample}).median()
+
     return ds
 
 
 def join_all_ds_output_deployment(deployment_path, data_vars=None,
-                                  datetime_coord='datetime', join_only_if_contains=None, load=False, parallel=True):
+                                  datetime_coord='datetime', join_only_if_contains=None, load=False, parallel=True,
+                                  time_resample=None, freq_band=None, freq_coord='frequency'):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -634,6 +659,13 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
     join_only_if_contains: str
         String which needs to be contained in the path name to be joined. If set to None (default), all the files are
         joined
+    time_resample: None or str
+        String indicating the unit to resample to in time
+    freq_band: None or tuple
+        tuple or list with (min_freq, max_freq) to include
+    freq_coord: str
+        Name of the frequency coordinate
+
     parallel: bool
         Set to True to speed up loading
 
@@ -656,8 +688,9 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
                 clean_list_path.append(path)
         list_path = clean_list_path
 
-    partial_func = partial(_swap_dimensions_if_not_dim, datetime_coord=datetime_coord, data_vars=data_vars)
-    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func)
+    partial_func = partial(_selection_when_joining, datetime_coord=datetime_coord, freq_band=freq_band,
+                           time_resample=time_resample, freq_coord=freq_coord)
+    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func, data_vars=data_vars)
 
     if load:
         with ProgressBar():
@@ -696,7 +729,7 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     return da_sxx, old_start_datetime, old_end_datetime
 
 
-def select_frequency_range(ds, min_freq, max_freq, frequency_coord='frequency'):
+def select_frequency_range(ds, min_freq, max_freq, freq_coord='frequency'):
     """
     Crop the dataset to the specified band between min freq and max freq.
 
@@ -708,15 +741,15 @@ def select_frequency_range(ds, min_freq, max_freq, frequency_coord='frequency'):
         Minimum frequency in Hz
     max_freq: float
         Maximum frequency in Hz
-    frequency_coord: string
+    freq_coord: string
         Name of the frequency coordinate
 
     Returns
     -------
     The dataset cropped
     """
-    ds_cropped = ds.sel(frequency=ds[frequency_coord][
-        (ds[frequency_coord] > min_freq) & (ds[frequency_coord] < max_freq)])
+    ds_cropped = ds.sel(frequency=ds[freq_coord][
+        (ds[freq_coord] > min_freq) & (ds[freq_coord] < max_freq)])
     return ds_cropped
 
 

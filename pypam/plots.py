@@ -18,6 +18,7 @@ The module ``plots`` is an ensemble of functions to plot `pypam` output's in dif
 
 """
 
+import re
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import xarray
@@ -67,9 +68,9 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
         fig, ax = plt.subplots()
     freq_axis = spd['spd'].dims[0]
     plot_2d(spd['spd'], x=freq_axis, y='spl', cmap='CMRmap_r',
-            cbar_label=r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
-            ax=ax, ylabel=r'%s [$%s$]' % (spd['spl'].standard_name, spd['spl'].units), xlabel='Frequency [Hz]',
-            title='Spectral Probability Density (SPD)', vmin=0, robust=False)
+            cbar_label=r'%s [$%s$]' % (re.sub('_', ' ', spd['spd'].standard_name).title(), spd['spd'].units),
+            ax=ax, ylabel=r'%s [$%s$]' % (re.sub('_', ' ', spd['spl'].standard_name).title(), spd['spl'].units),
+            xlabel='Frequency [Hz]', title='Spectral Probability Density (SPD)', vmin=0, robust=False)
     if len(spd.percentiles) > 0:
         ax.plot(spd['value_percentiles'][freq_axis], spd['value_percentiles'],
                 label=spd['value_percentiles'].percentiles.values, linewidth=1)
@@ -118,7 +119,7 @@ def plot_spectrogram_per_chunk(ds_spectrogram, log=True, save_path=None, show=Tr
             spectrogram_path = save_path.joinpath(file_name.replace('.wav', '_%s.png' % int(id_n)))
         # Plot the spectrogram
         plot_2d(ds=sxx, x=datetime_coord, y=freq_coord, xlabel='Time [s]', ylabel='Frequency [Hz]',
-                cbar_label=r'%s [$%s$]' % (ds_spectrogram['spectrogram'].standard_name,
+                cbar_label=r'%s [$%s$]' % (re.sub('_', ' ', ds_spectrogram['spectrogram'].standard_name).title(),
                                            ds_spectrogram['spectrogram'].units), ylog=log, title=title)
 
         if save_path is not None:
@@ -154,7 +155,7 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
         ds_id = ds[data_var].sel(id=id_n)
         ds_id.plot.line(xscale=xscale)
         plt.xlabel('Frequency [Hz]')
-        plt.ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
+        plt.ylabel(r'%s [$%s$]' % (re.sub('_', ' ', ds[data_var].standard_name).title(), ds[data_var].units))
 
         # Plot the percentiles as horizontal lines
         plt.hlines(y=ds['value_percentiles'].loc[id_n], xmin=ds[freq_coord].min(), xmax=ds[freq_coord].max(),
@@ -258,7 +259,7 @@ def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='fre
     ax.set_facecolor('white')
     ax.set_title(data_var.replace('_', ' ').capitalize())
     ax.set_xlabel('Frequency [Hz]')
-    ax.set_ylabel(r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units))
+    ax.set_ylabel(r'%s [$%s$]' % (re.sub('_', ' ', ds[data_var].standard_name).title(), ds[data_var].units))
 
     if log:
         ax.set_xscale('log')
@@ -304,8 +305,8 @@ def plot_ltsa(ds, data_var, time_coord='id', freq_coord='frequency', log=True, s
     # Plot the evolution
     # Extra axes for the colorbar and delete the unused one
     plot_2d(ds[data_var], x=time_coord, y=freq_coord, ax=ax,
-            cbar_label=r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units), xlabel='Time',
-            ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
+            cbar_label=r'%s [$%s$]' % (re.sub('_', ' ', ds[data_var].standard_name).title(), ds[data_var].units),
+            xlabel='Time', ylabel='Frequency [Hz]', title='Long Term Spectrogram', ylog=log)
     ax.set_facecolor('white')
 
     plt.tight_layout()
@@ -358,7 +359,8 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
 
     # LTSA plot
     xarray.plot.pcolormesh(ds[data_var], x=time_coord, y=freq_coord, add_colorbar=True,
-                           cbar_kwargs={'label': r'%s [$%s$]' % (ds[data_var].standard_name, ds[data_var].units),
+                           cbar_kwargs={'label': r'%s [$%s$]' % (re.sub('_', ' ', ds[data_var].standard_name).title(),
+                                                                 ds[data_var].units),
                                         'location': 'top', 'orientation': 'horizontal', 'shrink': 2/3}, ax=ax0,
                            extend='neither', cmap='YlGnBu_r')
 
@@ -366,7 +368,8 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     spd = pypam.utils.compute_spd(ds, data_var=data_var, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     xarray.plot.pcolormesh(spd['spd'], x='spl', y=freq_coord, cmap='binary', add_colorbar=True,
-                           cbar_kwargs={'label': r'%s [$%s$]' % (spd['spd'].standard_name, spd['spd'].units),
+                           cbar_kwargs={'label': r'%s [$%s$]' % (re.sub('_', ' ', spd['spd'].standard_name).title(),
+                                                                 spd['spd'].units),
                                         'location': 'top', 'orientation': 'horizontal'}, ax=ax1,
                            extend='neither', vmin=0, robust=False)
 
@@ -405,7 +408,7 @@ def plot_summary_dataset(ds, percentiles, data_var='band_density', time_coord='d
     # Adjust the axis names and visibilities
     ax0.set_ylabel('Frequency [Hz]')
     ax1.get_yaxis().set_visible(False)
-    ax1.set_xlabel(r'%s [$%s$]' % (spd['spl'].standard_name, spd['spl'].units))
+    ax1.set_xlabel(r'%s [$%s$]' % (re.sub('_', ' ', spd['spl'].standard_name).title(), spd['spl'].units))
 
     if log:
         ax0.set_yscale('symlog')
@@ -466,7 +469,8 @@ def plot_daily_patterns_from_ds(ds, data_var, interpolate=True, save_path=None, 
         fig, ax = plt.subplots()
 
     xarray.plot.pcolormesh(daily_xr[data_var], x='date', y='hours', robust=True,
-                           cbar_kwargs={'label': r'%s [%s]' % (ds[data_var].standard_name, ds[data_var].units)},
+                           cbar_kwargs={'label': r'%s [%s]' % (re.sub('_', ' ', ds[data_var].standard_name).title(),
+                                                               ds[data_var].units)},
                            ax=ax, cmap='magma', **plot_kwargs)
     ax.set_ylabel('Hours of the day')
     ax.set_xlabel('Days')
@@ -507,7 +511,7 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
     ax.set_xlabel('Time')
     ax.set_facecolor('white')
     ax.set_title('Evolution of the broadband rms value')  # Careful when filter applied!
-    ax.set_ylabel(r'%s [%s]' % (ds['rms'].standard_name, ds['rms'].units))
+    ax.set_ylabel(r'%s [%s]' % (re.sub('_', ' ', ds['rms'].standard_name).title(), ds['rms'].units))
     plt.tight_layout()
 
     if save_path is not None:
@@ -552,7 +556,7 @@ def _plot_aggregation_evolution(df_plot, data_var, standard_name, units, mode='b
         raise ValueError('mode %s is not implemented. Only boxplot, quantiles and violin' % mode)
 
     ax.set_xlabel('Time [%s]' % aggregation_time)
-    ax.set_ylabel(r'%s [$%s$]' % (standard_name, units))
+    ax.set_ylabel(r'%s [$%s$]' % (re.sub('_', ' ', standard_name).title(), units))
     ax.set_facecolor('white')
     plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
     plt.xticks(rotation=45)
