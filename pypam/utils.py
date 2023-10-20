@@ -644,7 +644,7 @@ def _selection_when_joining(ds, datetime_coord, data_vars=None, time_resample=No
 
 def join_all_ds_output_deployment(deployment_path, data_vars=None,
                                   datetime_coord='datetime', join_only_if_contains=None, load=False, parallel=True,
-                                  time_resample=None, freq_band=None, freq_coord='frequency'):
+                                  time_resample=None, freq_band=None, freq_coord='frequency', **kwargs):
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
@@ -667,9 +667,9 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
         tuple or list with (min_freq, max_freq) to include
     freq_coord: str
         Name of the frequency coordinate
-
     parallel: bool
         Set to True to speed up loading
+    **kwargs: any args which can be passed to open_mfdataset
 
     Returns
     -------
@@ -692,7 +692,7 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
 
     partial_func = partial(_selection_when_joining, data_vars=data_vars, datetime_coord=datetime_coord,
                            freq_band=freq_band, time_resample=time_resample, freq_coord=freq_coord)
-    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func, data_vars=data_vars)
+    ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func, data_vars=data_vars, **kwargs)
 
     if load:
         with ProgressBar():
