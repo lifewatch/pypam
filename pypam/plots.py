@@ -604,6 +604,7 @@ def _prepare_aggregation_plot_data(ds, data_var, aggregation_freq_band=None, agg
                                                 aggregation_freq_band=aggregation_freq_band,
                                                 freq_coord=freq_coord)
     df_plot = ds_copy[data_var].to_dataframe()
+    df_plot = df_plot.reset_index(drop=True)
     df_plot['aggregated_time'] = pd.to_datetime(ds_copy[datetime_coord].values).to_period(aggregation_time).start_time
 
     return df_plot
@@ -656,7 +657,7 @@ def plot_multiple_aggregation_evolution(ds_dict, data_var, mode, save_path=None,
                                                  aggregation_time=aggregation_time, freq_coord=freq_coord,
                                                  datetime_coord=datetime_coord)
         df_plot['Data series'] = label
-        total_df = pd.concat([total_df, df_plot])
+        total_df = pd.concat([total_df, df_plot], ignore_index=True)
 
     kwargs.update({'hue': 'Data series'})
     _plot_aggregation_evolution(total_df, data_var, standard_name=ds[data_var].standard_name, units=ds[data_var].units,
