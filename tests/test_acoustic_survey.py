@@ -136,7 +136,7 @@ class TestASA(unittest.TestCase):
     @skip_unless_with_plots()
     def test_apply_to_all(self):
         self.asa.apply_to_all('plot_spectrogram')
-        self.asa.apply_to_all('plot_spectrum_mean', scaling='density')
+        self.asa.apply_to_all('plot_spectrum_median', scaling='density')
 
     @skip_unless_with_plots()
     def test_plot_spd(self):
@@ -147,9 +147,9 @@ class TestASA(unittest.TestCase):
         self.asa.plot_spd(db=True, h=h_db, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
     @skip_unless_with_plots()
-    def test_plot_mean_spectrum(self):
-        self.asa.plot_mean_power_spectrum()
-        self.asa.plot_mean_psd(percentiles=[10, 50, 90])
+    def test_plot_median_spectrum(self):
+        self.asa.plot_median_power_spectrum()
+        self.asa.plot_median_psd(percentiles=[10, 50, 90])
 
     @skip_unless_with_plots()
     def test_plot_ltsa(self):

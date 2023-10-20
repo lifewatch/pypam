@@ -57,9 +57,9 @@ class TestPlots(unittest.TestCase):
         pypam.plots.plot_spectrum_per_chunk(ds=psd, data_var='band_density')
 
     @skip_unless_with_plots()
-    def test_plot_spectrum_mean(self):
+    def test_plot_spectrum_median(self):
         psd = self.asa.evolution_freq_dom('psd')
-        pypam.plots.plot_spectrum_mean(ds=psd, data_var='band_density', show=True)
+        pypam.plots.plot_spectrum_median(ds=psd, data_var='band_density', show=True)
 
     @skip_unless_with_plots()
     def test_plot_multiple_spectrum_median(self):
