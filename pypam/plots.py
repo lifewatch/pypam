@@ -9,7 +9,7 @@ The module ``plots`` is an ensemble of functions to plot `pypam` output's in dif
     :toctree: generated/
 
     plot_spd
-    plot_spectrum_mean
+    plot_spectrum_median
     plot_ltsa
     plot_summary_dataset
     plot_daily_patterns_from_ds
@@ -166,10 +166,10 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
             plt.show()
 
 
-def plot_multiple_spectrum_mean(ds_dict, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
-                                log=True, save_path=None, ax=None, show=True, **kwargs):
+def plot_multiple_spectrum_median(ds_dict, data_var, percentiles='default', frequency_coord='frequency',
+                                  time_coord='id', log=True, save_path=None, ax=None, show=True, **kwargs):
     """
-    Same than plot_spectrum_mean but instead of one ds you can pass a dictionary of label: ds so they are all plot
+    Same than plot_spectrum_median but instead of one ds you can pass a dictionary of label: ds so they are all plot
     on one figure.
 
     Parameters
@@ -201,9 +201,10 @@ def plot_multiple_spectrum_mean(ds_dict, data_var, percentiles='default', freque
         fig, ax = plt.subplots()
     for label, ds in ds_dict.items():
         kwargs.update({'label': label})
-        plot_spectrum_mean(ds, data_var, percentiles=percentiles, frequency_coord=frequency_coord,
-                           time_coord=time_coord, log=log, save_path=None, ax=ax, show=False, **kwargs)
+        plot_spectrum_median(ds, data_var, percentiles=percentiles, frequency_coord=frequency_coord,
+                             time_coord=time_coord, log=log, save_path=None, ax=ax, show=False, **kwargs)
 
+    plt.legend()
     if save_path is not None:
         plt.savefig(save_path)
     if show:
@@ -212,10 +213,10 @@ def plot_multiple_spectrum_mean(ds_dict, data_var, percentiles='default', freque
     return ax
 
 
-def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
-                       log=True, save_path=None, ax=None, show=True, **kwargs):
+def plot_spectrum_median(ds, data_var, percentiles='default', frequency_coord='frequency', time_coord='id',
+                         log=True, save_path=None, ax=None, show=True, **kwargs):
     """
-    Plot the mean spectrum
+    Plot the median spectrum
 
     Parameters
     ----------
@@ -250,7 +251,7 @@ def plot_spectrum_mean(ds, data_var, percentiles='default', frequency_coord='fre
 
     pxx = ds[data_var].to_numpy().T
     p = np.nanpercentile(a=pxx, q=np.array(percentiles), axis=1)
-    ax.plot(ds[frequency_coord].values, ds[data_var].mean(dim=time_coord).values, **kwargs)
+    ax.plot(ds[frequency_coord].values, ds[data_var].median(dim=time_coord).values, **kwargs)
     if 'color' in kwargs.keys():
         ax.fill_between(x=ds[frequency_coord].values, y1=p[0], y2=p[1], alpha=0.2, color=kwargs['color'])
     else:

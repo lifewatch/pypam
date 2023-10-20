@@ -406,7 +406,7 @@ class ASA:
         daily_xr = daily_xr.sortby('datetime')
         plots.plot_daily_patterns_from_ds(ds=daily_xr, data_var='rms', save_path=save_path, datetime_coord='datetime')
 
-    def plot_mean_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
+    def plot_median_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
         """
         Plot the resulting mean power spectrum
 
@@ -422,9 +422,9 @@ class ASA:
         """
         power = self.evolution_freq_dom(method_name='power_spectrum', db=db, **kwargs)
 
-        return plots.plot_spectrum_mean(ds=power, data_var='band_spectrum', log=log, save_path=save_path)
+        return plots.plot_spectrum_median(ds=power, data_var='band_spectrum', log=log, save_path=save_path)
 
-    def plot_mean_psd(self, db=True, save_path=None, log=True, **kwargs):
+    def plot_median_psd(self, db=True, save_path=None, log=True, **kwargs):
         """
         Plot the resulting mean psd
 
@@ -440,7 +440,7 @@ class ASA:
         """
         psd = self.evolution_freq_dom(method_name='psd', db=db, **kwargs)
 
-        return plots.plot_spectrum_mean(ds=psd, data_var='band_density', log=log, save_path=save_path)
+        return plots.plot_spectrum_median(ds=psd, data_var='band_density', log=log, save_path=save_path)
 
     def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
         """
