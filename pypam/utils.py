@@ -403,7 +403,7 @@ def get_center_freq(base, bands_per_division, n, first_out_band_centre_freq):
     return center_freq
 
 
-def get_hybrid_millidecade_limits(band, nfft, fs):
+def get_hybrid_millidecade_limits(band, nfft, fs=None):
     """
 
     Parameters
