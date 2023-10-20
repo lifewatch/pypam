@@ -614,7 +614,7 @@ def _swap_dimensions_if_not_dim(ds, datetime_coord):
     return ds
 
 
-def _selection_when_joining(ds, datetime_coord, time_resample=None, freq_band=None, freq_coord='frequency'):
+def _selection_when_joining(ds, datetime_coord, data_vars=None, time_resample=None, freq_band=None, freq_coord='frequency'):
     """
 
     Parameters
@@ -637,6 +637,8 @@ def _selection_when_joining(ds, datetime_coord, time_resample=None, freq_band=No
     if time_resample is not None:
         ds = ds.resample({datetime_coord: time_resample}).median()
 
+    if data_vars is not None:
+        ds = ds[data_vars]
     return ds
 
 
@@ -650,7 +652,7 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
     ----------
     deployment_path : str or Path
         Where all the netCDF files of a deployment are stored
-    data_vars : str or list
+    data_vars : list
         Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
     datetime_coord : str
         Name of the time coordinate to join the datasets along
@@ -688,8 +690,8 @@ def join_all_ds_output_deployment(deployment_path, data_vars=None,
                 clean_list_path.append(path)
         list_path = clean_list_path
 
-    partial_func = partial(_selection_when_joining, datetime_coord=datetime_coord, freq_band=freq_band,
-                           time_resample=time_resample, freq_coord=freq_coord)
+    partial_func = partial(_selection_when_joining, data_vars=data_vars, datetime_coord=datetime_coord,
+                           freq_band=freq_band, time_resample=time_resample, freq_coord=freq_coord)
     ds_tot = xarray.open_mfdataset(list_path, parallel=parallel, preprocess=partial_func, data_vars=data_vars)
 
     if load:
