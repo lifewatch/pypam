@@ -313,7 +313,7 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     return filterbank, fsnew, d
 
 
-def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
+def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, fs=None):
     """
 
     Parameters
@@ -323,6 +323,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
     base
     bands_per_division
     hybrid_mode
+    fs: if not provided, it will be assumed to be double the highest frequency band limit
 
     Returns
     -------
@@ -332,7 +333,9 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
     low_side_multiplier = base ** (-1 / (2 * bands_per_division))
     high_side_multiplier = base ** (1 / (2 * bands_per_division))
 
-    fft_bin_width = band[1] * 2 / nfft
+    if fs is None:
+        fs = band[1] * 2
+    fft_bin_width =  fs / nfft
 
     # Start the frequencies list
     bands_limits = []
@@ -364,7 +367,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode):
         band_count = band_count - 1
 
         if (fft_bin_width * linear_bin_count) > band[1]:
-            linear_bin_count = band[1] / fft_bin_width + 1
+            linear_bin_count = fs / 2 / fft_bin_width + 1
 
         for i in np.arange(linear_bin_count):
             # Add the frequencies
@@ -400,34 +403,40 @@ def get_center_freq(base, bands_per_division, n, first_out_band_centre_freq):
     return center_freq
 
 
-def get_hybrid_millidecade_limits(band, nfft):
+def get_hybrid_millidecade_limits(band, nfft, fs):
     """
 
     Parameters
     ----------
-    band
-    nfft
+    band: band to get the limits of [min_freq, max_freq]
+    nfft: number of fft
+    fs: sampling rate
 
     Returns
     -------
 
     """
-    return get_bands_limits(band, nfft, base=10, bands_per_division=1000, hybrid_mode=True)
+    if fs is None:
+        fs = band[1] * 2
+    return get_bands_limits(band, nfft, base=10, bands_per_division=1000, hybrid_mode=True, fs=fs)
 
 
-def get_decidecade_limits(band, nfft):
+def get_decidecade_limits(band, nfft, fs=None):
     """
 
     Parameters
     ----------
-    band
-    nfft
+    band: band to get the limits of [min_freq, max_freq]
+    nfft: number of fft
+    fs: sampling rate
 
     Returns
     -------
 
     """
-    return get_bands_limits(band, nfft, base=10, bands_per_division=10, hybrid_mode=False)
+    if fs is None:
+        fs = band[1] * 2
+    return get_bands_limits(band, nfft, base=10, bands_per_division=10, hybrid_mode=False, fs=fs)
 
 
 def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
