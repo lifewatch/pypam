@@ -41,9 +41,11 @@ pip install lifewatch-pypam
     poetry build
     ```
 
-## News from version 0.2.1
+## News from version 0.3.0
 In version 0.2.0 we removed the detectors, because there are better maintained packages for these purposes. 
 In version 0.2.1 we added the frequency-dependent calibration! 
+In version 0.3.0 we changed quite some plot function to make them more flexible with other data products. 
+We also changed the mean functions to median, so the output in db is the same than the output in uPa
 
 ## Quickstart
 The package is imported as `pypam`. The audio files must comply with the needs of 

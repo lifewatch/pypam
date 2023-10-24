@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lifewatch-pypam"
-version = "0.2.1"
+version = "0.3.0"
 description = 'Facilitate acoustic processing from underwater acoustic recorders'
 authors = ["Clea Parcerisas <cleap@vliz.be>"]
 readme = "README.md"
