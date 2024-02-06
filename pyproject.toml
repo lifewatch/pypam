@@ -50,7 +50,7 @@ openpyxl = "^3.1.2"
 scikit-maad = "^1.4.0"
 setuptools = "^68.1.0"
 certifi = "^2023.7.22"
-cryptography = "^41.0.2"
+cryptography = ">=41.0.2,<43.0.0"
 dask = {version = "^2023.9.3", optional = true}
 [tool.poetry.extras]
 dev = ["pre-commit", "isort", "black", "flake8"]
