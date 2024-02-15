@@ -1,17 +1,18 @@
 # PyPAM
 `pypam` is a python package to analyze underwater sound. 
-It is made to make easier the processing of underwater data stored in audio files. 
-The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of a audio file together 
-with all the metadata needed to process the data (such as hydrophone used). The second one is the representation of a
-folder where all the files are stored for one deployment. Here we consider a deployment as a measurement interval 
-corresponding to the time when a hydrophone was in the water, without changing any recording parameters.
+It is made to make easier the processing of underwater data stored in audio files in chunks. 
+The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of an audio file 
+together with all the metadata needed to process the data (such as hydrophone used). 
+The second one is the representation of a folder where all the files are stored for one deployment. 
+Here we consider a deployment as a measurement interval corresponding to the time when a hydrophone was in the water, 
+without changing any recording parameters.
 The Dataset is a combination of different AcousticSurveys in one dataset. This is to be used if the user has made 
 several deployments and wants to process them with the same parameters.
 
-Then `pypam` allows to go through all the audio files from the deployments only with one line of code and store the output
-in netCDF files, including metadata. The package can be used to analyze a single file, a folder with files or a 
-group of different deployments. 
-`pypam` deals with the calibration directly, so the output obtained is already in uPa or db! 
+Then `pypam` allows to go through all the audio files from the deployments only with one line of code and store 
+the output in netCDF files, including metadata. The package can be used to analyze a single file, 
+a folder with files or a group of different deployments. 
+`pypam` deals with the calibration directly, so the output obtained is already in uPa or dB! 
 
 
 All the documentation can be found on [readthedocs](https://lifewatch-pypam.readthedocs.io)
@@ -48,7 +49,7 @@ In version 0.3.0 we changed quite some plot function to make them more flexible 
 We also changed the mean functions to median, so the output in db is the same than the output in uPa
 
 ## Quickstart
-The package is imported as `pypam`. The audio files must comply with the needs of 
+The package is imported as `pypam`. The audio file names must comply with the needs of 
 [pyhydrophone](https://github.com/lifewatch/pyhydrophone) to be able to read the datetime information. 
 
 The user can choose a window chunk size (parameter binsize, in seconds), so all the features / methods 
@@ -99,9 +100,19 @@ and some signal-based operations:
    - Envelope
    - DC noise removal
 
+## pypam to the next level 
+pypam-based-processing (PBP) is a repository which acts as a wrapper for pypam to make its use to compute hybrid millidecade
+bands a lot more effective.
+PBP allows for local or cloud computing.
+For more information, you can find it in this [repository](https://github.com/mbari-org/pypam-based-processing). 
+
+
 ## Examples and documentation
 See the documentation in [readthedocs](https://lifewatch-pypam.readthedocs.io) for a complete reference manual and 
 example gallery. 
+
+In this [collection of notebooks](https://github.com/ioos/soundcoop), some extra examples can be found of how 
+to use pypam (under development).
 
 ## Under development 
 Planned:
@@ -109,7 +120,7 @@ Planned:
 - Add options for the user to choose what to do when the blocksize is not multiple of the frames, 
 and to deal with time keeping
 - Add a logger that logs the code that was run and the warnings together with the output
-- Add deep learning features (vggish and compatibility with koogu and AVES)
+- Add deep learning feature extraction (vggish and compatibility with koogu and AVES)
 - Add parallel processing options 
 - Add support for frequency calibration
 - Support for reading detections 
