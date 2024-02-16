@@ -345,7 +345,7 @@ class ASA:
         An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
         """
         spectra_ds = self.evolution_freq_dom('_spectrum', band=band, db=False, percentiles=percentiles, scaling=method,
-                                             avreage=average)
+                                             average=average)
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
         fft_bin_width = band[1] * 2 / self.nfft # Signal has been downsampled
         milli_spectra = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
