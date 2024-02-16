@@ -803,7 +803,7 @@ class AcuFile:
         ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
         return ds
 
-    def _spectrum(self, scaling='density', binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
+    def _spectrum(self, scaling='density', average='mean', binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
                   db=True, percentiles=None, band=None):
         """
         Return the spectrum : frequency distribution of every bin (periodogram)
@@ -814,6 +814,8 @@ class AcuFile:
         ----------
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
+        average: string
+            Can be 'mean' or 'median'
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
         bin_overlap : float [0 to 1]
@@ -842,7 +844,8 @@ class AcuFile:
         for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
             signal.set_band(band, downsample=downsample)
             fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
-                                                               percentiles=percentiles, overlap=fft_overlap)
+                                                               percentiles=percentiles, overlap=fft_overlap,
+                                                               average=average)
 
             spectra_da = xarray.DataArray([spectra],
                                           coords={'id': [i],

@@ -322,7 +322,7 @@ class ASA:
         psd_evolution = self.evolution_freq_dom('psd', db=db, percentiles=percentiles)
         return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, min_val=min_val, max_val=max_val)
 
-    def hybrid_millidecade_bands(self, db=True, method='spectrum', band=None, percentiles=None):
+    def hybrid_millidecade_bands(self, db=True, method='spectrum', band=None, percentiles=None, average='mean'):
         """
 
         Parameters
@@ -331,6 +331,8 @@ class ASA:
             If set to True the result will be given in db, otherwise in upa^2
         method: string
             Can be 'spectrum' or 'density'
+        average: string
+            Can be 'mean' or 'median'
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
@@ -342,7 +344,8 @@ class ASA:
         -------
         An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
         """
-        spectra_ds = self.evolution_freq_dom('_spectrum', band=band, db=False, percentiles=percentiles, scaling=method)
+        spectra_ds = self.evolution_freq_dom('_spectrum', band=band, db=False, percentiles=percentiles, scaling=method,
+                                             avreage=average)
         bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=band, nfft=self.nfft)
         fft_bin_width = band[1] * 2 / self.nfft # Signal has been downsampled
         milli_spectra = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
