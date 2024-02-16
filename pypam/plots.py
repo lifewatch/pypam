@@ -525,6 +525,7 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
 
 def _plot_aggregation_evolution(df_plot, data_var, standard_name, units, mode='boxplot', ax=None, save_path=None,
                                 show=False, aggregation_time='D', **kwargs):
+    df_plot = df_plot.sort_values('aggregated_time')
     if ax is None:
         fig, ax = plt.subplots()
     if mode == 'boxplot':
@@ -606,7 +607,6 @@ def _prepare_aggregation_plot_data(ds, data_var, aggregation_freq_band=None, agg
     df_plot = ds_copy[data_var].to_dataframe()
     df_plot = df_plot.reset_index(drop=True)
     df_plot['aggregated_time'] = pd.to_datetime(ds_copy[datetime_coord].values).to_period(aggregation_time).start_time
-
     return df_plot
 
 

@@ -648,6 +648,8 @@ def _selection_when_joining(ds, datetime_coord, data_vars=None, time_resample=No
 
     if data_vars is not None:
         ds = ds[data_vars]
+    
+    ds = ds.sortby(datetime_coord)
     return ds
 
 
