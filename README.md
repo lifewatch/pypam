@@ -139,3 +139,10 @@ and to deal with time keeping
 ## Cite
 > Parcerisas, C. (2023). PyPAM: a package to process long-term underwater acoustics data in chunks (0.3.0). Zenodo. https://doi.org/10.5281/zenodo.10037826
 
+
+## Acknowledgements 
+We want to thank [Stan Panier](https://www.vliz.be/en/imis?module=person&persid=37468) for the beautiful logo.
+This project was possible due to the funding on [LifeWatch Belgium](https://www.lifewatch.be/)
+<h1 align="center">
+<img src="./docs/source/_static/lw_logo.png" width="150">
+</h1><br>
