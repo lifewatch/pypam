@@ -1,4 +1,14 @@
-# PyPAM
+<h1 align="center">
+<img src="./docs/source/_static/PyPAM_colour_white_bg.png" width="150">
+</h1><br>
+
+[![main](https://github.com/lifewatch/pypam/actions/workflows/ci.yml/badge.svg)](https://github.com/lifewatch/pypam/actions/workflows/ci.yml)
+[![PyPI Downloads](https://img.shields.io/pypi/dd/lifewatch-pypam)](
+https://pypi.org/project/lifewatch-pypam/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6044593.svg)](https://doi.org/10.5281/zenodo.6044593)
+
+
+
 `pypam` is a python package to analyze underwater sound. 
 It is made to make easier the processing of underwater data stored in audio files in chunks. 
 The main classes are AcousticFile, AcousticSurvey and DataSet. The first one is a representation of an audio file 
@@ -127,4 +137,5 @@ and to deal with time keeping
 
 
 ## Cite
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6044593.svg)](https://doi.org/10.5281/zenodo.6044593)
+> Parcerisas, C. (2023). PyPAM: a package to process long-term underwater acoustics data in chunks (0.3.0). Zenodo. https://doi.org/10.5281/zenodo.10037826
+
