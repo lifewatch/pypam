@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="./docs/source/_static/PyPAM_colour_white_bg.png" width="150">
+<img src="./docs/source/_static/PyPAM_colour_white_bg.png" width="300">
 </h1><br>
 
 [![main](https://github.com/lifewatch/pypam/actions/workflows/ci.yml/badge.svg)](https://github.com/lifewatch/pypam/actions/workflows/ci.yml)
