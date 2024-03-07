@@ -110,7 +110,7 @@ and some signal-based operations:
    - Envelope
    - DC noise removal
 
-## pypam to the next level 
+## PyPAM wrappers 
 pypam-based-processing (PBP) is a repository which acts as a wrapper for pypam to make its use to compute hybrid millidecade
 bands a lot more effective.
 PBP allows for local or cloud computing.
