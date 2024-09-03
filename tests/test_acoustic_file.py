@@ -34,10 +34,6 @@ class TestAcuFile(unittest.TestCase):
         self.acu_file.hybrid_millidecade_bands(nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
                                                method='density', band=None)
 
-    def test_nmf(self):
-        self.acu_file.source_separation(window_time=1.0, n_sources=15,
-                                        binsize=None, save_path=None, verbose=False, band=None)
-
     def test_update_freq_cal(self):
         ds_psd = self.acu_file.psd()
         ds_psd_updated = self.acu_file.update_freq_cal(ds=ds_psd, data_var='band_density')

@@ -65,9 +65,6 @@ class TestASA(unittest.TestCase):
     def test_timestamp_array(self):
         self.asa.timestamps_array()
 
-    def test_nmf(self):
-        ds = self.asa.source_separation(window_time=1.0, n_sources=15, save_path=None, verbose=verbose)
-
     def test_features(self):
         self.asa.evolution_multiple(method_list=fast_features, band_list=band_list)
         ds = self.asa.evolution_multiple(method_list=acoustic_indices_features, min_freq=0, max_freq=4000,

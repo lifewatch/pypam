@@ -18,7 +18,6 @@ import soundfile as sf
 import xarray
 from tqdm.auto import tqdm
 
-from pypam import nmf
 from pypam import plots
 from pypam import signal as sig
 from pypam import utils
@@ -979,41 +978,6 @@ class AcuFile:
         psd_evolution = self.psd(binsize=binsize, nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
                                  bin_overlap=bin_overlap, band=band)
         return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
-
-    def source_separation(self, window_time=1.0, n_sources=15, binsize=None, save_path=None, verbose=False, band=None):
-        """
-        Perform non-negative Matrix Factorization to separate sources
-
-        Parameters
-        ----------
-        window_time: float
-            window time to consider in seconds
-        n_sources : int
-            Number of sources
-        binsize : float
-            Time window considered, in seconds. If set to None, only one value is returned
-        save_path: str or Path
-            Where to save the output
-        verbose: bool
-            Set to True to make plots of the process
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-
-        """
-        if band is None:
-            band = [None, self.fs / 2]
-        separator = nmf.NMF(window_time=window_time, rank=n_sources, save_path=save_path)
-        ds = xarray.Dataset()
-        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=0.0):
-            signal.set_band(band)
-            separation_ds = separator(signal, verbose=verbose)
-            separation_ds = separation_ds.assign_coords({'id': [i], 'datetime': ('id', [time_bin])})
-            if i == 0:
-                ds = separation_ds
-            else:
-                ds = xarray.concat((ds, separation_ds), 'id')
-        return ds
 
     def plot_spectrum_median(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
         """

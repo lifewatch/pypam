@@ -35,14 +35,6 @@ class TestSignal(unittest.TestCase):
         plt.plot(fbands, spectra)
         plt.show()
 
-    def test_source_separation(self):
-        separator = nmf.NMF(window_time=0.1, rank=15)
-        s = sig.Signal(self.data, fs=fs)
-        s.set_band(None)
-        separation_ds = separator(s, verbose=with_plots())
-        reconstructed_sources = separator.reconstruct_sources(separation_ds)
-        separator.return_filtered_signal(s, reconstructed_sources['C_tf'])
-
     def test_acoustic_indices(self):
         s = sig.Signal(self.data, fs=fs)
         aci = s.aci()
