@@ -352,30 +352,6 @@ class ASA:
         spectra_ds['millidecade_bands'] = milli_spectra
         return spectra_ds
 
-    def source_separation(self, window_time=1.0, n_sources=15, save_path=None, verbose=False, band=None):
-        """
-        Separate the signal in n_sources sources, using non-negative matrix factorization
-        Parameters
-        ----------
-        window_time: float
-            Duration of the window in seconds
-        n_sources: int
-            Number of sources to separate the sound in
-        save_path: str or Path
-            Where to save the output
-        verbose: bool
-            Set to True to make plots of the process
-        band : tuple or list
-            Tuple or list with two elements: low-cut and high-cut of the band to analyze
-        """
-        ds = xarray.Dataset(attrs=self._get_metadata_attrs())
-        for sound_file in self._files():
-            nmf_ds = sound_file.source_separation(window_time, n_sources, binsize=self.binsize, band=band,
-                                                  save_path=save_path, verbose=verbose)
-            ds = utils.merge_ds(ds, nmf_ds, self.file_dependent_attrs)
-
-        return ds
-
     def plot_rms_evolution(self, db=True, save_path=None):
         """
         Plot the rms evolution

@@ -1,6 +1,5 @@
 import unittest
 import pypam.signal as sig
-import pypam.nmf as nmf
 import numpy as np
 from tests import skip_unless_with_plots, with_plots
 import matplotlib.pyplot as plt
@@ -34,14 +33,6 @@ class TestSignal(unittest.TestCase):
         fbands, spectra, _ = s.spectrum(scaling='spectrum', nfft=fs, db=False, overlap=0, force_calc=True)
         plt.plot(fbands, spectra)
         plt.show()
-
-    def test_source_separation(self):
-        separator = nmf.NMF(window_time=0.1, rank=15)
-        s = sig.Signal(self.data, fs=fs)
-        s.set_band(None)
-        separation_ds = separator(s, verbose=with_plots())
-        reconstructed_sources = separator.reconstruct_sources(separation_ds)
-        separator.return_filtered_signal(s, reconstructed_sources['C_tf'])
 
     def test_acoustic_indices(self):
         s = sig.Signal(self.data, fs=fs)
