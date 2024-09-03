@@ -37,7 +37,7 @@ fast_features = ['rms', 'peak', 'sel']
 third_octaves = None
 dc_subtract = True
 
-include_dirs = True
+include_dirs = False
 zipped_files = False
 
 # Don't plot if it is running on CI
@@ -51,6 +51,8 @@ class TestASA(unittest.TestCase):
         self.asa_flac = ASA(hydrophone=soundtrap, folder_path=folder_path.joinpath('flac_data'), binsize=binsize,
                             nfft=nfft, timezone='UTC', include_dirs=include_dirs, zipped=zipped_files,
                             dc_subtract=dc_subtract, extension='.flac')
+        self.asa_gridded = ASA(hydrophone=soundtrap, folder_path=folder_path, binsize=binsize, nfft=nfft, timezone='UTC',
+                       include_dirs=include_dirs, zipped=zipped_files, dc_subtract=dc_subtract, gridded_data=True)
 
     def test_empty_directory(self):
         with self.assertRaises(ValueError) as context:
@@ -126,6 +128,12 @@ class TestASA(unittest.TestCase):
             milli_psd_512['millidecade_bands'].mean(dim='id').plot(ax=ax, label='512')
             plt.legend()
             plt.show()
+
+    def test_millidecade_bands_gridded(self):
+        # Set the frequency resolution to 1 Hz
+        # Check for the complete broadband and a band filtered in the lower frequencies
+        milli_psd = self.asa_gridded.hybrid_millidecade_bands(db=True, method='density', band=[0, 4000], percentiles=None)
+        assert milli_psd.datetime.dt.time.values[0].second == 0
 
     def test_spectrogram(self):
         self.asa.apply_to_all('spectrogram')

@@ -53,6 +53,7 @@ from tqdm import tqdm
 from functools import partial
 import zipfile
 import os
+import datetime
 
 try:
     import dask
@@ -913,3 +914,13 @@ def parse_file_name(sfile):
         raise Exception('The filename has to be either a Path object or a string')
 
     return file_name
+
+
+def get_file_datetime(file_name, hydrophone):
+    try:
+        date = hydrophone.get_name_datetime(file_name)
+    except ValueError:
+        date = datetime.datetime.now()
+        print('Filename %s does not match the %s file structure. Setting time to now...' %
+              (file_name, hydrophone.name))
+    return date
