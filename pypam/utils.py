@@ -53,6 +53,7 @@ from tqdm import tqdm
 from functools import partial
 import zipfile
 import os
+import datetime
 
 try:
     import dask
@@ -949,3 +950,12 @@ def hmb_to_decidecade(ds, data_var, nfft, freq_coord):
 
     return decidecade_psd
 
+
+def get_file_datetime(file_name, hydrophone):
+    try:
+        date = hydrophone.get_name_datetime(file_name)
+    except ValueError:
+        date = datetime.datetime.now()
+        print('Filename %s does not match the %s file structure. Setting time to now...' %
+              (file_name, hydrophone.name))
+    return date

@@ -112,19 +112,24 @@ class ASA:
         self.file_dependent_attrs = ['file_path', '_start_frame', 'end_to_end_calibration']
         self.current_chunk_id = 0
 
+        self.gridded = gridded_data
+
     def _files(self):
         """
         Iterator that returns AcuFile for each wav file in the folder
         """
         self.current_chunk_id = 0
-        for file_list in tqdm(self.acu_files):
+        for file_i, file_list in tqdm(enumerate(self.acu_files), total=len(self.acu_files)):
             wav_file = file_list[0]
-            print(wav_file)
-            sound_file = self._hydro_file(wav_file, chunk_id_start=self.current_chunk_id)
+            if file_i >= (len(self.acu_files) - 1):
+                next_file = None
+            else:
+                next_file = self.acu_files[file_i+1][0]
+            sound_file = self._hydro_file(wav_file, wav_file_next=next_file, chunk_id_start=self.current_chunk_id)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 yield sound_file
 
-    def _hydro_file(self, wav_file, chunk_id_start=0):
+    def _hydro_file(self, wav_file, wav_file_next=None, chunk_id_start=0):
         """
         Return the AcuFile object from the wav_file
         Parameters
@@ -136,9 +141,11 @@ class ASA:
         -------
         Object AcuFile
         """
-        hydro_file = acoustic_file.AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref,
+        hydro_file = acoustic_file.AcuFile(sfile=wav_file, sfile_next=wav_file_next,
+                                           hydrophone=self.hydrophone, p_ref=self.p_ref,
                                            timezone=self.timezone, channel=self.channel, calibration=self.calibration,
-                                           dc_subtract=self.dc_subtract, chunk_id_start=chunk_id_start)
+                                           dc_subtract=self.dc_subtract, chunk_id_start=chunk_id_start,
+                                           gridded=self.gridded)
         return hydro_file
 
     def _get_metadata_attrs(self):
@@ -248,14 +255,12 @@ class ASA:
         Return the start and the end timestamps
         """
         wav_file = self.acu_files[0][0]
-        print(wav_file)
 
         sound_file = self._hydro_file(wav_file)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
-        print(wav_file)
         sound_file = self._hydro_file(wav_file)
         end_datetime = sound_file.date + datetime.timedelta(seconds=sound_file.total_time())
 
@@ -526,19 +531,6 @@ class AcousticFolder:
             extra_extensions = []
         self.extra_extensions = extra_extensions
 
-    def __getitem__(self, n):
-        """
-        Get n wav file
-        """
-        self.__iter__()
-        self.n = n
-        return self.__next__()
-
-    def __iter__(self):
-        """
-        Iteration
-        """
-        self.n = 0
         if not self.zipped:
             if self.recursive:
                 self.files_list = sorted(self.folder_path.glob('**/*%s' % self.extension))
@@ -547,57 +539,47 @@ class AcousticFolder:
         else:
             if self.recursive:
                 self.folder_list = sorted(self.folder_path.iterdir())
-                self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
-                                                       extra_extensions=self.extra_extensions,
-                                                       zipped=self.zipped,
-                                                       include_dirs=self.recursive)
+                self.files_list = []
+                for fol in self.folder_list:
+                    self.zipped_subfolder = AcousticFolder(fol,
+                                                           extra_extensions=self.extra_extensions,
+                                                           zipped=self.zipped,
+                                                           include_dirs=self.recursive)
+                    np.concatenate((self.files_list, self.zipped_subfolder.files_list))
             else:
                 zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
                 self.files_list = []
                 total_files_list = zipped_folder.namelist()
-                for f in total_files_list: 
+                for f in total_files_list:
                     extension = f.split(".")[-1]
                     if extension == 'wav':
                         self.files_list.append(f)
-        return self
 
-    def __next__(self):
+    def __getitem__(self, index):
         """
-        Next wav file
+        Get n wav file
         """
-        if self.n < len(self.files_list):
+        if index < len(self.files_list):
             files_list = []
             if self.zipped:
-                if self.recursive:
-                    try:
-                        self.files_list = self.zipped_subfolder.__next__()
-                    except StopIteration:
-                        self.n += 1
-                        self.zipped_subfolder = AcousticFolder(self.folder_list[self.n],
-                                                               extra_extensions=self.extra_extensions,
-                                                               zipped=self.zipped,
-                                                               include_dirs=self.recursive)
-                else:
-                    file_name = self.files_list[self.n]
-                    zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
-                    wav_file = zipped_folder.open(file_name)
-                    files_list.append(wav_file)
-                    for extension in self.extra_extensions:
-                        ext_file_name = file_name.parent.joinpath(
-                            file_name.name.replace(self.extension, extension))
-                        files_list.append(zipped_folder.open(ext_file_name))
-                    self.n += 1
-                    return files_list
+                file_name = self.files_list[index]
+                zipped_folder = zipfile.ZipFile(self.folder_path, 'r', allowZip64=True)
+                wav_file = zipped_folder.open(file_name)
+                files_list.append(wav_file)
+                for extension in self.extra_extensions:
+                    ext_file_name = file_name.parent.joinpath(
+                        file_name.name.replace(self.extension, extension))
+                    files_list.append(zipped_folder.open(ext_file_name))
+                return files_list
             else:
-                wav_path = self.files_list[self.n]
+                wav_path = self.files_list[index]
                 files_list.append(wav_path)
                 for extension in self.extra_extensions:
                     files_list.append(pathlib.Path(str(wav_path).replace(self.extension, extension)))
 
-                self.n += 1
                 return files_list
         else:
-            raise StopIteration
+            raise IndexError
 
     def __len__(self):
         if not self.zipped:

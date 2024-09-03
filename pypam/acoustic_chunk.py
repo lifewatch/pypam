@@ -18,7 +18,6 @@ import soundfile as sf
 import xarray
 from tqdm.auto import tqdm
 
-from pypam import nmf
 from pypam import plots
 from pypam import signal as sig
 from pypam import utils
@@ -66,7 +65,7 @@ class AcuChunk:
         self.file_end_path = sfile_end
         self.file_start = sf.SoundFile(self.file_start_path, 'r')
         self.file_end = sf.SoundFile(self.file_end_path, mode='r')
-        self.fs = self.file_start.samplerate # Should be the same for both files, only reading one!
+        self.fs = self.file_start.samplerate  # Should be the same for both files, only reading one!
 
         # Time and id
         self.time_bin = time_bin
@@ -116,7 +115,6 @@ class AcuChunk:
                             'it must be downsampled!')
         return nfft
 
-
     def wav2upa(self, wav=None):
         """
         Compute the pressure from the wav signal
@@ -163,7 +161,7 @@ class AcuChunk:
         """
         if db is None:
             wav = self._signal.signal
-            db = 10 * np.log10(wav**2)
+            db = 10 * np.log10(wav ** 2)
         # return np.power(10, db / 20.0 - np.log10(self.p_ref))
         return utils.to_mag(wave=db, ref=self.p_ref)
 
@@ -203,7 +201,7 @@ class AcuChunk:
             else:
                 first_chunk = self.file_start.read(frames=-1, always_2d=True)[:, self.channel]
                 self.file_end.seek(0)
-                second_chunk = self.file_end.read(frames=self.end_frame)[:, self.channel]
+                second_chunk = self.file_end.read(frames=self.end_frame, always_2d=True)[:, self.channel]
                 signal = np.concatenate((first_chunk, second_chunk))
 
             # Read the signal and prepare it for analysis
@@ -217,7 +215,7 @@ class AcuChunk:
 
         return signal
 
-    def _apply_multiple(self, method_list, band_list=None, **kwargs):
+    def apply_multiple(self, method_list, band_list=None, **kwargs):
         """
         Apply multiple methods per bin to save computational time
 
@@ -235,7 +233,7 @@ class AcuChunk:
         -------
         DataFrame with time as index and a multiindex column with band, method as levels.
         """
-        signal = self.signal.copy()
+        signal = self.signal
         downsample = False
 
         # Bands selected to study
@@ -276,8 +274,8 @@ class AcuChunk:
                                                                coords={'id': [self.chunk_id],
                                                                        'file_id': ('id', [self.chunk_file_id]),
                                                                        'datetime': ('id', [self.time_bin]),
-                                                                       'start_sample': ('id', [self.start_sample]),
-                                                                       'end_sample': ('id', [self.end_sample]),
+                                                                       'start_sample': ('id', [self.start_frame]),
+                                                                       'end_sample': ('id', [self.end_frame]),
                                                                        'band': [j],
                                                                        'low_freq': ('band', [band[0]]),
                                                                        'high_freq': ('band', [band[1]])},
@@ -288,155 +286,15 @@ class AcuChunk:
                 else:
                     ds_bands = xarray.concat((ds_bands, methods_output), 'band')
 
-        ds_bands.attrs = self._get_metadata_attrs()
         return ds_bands
 
-    def _apply(self, method_name, binsize=None, db=True, band_list=None, bin_overlap=0, **kwargs):
-        """
-        Apply one single method
-
-        Parameters
-        ----------
-        method_name : string
-            Name of the method to apply
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
-        """
-        return self._apply_multiple(method_list=[method_name], binsize=binsize, bin_overlap=bin_overlap,
-                                    db=db, band_list=band_list, **kwargs)
-
-    def rms(self, binsize=None, bin_overlap=0, db=True):
-        """
-        Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
-        """
-        rms_ds = self._apply(method_name='rms', binsize=binsize, bin_overlap=bin_overlap, db=db)
-        return rms_ds
-
-    def aci(self, binsize=None, bin_overlap=0, nfft=1024, fft_overlap=0.5):
-        """
-        Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Window size for processing
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        """
-        aci_ds = self._apply(method_name='aci', binsize=binsize, bin_overlap=bin_overlap, nfft=nfft,
-                             fft_overlap=fft_overlap)
-        return aci_ds
-
-    def dynamic_range(self, binsize=None, bin_overlap=0, db=True):
-        """
-        Compute the dynamic range of each bin
-        Returns a dataframe with datetime as index and dr as column
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
-        """
-        dr_ds = self._apply(method_name='dynamic_range', binsize=binsize, bin_overlap=bin_overlap, db=db)
-        return dr_ds
-
-    def cumulative_dynamic_range(self, binsize=None, bin_overlap=0, db=True):
-        """
-        Compute the cumulative dynamic range for each bin
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-
-        Returns
-        -------
-        DataFrame with an extra column with the cumulative sum of dynamic range of each bin
-        """
-        cumdr = self.dynamic_range(binsize=binsize, bin_overlap=bin_overlap, db=db)
-        cumdr['cumsum_dr'] = cumdr.dr.cumsum()
-        return cumdr
-
-    def octaves_levels(self, binsize=None, bin_overlap=0, db=True, band=None, **kwargs):
-        """
-        Return the octave levels
-        Parameters
-        ----------
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db: boolean
-            Set to True if the result should be in decibels
-        band: list or tuple
-            List or tuple of [low_frequency, high_frequency]
-
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
-
-        """
-        return self._octaves_levels(fraction=1, binsize=binsize, bin_overlap=bin_overlap, db=db, band=band)
-
-    def third_octaves_levels(self, binsize=None, bin_overlap=0, db=True, band=None, **kwargs):
-        """
-        Return the octave levels
-        Parameters
-        ----------
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db: boolean
-            Set to True if the result should be in decibels
-        band: list or tuple
-            List or tuple of [low_frequency, high_frequency]
-
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
-
-        """
-        return self._octaves_levels(fraction=3, binsize=binsize, bin_overlap=bin_overlap, db=db, band=band)
-
-    def _octaves_levels(self, fraction=1, binsize=None, bin_overlap=0, db=True, band=None):
+    def octaves_levels(self, fraction=1, db=True, band=None):
         """
         Return the octave levels
         Parameters
         ----------
         fraction: int
             Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
         db: boolean
             Set to True if the result should be in decibels
 
@@ -449,38 +307,28 @@ class AcuChunk:
 
         if band is None:
             band = [None, self.fs / 2]
-        oct_str = 'oct%s' % fraction
 
         # Create an empty dataset
-        da = xarray.DataArray()
-        units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, log=db)
-        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
-            signal.set_band(band, downsample=downsample)
-            fbands, levels = signal.octave_levels(db, fraction)
-            da_levels = xarray.DataArray(data=[levels],
-                                         coords={'id': [i], 'start_sample': ('id', [start_sample]),
-                                                 'end_sample': ('id', [end_sample]), 'datetime': ('id', [time_bin]),
-                                                 'frequency': fbands},
-                                         dims=['id', 'frequency']
-                                         )
-            if i == 0:
-                da = da_levels
-            else:
-                da = xarray.concat((da, da_levels), 'id')
-        da.attrs.update(units_attrs)
-        ds = xarray.Dataset(data_vars={oct_str: da}, attrs=self._get_metadata_attrs())
-        return ds
+        signal = self.signal
+        signal.set_band(band, downsample=downsample)
+        fbands, levels = signal.octave_levels(db, fraction)
+        da_levels = xarray.DataArray(data=[levels],
+                                     coords={'id': [self.chunk_id],
+                                             'file_id': ('id', [self.chunk_file_id]),
+                                             'start_sample': ('id', [self.start_frame]),
+                                             'end_sample': ('id', [self.end_frame]),
+                                             'datetime': ('id', [self.time_bin]),
+                                             'frequency': fbands},
+                                     dims=['id', 'frequency']
+                                     )
+        return da_levels
 
-    def hybrid_millidecade_bands(self, nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
+    def hybrid_millidecade_bands(self, nfft, fft_overlap=0.5, db=True,
                                  method='density', band=None, percentiles=None):
         """
 
         Parameters
         ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
         nfft : int
             Length of the fft window in samples. Power of 2.
         fft_overlap : float [0 to 1]
@@ -503,8 +351,8 @@ class AcuChunk:
 
         if band is None:
             band = [0, self.fs / 2]
-        spectra_ds = self._spectrum(scaling=method, binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
-                                    db=False, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
+        spectra_ds = self.spectrum(scaling=method, nfft=nfft, fft_overlap=fft_overlap,
+                                   db=False, percentiles=percentiles, band=band)
         millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
         fft_bin_width = band[1] * 2 / nfft
         hybrid_millidecade_ds = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
@@ -513,17 +361,12 @@ class AcuChunk:
         spectra_ds['millidecade_bands'] = hybrid_millidecade_ds
         return spectra_ds
 
-    def spectrogram(self, binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
-                    scaling='density', db=True, band=None):
+    def spectrogram(self, nfft=512, fft_overlap=0.5, scaling='density', db=True, band=None):
         """
         Return the spectrogram of the signal (entire file)
 
         Parameters
         ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         nfft : int
@@ -551,27 +394,20 @@ class AcuChunk:
         if band is None:
             band = [None, self.fs / 2]
 
-        da = xarray.DataArray()
-        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=bin_overlap):
-            signal.set_band(band, downsample=downsample)
-            freq, t, sxx = signal.spectrogram(nfft=nfft, overlap=fft_overlap, scaling=scaling, db=db)
-            da_sxx = xarray.DataArray([sxx], coords={'id': [i],
-                                                     'start_sample': ('id', [start_sample]),
-                                                     'end_sample': ('id', [end_sample]),
-                                                     'datetime': ('id', [time_bin]),
-                                                     'frequency': freq, 'time': t},
-                                      dims=['id', 'frequency', 'time'])
-            if i == 0:
-                da = da_sxx
-            else:
-                da = xarray.concat((da, da_sxx), 'id')
-        units_attrs = output_units.get_units_attrs(method_name='spectrogram_' + scaling, p_ref=self.p_ref, log=db)
-        da.attrs.update(units_attrs)
-        ds = xarray.Dataset(data_vars={'spectrogram': da}, attrs=self._get_metadata_attrs())
-        return ds
+        signal = self.signal
+        signal.set_band(band, downsample=downsample)
+        freq, t, sxx = signal.spectrogram(nfft=nfft, overlap=fft_overlap, scaling=scaling, db=db)
+        da_sxx = xarray.DataArray([sxx], coords={'id': [self.chunk_id],
+                                                 'file_id': ('id', [self.chunk_file_id]),
+                                                 'start_sample': ('id', [self.start_frame]),
+                                                 'end_sample': ('id', [self.end_frame]),
+                                                 'datetime': ('id', [self.time_bin]),
+                                                 'frequency': freq, 'time': t},
+                                  dims=['id', 'frequency', 'time'])
+        return da_sxx
 
-    def _spectrum(self, scaling='density', binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
-                  db=True, percentiles=None, band=None):
+    def spectrum(self, scaling='density', nfft=512, fft_overlap=0.5,
+                 db=True, percentiles=None, band=None):
         """
         Return the spectrum : frequency distribution of every bin (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and each
@@ -581,10 +417,6 @@ class AcuChunk:
         ----------
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
         nfft : int
             Length of the fft window in samples. Power of 2.
         fft_overlap : float [0 to 1]
@@ -631,77 +463,13 @@ class AcuChunk:
 
         return ds_bin
 
-    def psd(self, binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5, db=True, percentiles=None, band=None):
-        """
-        Return the power spectrum density (PSD) of all the file (units^2 / Hz) re 1 V 1 upa
-        Returns a Dataframe with 'datetime' as index and a column for each frequency and each
-        percentile
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Length of the fft window in samples. Recommended power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        """
-        psd_ds = self._spectrum(scaling='density', binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
-                                db=db, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
-        return psd_ds
-
-    def power_spectrum(self, binsize=None, bin_overlap=0, nfft=512, fft_overlap=0.5,
-                       db=True, percentiles=None, band=None):
-        """
-        Return the power spectrum of all the file (units^2 / Hz) re 1 V 1 upa
-        Returns a Dataframe with 'datetime' as index and a column for each frequency and
-        each percentile
-
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the windows in the fft
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        """
-
-        spectrum_ds = self._spectrum(scaling='spectrum', binsize=binsize, nfft=nfft, fft_overlap=fft_overlap,
-                                     db=db, bin_overlap=bin_overlap, percentiles=percentiles, band=band)
-        return spectrum_ds
-
-    def spd(self, binsize=None, bin_overlap=0, h=0.1, nfft=512, fft_overlap=0.5,
+    def spd(self, h=0.1, nfft=512, fft_overlap=0.5,
             db=True, percentiles=None, min_val=None, max_val=None, band=None):
         """
         Return the spectral probability density.
 
         Parameters
         ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
         h : float
             Histogram bin width (in the correspondent units, upa or db)
         nfft : int
@@ -738,8 +506,8 @@ class AcuChunk:
             list of matrices with all the probabilities
 
         """
-        psd_evolution = self.psd(binsize=binsize, nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
-                                 bin_overlap=bin_overlap, band=band)
+        psd_evolution = self.psd(nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
+                                 band=band)
         return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
 
     def source_separation(self, window_time=1.0, n_sources=15, binsize=None, save_path=None, verbose=False, band=None):
@@ -793,7 +561,7 @@ class AcuChunk:
             Where to save the images
         **kwargs : any attribute valid on psd() function
         """
-        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        psd = self.spectrum(db=db, scaling=scaling, **kwargs)
         plots.plot_spectrum_median(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
     def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
@@ -812,7 +580,7 @@ class AcuChunk:
             Where to save the images
         **kwargs : any attribute valid on psd() function
         """
-        psd = self._spectrum(db=db, scaling=scaling, **kwargs)
+        psd = self.spectrum(db=db, scaling=scaling, **kwargs)
         plots.plot_spectrum_per_chunk(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
