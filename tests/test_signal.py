@@ -1,6 +1,5 @@
 import unittest
 import pypam.signal as sig
-import pypam.nmf as nmf
 import numpy as np
 from tests import skip_unless_with_plots, with_plots
 import matplotlib.pyplot as plt
