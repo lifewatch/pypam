@@ -677,7 +677,7 @@ class AcuFile:
         da = xarray.DataArray()
         units_attrs = output_units.get_units_attrs(method_name='octave_levels', p_ref=self.p_ref, log=db)
         for i, chunk in self._bins(binsize, bin_overlap=bin_overlap):
-            da_levels = chunk._octaves_levels(fraction=fraction, db=db, band=band)
+            da_levels = chunk.octaves_levels(fraction=fraction, db=db, band=band)
             if i == 0:
                 da = da_levels
             else:
