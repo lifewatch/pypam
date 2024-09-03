@@ -51,6 +51,8 @@ import pandas as pd
 import pathlib
 from tqdm import tqdm
 from functools import partial
+import zipfile
+import os
 
 try:
     import dask
@@ -555,13 +557,13 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     for attr in attrs_to_vars:
         if attr in new_ds.attrs.keys():
             new_coords[attr] = ('id', [new_ds.attrs[attr]] * new_ds.dims['id'])
-    if len(ds.dims) != 0:
-        start_value = ds['id'][-1].values + 1
-    else:
-        start_value = 0
-    new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
-    new_ds = new_ds.reset_index('id')
-    new_coords['id'] = new_ids
+    # if len(ds.dims) != 0:
+    #     start_value = ds['id'][-1].values + 1
+    # else:
+    #     start_value = 0
+    # new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
+    # new_ds = new_ds.reset_index('id')
+    # new_coords['id'] = new_ids
     new_ds = new_ds.assign_coords(new_coords)
     if len(ds.dims) == 0:
         ds = ds.merge(new_ds)
@@ -898,3 +900,16 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
         ds_copy[data_var][i] = ds[data_var][i] + df['inc_value'].values
 
     return ds_copy
+
+
+def parse_file_name(sfile):
+    if type(sfile) == str:
+        file_name = os.path.split(sfile)[-1]
+    elif issubclass(sfile.__class__, pathlib.Path):
+        file_name = sfile.name
+    elif issubclass(sfile.__class__, zipfile.ZipExtFile):
+        file_name = sfile.name
+    else:
+        raise Exception('The filename has to be either a Path object or a string')
+
+    return file_name

@@ -41,6 +41,8 @@ class ASA:
         Default to .wav, extension of the sound files to process
     include_dirs : boolean
         Set to True if the folder contains other folders with sound files
+    gridded_data: boolean
+        Set to True to start the processing at all the minutes with 0 seconds
     p_ref : float
         Reference pressure in uPa
     binsize : float
@@ -67,6 +69,7 @@ class ASA:
                  zipped=False,
                  extension='.wav',
                  include_dirs=False,
+                 gridded_data=True,
                  p_ref=1.0,
                  binsize=None,
                  bin_overlap=0,
@@ -107,19 +110,21 @@ class ASA:
             self.extra_attrs = extra_attrs
 
         self.file_dependent_attrs = ['file_path', '_start_frame', 'end_to_end_calibration']
+        self.current_chunk_id = 0
 
     def _files(self):
         """
         Iterator that returns AcuFile for each wav file in the folder
         """
+        self.current_chunk_id = 0
         for file_list in tqdm(self.acu_files):
             wav_file = file_list[0]
             print(wav_file)
-            sound_file = self._hydro_file(wav_file)
+            sound_file = self._hydro_file(wav_file, chunk_id_start=self.current_chunk_id)
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 yield sound_file
 
-    def _hydro_file(self, wav_file):
+    def _hydro_file(self, wav_file, chunk_id_start=0):
         """
         Return the AcuFile object from the wav_file
         Parameters
@@ -133,9 +138,9 @@ class ASA:
         """
         hydro_file = acoustic_file.AcuFile(sfile=wav_file, hydrophone=self.hydrophone, p_ref=self.p_ref,
                                            timezone=self.timezone, channel=self.channel, calibration=self.calibration,
-                                           dc_subtract=self.dc_subtract)
+                                           dc_subtract=self.dc_subtract, chunk_id_start=chunk_id_start)
         return hydro_file
-    
+
     def _get_metadata_attrs(self):
         metadata_keys = [
             'binsize',
@@ -187,6 +192,7 @@ class ASA:
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
         return ds
 
     def evolution(self, method_name, band_list=None, **kwargs):
@@ -222,6 +228,7 @@ class ASA:
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
         return ds
 
     def timestamps_array(self):
@@ -233,6 +240,7 @@ class ASA:
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
         return ds
 
     def start_end_timestamp(self):
