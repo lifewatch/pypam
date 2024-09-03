@@ -7,8 +7,6 @@ from pypam.acoustic_survey import ASA
 import pyhydrophone as pyhy
 from tests import skip_unless_with_plots, with_plots
 
-plt.rcParams.update(plt.rcParamsDefault)
-
 # Data information
 folder_path = pathlib.Path('tests/test_data')
 

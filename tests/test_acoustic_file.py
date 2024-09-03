@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import datetime
 import pandas as pd
 
-plt.rcParams.update(plt.rcParamsDefault)
-
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
 model = 'ST300HF'
