@@ -50,7 +50,8 @@ class DataSet:
         Number of samples of window to use for frequency analysis
     """
     def __init__(self, summary_path, output_folder, instruments, temporal_features=None, frequency_features=None,
-                 bands_list=None, binsize=60.0, bin_overlap=0.0, nfft=512, fft_overlap=0, dc_subtract=False):
+                 bands_list=None, binsize=60.0, bin_overlap=0.0, nfft=512, fft_overlap=0, dc_subtract=False,
+                 gridded_data=True):
         self.metadata = pd.read_csv(summary_path)
         if 'end_to_end_calibration' not in self.metadata.columns:
             self.metadata['end_to_end_calibration'] = np.nan
@@ -64,6 +65,7 @@ class DataSet:
         self.nfft = nfft
         self.fft_overlap = fft_overlap
         self.dc_subtract = dc_subtract
+        self.gridded = gridded_data
 
         if not isinstance(output_folder, pathlib.Path):
             output_folder = pathlib.Path(output_folder)
@@ -153,6 +155,7 @@ class DataSet:
                                   binsize=self.binsize,
                                   nfft=self.nfft,
                                   fft_overlap=self.fft_overlap,
+                                  gridded_data=self.gridded,
                                   extra_attrs=extra_attrs,
                                   **self.metadata.loc[(idx, survey_columns)].to_dict())
         ds = xarray.Dataset()
