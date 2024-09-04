@@ -176,7 +176,7 @@ class ASA:
 
         return metadata_attrs
 
-    def evolution_multiple(self, method_list: list, band_list=None, **kwargs):
+    def evolution_multiple(self, method_list: list, band_list=None, save_daily=True, output_folder=None, **kwargs):
         """
         Compute the method in each file and output the evolution
         Returns a xarray DataSet with datetime as index and one row for each bin of each file
@@ -189,14 +189,29 @@ class ASA:
             Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
             represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
             frequency will be analyzed
+        save_daily : boolean
+            Set to True to save/yield daily netcdf files instead of a huge big file (useful for long deployments)
+        output_folder : str or Path
+            Directory to save the netcdf files
         **kwargs :
             Any accepted parameter for the method_name
         """
+        if output_folder is not None:
+            if not isinstance(output_folder, pathlib.Path):
+                output_folder = pathlib.Path(output_folder)
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller('_apply_multiple', method_list=method_list, binsize=self.binsize,
                                   nfft=self.nfft, fft_overlap=self.fft_overlap, bin_overlap=self.bin_overlap,
                                   band_list=band_list, **kwargs)
+        start_date, end_date = self.start_end_timestamp()
+        current_date = start_date.date
         for sound_file in self._files():
+            if save_daily and (sound_file.date.date > current_date):
+                if output_folder is not None:
+                    ds.to_netcdf(output_folder.joinpath('%s.nc' % current_date))
+                else:
+                    yield ds
+                ds = xarray.Dataset(attrs=self._get_metadata_attrs())
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
             self.current_chunk_id += ds.id.max()
@@ -218,7 +233,7 @@ class ASA:
         """
         return self.evolution_multiple(method_list=[method_name], band_list=band_list, **kwargs)
 
-    def evolution_freq_dom(self, method_name, **kwargs):
+    def evolution_freq_dom(self, method_name, save_daily=True, output_folder=None, **kwargs):
         """
         Returns the evolution of frequency domain parameters
         Parameters
@@ -232,7 +247,15 @@ class ASA:
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller(method_name, binsize=self.binsize, nfft=self.nfft, fft_overlap=self.fft_overlap,
                                   bin_overlap=self.bin_overlap, **kwargs)
+        start_date, end_date = self.start_end_timestamp()
+        current_date = start_date.date
         for sound_file in self._files():
+            if save_daily and (sound_file.date.date > current_date):
+                if output_folder is not None:
+                    ds.to_netcdf(output_folder.joinpath('%s.nc' % current_date))
+                else:
+                    yield ds
+                ds = xarray.Dataset(attrs=self._get_metadata_attrs())
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
             self.current_chunk_id += ds.id.max()
