@@ -25,6 +25,9 @@ init: startup
 init-dev: startup
 	poetry install --extras 'tests' --extras 'dev' --extras 'docs'
 
+init-test: startup
+    poetry install --with 'tests'
+
 init-docs: startup
 	poetry install --extras 'docs'
 
