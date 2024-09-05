@@ -23,13 +23,13 @@ init: startup
 	poetry install
 
 init-dev: startup
-	poetry install --extras 'tests' --extras 'dev' --extras 'docs'
+	poetry install --with test, docs, dev
 
-init-tests: startup
-	poetry install --extras 'tests' --extras 'dev'
+init-test: startup
+	poetry install --with test
 
 init-docs: startup
-	poetry install --extras 'docs'
+	poetry install --with docs
 
 docs:
 	if ! [ -d "./docs" ]; then poetry run sphinx-quickstart -q --ext-autodoc --sep --project $(PROJECT) --author $(AUTHOR) docs; fi

@@ -23,7 +23,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - name: Install dependencies
         run: |    
-          make init-tests
+          make init-test
 
       - name: Run unit tests
         run: |
