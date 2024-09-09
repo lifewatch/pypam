@@ -24,38 +24,26 @@ numba = "^0.57.0"
 noisereduce = "^2.0.1"
 scikit-learn = "^1.2.2"
 python-dateutil = "^2.8.2"
-poetry = "^1.5.0"
 xarray = "2023.8.0"
 pyhydrophone = "^0.1.7"
-
-# Development tools
-pre-commit = {version = "^3.3.1", optional = true}
-isort = {version = "^5.12.0", optional = true}
-black = {version = ">=23.3,<25.0", optional = true}
-
-# Testing tools
-pyyaml = {version = "^6.0", optional = true}
-pytest = {version = "^7.3.1", optional = true}
-coverage = {version = "^7.2.5", optional = true}
-python-dotenv = {version = "^1.0.0", optional = true}
-pytest-cov = {version = "^4.1.0", optional = true}
-
-# Documentation tools
-
-# Poetry has the dependecies groups, but those are not 
-#   compatible with extras, widely used in the python-verse.
 netcdf4 = "^1.6.4"
 syrupy = "^4.0.4"
-openpyxl = "^3.1.2"
-scikit-maad = "^1.4.0"
-setuptools = ">=68.1,<71.0"
-certifi = ">=2023.7.22,<2025.0.0"
-cryptography = ">=41.0.2,<44.0.0"
-dask = {version = "^2023.9.3", optional = true}
-[tool.poetry.extras]
-dev = ["pre-commit", "isort", "black", "flake8"]
-tests = ["pyyaml","pytest", "coverage", "python-dotenv", "pytest-cov"]
-docs = ["sphinx"]
+scikit-maad = "^1.4.3"
+openpyxl = "^3.1.5"
+pvlib = {version = "^0.11.0", optional = true}
+dask = {version = "^2023.0.0", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.3.1"
+isort = "^5.12.0"
+black = ">=23.3,<25.0"
+
+[tool.poetry.group.test.dependencies]
+pyyaml = "^6.0"
+pytest = "^7.3.1"
+coverage = "^7.2.5"
+python-dotenv = "^1.0.0"
+pytest-cov = "^4.1.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "6.1.2"
