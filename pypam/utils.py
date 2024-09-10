@@ -919,6 +919,7 @@ def hmb_to_decidecade(ds, data_var, nfft, freq_coord):
 
     # Compute the decidecades on the non-linear part
     high_psd = ds_data_var.where(ds[freq_coord] > changing_frequency, drop=True)
+    high_psd = high_psd * (high_psd.upper_frequency - high_psd.lower_frequency)
     high_decidecade = high_psd.groupby_bins(freq_coord, bins=bands_limits, labels=bands_c, right=True).sum()
     bandwidths = np.diff(bands_limits)
     high_decidecade = high_decidecade / bandwidths
