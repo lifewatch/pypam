@@ -335,7 +335,7 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, fs=None)
 
     if fs is None:
         fs = band[1] * 2
-    fft_bin_width =  fs / nfft
+    fft_bin_width = fs / nfft
 
     # Start the frequencies list
     bands_limits = []
@@ -381,8 +381,9 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, fs=None)
     while ls_freq < band[1]:
         fc = get_center_freq(base, bands_per_division, band_count, band[0])
         ls_freq = fc * high_side_multiplier
-        bands_c.append(fc)
-        bands_limits.append(fc * low_side_multiplier)
+        if fc >= band[0]:
+            bands_c.append(fc)
+            bands_limits.append(fc * low_side_multiplier)
         band_count += 1
     # Add the upper limit (bands_limits's length will be +1 compared to bands_c)
     if ls_freq > band[1]:
@@ -439,7 +440,7 @@ def get_decidecade_limits(band, nfft, fs=None):
     return get_bands_limits(band, nfft, base=10, bands_per_division=10, hybrid_mode=False, fs=fs)
 
 
-def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
+def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, freq_coord='frequency', db=True):
     """
     Group the psd according to the limits band_limits given. If a limit is not aligned with the limits in the psd
     frequency axis then that psd frequency bin is divided in proportion to each of the adjacent bands. For more details
@@ -456,6 +457,8 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
         Centre of the bands (used only of the output frequency axis naming)
     fft_bin_width: float
         fft bin width in seconds
+    freq_coord : str
+        Name of the frequency coordinate
     db: bool
         Set to True to return db instead of linear units
 
@@ -466,34 +469,35 @@ def spectra_ds_to_bands(psd, bands_limits, bands_c, fft_bin_width, db=True):
 
     """
     fft_freq_indices = (np.floor((np.array(bands_limits) + (fft_bin_width / 2)) / fft_bin_width)).astype(int)
-    original_first_fft_index = int(psd.frequency.values[0] / fft_bin_width)
+    original_first_fft_index = int(psd[freq_coord].values[0] / fft_bin_width)
     fft_freq_indices -= original_first_fft_index
 
-    if fft_freq_indices[-1] > (len(psd.frequency) - 1):
-        fft_freq_indices[-1] = len(psd.frequency) - 1
+    if fft_freq_indices[-1] > (len(psd[freq_coord]) - 1):
+        fft_freq_indices[-1] = len(psd[freq_coord]) - 1
     limits_df = pd.DataFrame(data={'lower_indexes': fft_freq_indices[:-1], 'upper_indexes': fft_freq_indices[1:],
                                    'lower_freq': bands_limits[:-1], 'upper_freq': bands_limits[1:]})
     limits_df['lower_factor'] = limits_df['lower_indexes'] * fft_bin_width + fft_bin_width / 2 - limits_df[
-        'lower_freq'] + psd.frequency.values[0]
+        'lower_freq'] + psd[freq_coord].values[0]
     limits_df['upper_factor'] = limits_df['upper_freq'] - (
-            limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd.frequency.values[0]
+            limits_df['upper_indexes'] * fft_bin_width - fft_bin_width / 2) - psd[freq_coord].values[0]
 
-    psd_limits_lower = psd.isel(frequency=limits_df['lower_indexes'].values) * [
+    psd_limits_lower = psd.isel(**{freq_coord: limits_df['lower_indexes'].values}) * [
         limits_df['lower_factor']] / fft_bin_width
-    psd_limits_upper = psd.isel(frequency=limits_df['upper_indexes'].values) * [
+    psd_limits_upper = psd.isel(**{freq_coord: limits_df['upper_indexes'].values}) * [
         limits_df['upper_factor']] / fft_bin_width
     # Bin the bands and add the borders
-    psd_without_borders = psd.drop_isel(frequency=fft_freq_indices)
-    if len(psd_without_borders.frequency) == 0:
+    psd_without_borders = psd.drop_isel(**{freq_coord: fft_freq_indices})
+    new_coord_name = freq_coord + '_bins'
+    if len(psd_without_borders[freq_coord]) == 0:
         psd_bands = xarray.zeros_like(psd)
-        psd_bands = psd_bands.assign_coords({'frequency_bins': ('frequency', bands_c)})
-        psd_bands = psd_bands.swap_dims({'frequency': 'frequency_bins'}).drop_vars('frequency')
+        psd_bands = psd_bands.assign_coords({new_coord_name: (freq_coord, bands_c)})
+        psd_bands = psd_bands.swap_dims({freq_coord: new_coord_name}).drop_vars(freq_coord)
     else:
-        psd_bands = psd_without_borders.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=False).sum()
+        psd_bands = psd_without_borders.groupby_bins(freq_coord, bins=bands_limits, labels=bands_c, right=False).sum()
         psd_bands = psd_bands.fillna(0)
     psd_bands = psd_bands + psd_limits_lower.values + psd_limits_upper.values
-    psd_bands = psd_bands.assign_coords({'lower_frequency': ('frequency_bins', limits_df['lower_freq'])})
-    psd_bands = psd_bands.assign_coords({'upper_frequency': ('frequency_bins', limits_df['upper_freq'])})
+    psd_bands = psd_bands.assign_coords({'lower_frequency': (new_coord_name, limits_df['lower_freq'])})
+    psd_bands = psd_bands.assign_coords({'upper_frequency': (new_coord_name, limits_df['upper_freq'])})
 
     bandwidths = psd_bands.upper_frequency - psd_bands.lower_frequency
     psd_bands = psd_bands / bandwidths
@@ -898,3 +902,35 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
         ds_copy[data_var][i] = ds[data_var][i] + df['inc_value'].values
 
     return ds_copy
+
+
+def hmb_to_decidecade(ds, data_var, nfft, freq_coord):
+    # Convert back to upa for the sum operations
+    ds_data_var = np.power(10, ds[data_var].copy() / 10.0 - np.log10(1))
+    fft_bin_width = 1.0
+    changing_frequency = 455
+    bands_limits, bands_c = get_decidecade_limits(band=[changing_frequency + 1, nfft / 2], nfft=nfft, fs=nfft)
+    bands_limits_low, bands_c_low = get_decidecade_limits(band=[10, changing_frequency], nfft=nfft, fs=nfft)
+
+    # We need to split the dataset in two, the part which is below the changing frequency and the part which is above
+    low_psd = ds_data_var.where(ds[freq_coord] <= changing_frequency, drop=True)
+    low_decidecade = spectra_ds_to_bands(low_psd, bands_limits_low, bands_c_low, fft_bin_width,
+                                         freq_coord=freq_coord, db=False)
+
+    # Compute the decidecades on the non-linear part
+    high_psd = ds_data_var.where(ds[freq_coord] > changing_frequency, drop=True)
+    high_decidecade = high_psd.groupby_bins(freq_coord, bins=bands_limits, labels=bands_c, right=True).sum()
+    bandwidths = np.diff(bands_limits)
+    high_decidecade = high_decidecade / bandwidths
+
+    # Merge the low and the high decidecade psd
+    decidecade_psd = xarray.merge([{data_var: low_decidecade}, {data_var: high_decidecade}])
+
+    # change the name of the frequency coord
+    decidecade_psd = decidecade_psd.rename({freq_coord + '_bins': freq_coord})
+
+    # Convert back to db
+    decidecade_psd = 10 * np.log10(decidecade_psd)
+
+    return decidecade_psd
+
