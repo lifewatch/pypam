@@ -898,3 +898,29 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
         ds_copy[data_var][i] = ds[data_var][i] + df['inc_value'].values
 
     return ds_copy
+
+
+def hmb_to_decidecade(ds, data_var, fs, nfft):
+    # Convert back to upa for the sum operations
+    ds[data_var] = np.power(10, ds[data_var] / 10.0 - np.log10(1))
+    fft_bin_width = fs / nfft
+    changing_frequency = 455
+    bands_limits, bands_c = get_decidecade_limits(band=[changing_frequency + 1, 256000 / 2], nfft=nfft, fs=fs)
+    bands_limits_low, bands_c_low = get_decidecade_limits(band=[10, changing_frequency], nfft=nfft, fs=fs)
+
+    # We need to split the dataset in two, the part which is below the changing frequency and the part which is above
+    low_psd = ds[data_var].where(ds.frequency <= changing_frequency, drop=True)
+    low_decidecade = spectra_ds_to_bands(low_psd, bands_limits_low, bands_c_low, fft_bin_width, db=False)
+
+    high_psd = ds[data_var].where(ds.frequency > changing_frequency, drop=True)
+    high_decidecade = high_psd.groupby_bins('frequency', bins=bands_limits, labels=bands_c, right=True).sum()
+    bandwidths = np.diff(bands_limits)
+    high_decidecade = high_decidecade / bandwidths
+
+    # Merge the low and the high decidecade psd
+    decidecade_psd = xarray.merge([{data_var: low_decidecade}, {data_var: high_decidecade}])
+    # Convert back to db
+    decidecade_psd = 10 * np.log10(decidecade_psd)
+
+    return decidecade_psd
+
