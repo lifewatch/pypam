@@ -86,12 +86,11 @@ def test_psd_to_millidecades(artificial_data):
 
 def test_hmb_to_decidecade():
     daily_ds = xarray.load_dataset('tests/test_data/test_day.nc')
-    daily_ds_deci = utils.hmb_to_decidecade(daily_ds, 'millidecade_bands', freq_coord='frequency_bins',
-                                            nfft=daily_ds.nfft)
+    daily_ds_deci = utils.hmb_to_decidecade(daily_ds, 'millidecade_bands', freq_coord='frequency_bins')
 
     if with_plots():
-        daily_ds_example_deci = daily_ds_deci.sel(id=0)
-        daily_ds_example = daily_ds.sel(id=0)
+        daily_ds_example_deci = daily_ds_deci.isel(id=0)
+        daily_ds_example = daily_ds.isel(id=0)
         # Plot the two outputs for comparison
         fig, ax = plt.subplots()
         ax.plot(daily_ds_example_deci.frequency_bins, daily_ds_example_deci['millidecade_bands'],
