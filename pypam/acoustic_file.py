@@ -454,6 +454,8 @@ class AcuFile:
                 d = d.__dict__[sub_k]
             if isinstance(d, pathlib.Path):
                 d = str(d)
+            if isinstance(d, bool):
+                d = int(d)
             if d is None:
                 d = 0
             metadata_attrs[k.replace('.', '_')] = d

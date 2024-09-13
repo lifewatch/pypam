@@ -161,7 +161,8 @@ class DataSet:
         ds = xarray.Dataset()
         if self.frequency_features not in [[], None]:
             for f in self.frequency_features:
-                freq_evo = asa.evolution_freq_dom(f, band=None, db=True)
+                freq_evo = asa.evolution_freq_dom(f, band=None, db=True, save_daily=True,
+                                                  output_folder=self.output_folder.joinpath('deployments'))
                 for data_var in freq_evo.data_vars:
                     ds = ds.merge(freq_evo[data_var])
         if self.temporal_features not in [[], None]:
