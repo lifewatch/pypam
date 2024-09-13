@@ -51,6 +51,9 @@ import pandas as pd
 import pathlib
 from tqdm import tqdm
 from functools import partial
+import zipfile
+import os
+import datetime
 
 try:
     import dask
@@ -559,13 +562,13 @@ def merge_ds(ds, new_ds, attrs_to_vars):
     for attr in attrs_to_vars:
         if attr in new_ds.attrs.keys():
             new_coords[attr] = ('id', [new_ds.attrs[attr]] * new_ds.dims['id'])
-    if len(ds.dims) != 0:
-        start_value = ds['id'][-1].values + 1
-    else:
-        start_value = 0
-    new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
-    new_ds = new_ds.reset_index('id')
-    new_coords['id'] = new_ids
+    # if len(ds.dims) != 0:
+    #     start_value = ds['id'][-1].values + 1
+    # else:
+    #     start_value = 0
+    # new_ids = np.arange(start_value, start_value + new_ds.dims['id'])
+    # new_ds = new_ds.reset_index('id')
+    # new_coords['id'] = new_ids
     new_ds = new_ds.assign_coords(new_coords)
     if len(ds.dims) == 0:
         ds = ds.merge(new_ds)
@@ -904,6 +907,19 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
     return ds_copy
 
 
+def parse_file_name(sfile):
+    if type(sfile) == str:
+        file_name = os.path.split(sfile)[-1]
+    elif issubclass(sfile.__class__, pathlib.Path):
+        file_name = sfile.name
+    elif issubclass(sfile.__class__, zipfile.ZipExtFile):
+        file_name = sfile.name
+    else:
+        raise Exception('The filename has to be either a Path object or a string')
+
+    return file_name
+
+
 def hmb_to_decidecade(ds, data_var, freq_coord, fs=None):
     # Convert back to upa for the sum operations
     ds_data_var = np.power(10, ds[data_var].copy() / 10.0 - np.log10(1))
@@ -970,3 +986,12 @@ def hmb_to_decidecade(ds, data_var, freq_coord, fs=None):
 
     return decidecade_psd
 
+
+def get_file_datetime(file_name, hydrophone):
+    try:
+        date = hydrophone.get_name_datetime(file_name)
+    except ValueError:
+        date = datetime.datetime.now()
+        print('Filename %s does not match the %s file structure. Setting time to now...' %
+              (file_name, hydrophone.name))
+    return date
