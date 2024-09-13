@@ -904,23 +904,59 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
     return ds_copy
 
 
-def hmb_to_decidecade(ds, data_var, nfft, freq_coord):
+def hmb_to_decidecade(ds, data_var, freq_coord, fs=None):
     # Convert back to upa for the sum operations
     ds_data_var = np.power(10, ds[data_var].copy() / 10.0 - np.log10(1))
     fft_bin_width = 1.0
-    changing_frequency = 455
-    bands_limits, bands_c = get_decidecade_limits(band=[changing_frequency + 1, nfft / 2], nfft=nfft, fs=nfft)
-    bands_limits_low, bands_c_low = get_decidecade_limits(band=[10, changing_frequency], nfft=nfft, fs=nfft)
+    changing_frequency = 434
+    if fs is None:
+        if 'fs' not in ds.attrs.keys():
+            max_freq = ds[freq_coord].values.max()
+        else:
+            max_freq = ds.attrs['fs'] / 2
+    else:
+        max_freq = fs/2
 
+    ds[freq_coord] = ds[freq_coord].values.astype(float).round(decimals=2)
+    # Add the frequency limits if they are not in the ds cordinates
+    if 'upper_frequency' not in ds_data_var.coords:
+        hmb_limits, hmb_c = get_hybrid_millidecade_limits(band=[0, max_freq],
+                                                   nfft=max_freq*2, fs=max_freq*2)
+        hmb_limits = np.around(hmb_limits, decimals=2).tolist()
+        hmb_c = np.around(hmb_c, decimals=2).tolist()
+        rounded_freq = ds_data_var[freq_coord].values.astype(float).round(decimals=2)
+        hmb_limits = hmb_limits[hmb_c.index(rounded_freq.min()):hmb_c.index(rounded_freq.max()) + 2]
+        ds_data_var = ds_data_var.assign_coords(upper_frequency=(freq_coord, hmb_limits[1:]),
+                                                lower_frequency=(freq_coord, hmb_limits[:-1]))
+
+    bands_limits, bands_c = get_decidecade_limits(band=[10, max_freq],
+                                                  nfft=max_freq*2,
+                                                  fs=max_freq*2)
+    bands_limits = np.array(bands_limits).round(decimals=2)
+    bands_c = np.array(bands_c).round(decimals=2)
+    maximum_band = np.where(np.array(bands_limits) > ds_data_var.upper_frequency.values.max())[0][0]
+    bands_limits = bands_limits[:maximum_band+1]
+    bands_c = bands_c[:maximum_band]
+
+    changing_band = np.where(np.array(bands_limits) < changing_frequency)[0][-1]
     # We need to split the dataset in two, the part which is below the changing frequency and the part which is above
-    low_psd = ds_data_var.where(ds[freq_coord] <= changing_frequency, drop=True)
-    low_decidecade = spectra_ds_to_bands(low_psd, bands_limits_low, bands_c_low, fft_bin_width,
+    low_psd = ds_data_var.where(ds_data_var.upper_frequency <= bands_limits[changing_band], drop=True)
+    low_decidecade = spectra_ds_to_bands(low_psd, bands_limits[:changing_band+1],
+                                         bands_c[:changing_band],
+                                         fft_bin_width,
                                          freq_coord=freq_coord, db=False)
 
     # Compute the decidecades on the non-linear part
-    high_psd = ds_data_var.where(ds[freq_coord] > changing_frequency, drop=True)
-    high_decidecade = high_psd.groupby_bins(freq_coord, bins=bands_limits, labels=bands_c, right=True).sum()
-    bandwidths = np.diff(bands_limits)
+    high_psd = ds_data_var.where(ds_data_var.upper_frequency >= bands_limits[changing_band], drop=True)
+    high_pwd = high_psd * (high_psd.upper_frequency - high_psd.lower_frequency)
+    high_decidecade = high_pwd.groupby_bins(freq_coord, bins=bands_limits[changing_band:],
+                                            labels=bands_c[changing_band:],
+                                            right=True).sum()
+    high_decidecade = high_decidecade.assign_coords({'lower_frequency':
+                                                     (freq_coord + '_bins', bands_limits[changing_band:-1])})
+    high_decidecade = high_decidecade.assign_coords({'upper_frequency':
+                                                     (freq_coord + '_bins', bands_limits[changing_band+1:])})
+    bandwidths = high_decidecade.upper_frequency - high_decidecade.lower_frequency
     high_decidecade = high_decidecade / bandwidths
 
     # Merge the low and the high decidecade psd
