@@ -9,6 +9,7 @@ import operator
 import os
 import pathlib
 import zipfile
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -597,8 +598,15 @@ class AcuChunk:
             Where to save the images
         **kwargs : any attribute valid on spectrogram() function
         """
+        if 'scaling' not in kwargs.keys():
+            scaling = 'density'
         ds_spectrogram = self.spectrogram(db=db, **kwargs)
-        plots.plot_spectrogram_per_chunk(ds_spectrogram, log, save_path)
+        ds_spectrogram = ds_spectrogram.squeeze(dim='id')
+        units_attrs = output_units.get_units_attrs(method_name=f'spectrogram_{scaling}', p_ref=self.p_ref, log=db)
+        ds_spectrogram.attrs.update(units_attrs)
+        plots.plot_2d(ds=ds_spectrogram, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
+                cbar_label=r'%s [$%s$]' % (re.sub('_', ' ', ds_spectrogram.standard_name).title(),
+                                           ds_spectrogram.units), ylog=log, title=f'Chunk {ds_spectrogram.id.values}')
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """
