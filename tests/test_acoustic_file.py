@@ -4,15 +4,16 @@ import pyhydrophone as pyhy
 from tests import skip_unless_with_plots
 import pathlib
 import matplotlib.pyplot as plt
-
+import os
 plt.rcParams.update(plt.rcParamsDefault)
-
+# get relative path
+dir = os.path.dirname(__file__)
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
 model = 'ST300HF'
 name = 'SoundTrap'
 serial_number = 67416073
-calibration_file = pathlib.Path("tests/test_data/calibration_data.xlsx")
+calibration_file = pathlib.Path(f"{dir}/test_data/calibration_data.xlsx")
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number,
                                      calibration_file=calibration_file, val='sensitivity', freq_col_id=1,
                                      val_col_id=29, start_data_id=6)
@@ -20,7 +21,7 @@ soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=seria
 
 class TestAcuFile(unittest.TestCase):
     def setUp(self) -> None:
-        self.acu_file = AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
+        self.acu_file = AcuFile(f'{dir}/test_data/67416073.210610033655.wav', soundtrap, 1)
 
     @skip_unless_with_plots()
     def test_plots(self):

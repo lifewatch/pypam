@@ -4,15 +4,17 @@ from pypam.signal import Signal
 import pypam.acoustic_indices
 import pyhydrophone as pyhy
 import numpy as np
+import os
 
-
+# get relative path
+dir = os.path.dirname(__file__)
 # Hydrophone Setup
 # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
 model = 'ST300HF'
 name = 'SoundTrap'
 serial_number = 67416073
 soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
-acu_file = AcuFile(sfile='tests/test_data/67416073.210610033655.wav', hydrophone=soundtrap, p_ref=1)
+acu_file = AcuFile(sfile=f'{dir}/test_data/67416073.210610033655.wav', hydrophone=soundtrap, p_ref=1)
 
 
 class TestAcousticIndices(unittest.TestCase):
