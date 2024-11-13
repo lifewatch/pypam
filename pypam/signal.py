@@ -289,7 +289,7 @@ class Signal:
             time.append(block.time)
         return time, output
 
-    def rms(self, db=True, **kwargs):
+    def rms(self, db=True, energy_window = None, **kwargs):
         """
         Calculation of root mean squared value (rms) of the signal in uPa
 
@@ -297,12 +297,41 @@ class Signal:
         ----------
         db : bool
             If set to True the result will be given in db, otherwise in uPa
+        energy_window: float
+            If provided, calculate the rms over the given energy window (e.g. RMS_90
+            for energy_window= .9).
         """
-        rms_val = utils.rms(self.signal)
+        if energy_window:
+            [start, end] = utils.energy_window(self.signal, energy_window)
+            rms_val = utils.rms(self.signal[start:end])
+        else:
+            rms_val = utils.rms(self.signal)
         # Convert it to db if applicable
         if db:
             rms_val = utils.to_db(rms_val, ref=1.0, square=True)
         return rms_val
+
+    def pulse_width(self, energy_window, **kwargs):
+        """
+        Returns the pulse width of an impulsive signal
+        according to a fractional energy window
+
+        Parameters
+        ----------
+        energy_window : float [0,1]
+            given energy window to calculate pulse width
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        tau: float
+        energy_window pulse width in seconds
+
+        """
+        [start, end] = utils.energy_window(self.signal, energy_window)
+
+        return (end - start) / self.fs
 
     def dynamic_range(self, db=True, **kwargs):
         """
@@ -323,8 +352,19 @@ class Signal:
     def sel(self, db=True, **kwargs):
         """
         Calculate the sound exposure level of an event
+
+        Parameters
+        ----------
+        db : bool
+            If set to True the result will be given in db, otherwise in uPa
+
+        Returns
+        -------
+        sel: float
+        sound exposure level
         """
         y = utils.sel(self.signal, self.fs)
+
         if db:
             y = utils.to_db(y, square=False)
         return y
@@ -338,6 +378,16 @@ class Signal:
         if db:
             y = utils.to_db(y, square=True)
         return y
+
+    def kurtosis(self, **kwargs):
+        """
+        Calculation of kurtosis of the signal
+
+        Parameters
+        ----------
+
+        """
+        return utils.kurtosis(self.signal, self.fs)
 
     def third_octave_levels(self, db=True, **kwargs):
         """

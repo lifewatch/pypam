@@ -40,18 +40,41 @@ class Event(Signal):
         self.end += end
         self.signal = self.signal[start:end]
 
-    def analyze(self):
+    def analyze(self, impulsive=False, energy_window=0.9):
         """
         Perform all necessary calculations for a single event
 
+        Parameters
+        ----------
+        impulsive : bool
+            whether or not the analysis should perform impulsive metrics
+        energy_window: float
+            If provided, calculate relevant metrics over the given energy window (e.g. RMS_90
+            for energy_window= .9).
         Returns
         -------
-        rms, sel, peak
+        dictionary of metrics: rms, sel, peak, kurtosis, tau
         """
-        rms = self.rms()
-        sel = self.sel()
+
+        if impulsive:
+
+            windowStr = str(int(energy_window*100))
+            rms = self.rms(energy_window=.9)
+            sel = super(Event, self).sel()
+            tau = self.pulse_width(energy_window)
+            startTime = self.start/self.fs
+        else:
+            rms = self.rms()
+            sel = self.sel()
+            tau = ''
+            startTime = ''
+
+
         peak = self.peak()
-        return rms, sel, peak
+        kurtosis = self.kurtosis()
+
+        out = {'startTime':startTime,'peak':peak,f'rms{windowStr}':rms,'sel':sel,'tau':tau,'kurtosis':kurtosis}
+        return out
 
     def sel(self, high_noise=False):
         """
