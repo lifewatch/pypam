@@ -57,21 +57,20 @@ class Event(Signal):
         """
 
         if impulsive:
-
             windowStr = str(int(energy_window*100))
-            rms = self.rms(energy_window=.9)
+            rms = self.rms(energy_window=energy_window)
             sel = super(Event, self).sel()
             tau = self.pulse_width(energy_window)
             startTime = self.start/self.fs
         else:
+            windowStr = ''
             rms = self.rms()
             sel = self.sel()
-            tau = ''
-            startTime = ''
-
+            tau = (self.end-self.start)/self.fs
 
         peak = self.peak()
         kurtosis = self.kurtosis()
+        startTime = self.start / self.fs
 
         out = {'startTime':startTime,'peak':peak,f'rms{windowStr}':rms,'sel':sel,'tau':tau,'kurtosis':kurtosis}
         return out

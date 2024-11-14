@@ -387,7 +387,7 @@ class Signal:
         ----------
 
         """
-        return utils.kurtosis(self.signal, self.fs)
+        return utils.kurtosis(self.signal)
 
     def third_octave_levels(self, db=True, **kwargs):
         """
