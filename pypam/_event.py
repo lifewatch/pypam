@@ -61,7 +61,7 @@ class Event(Signal):
             rms = self.rms(energy_window=energy_window)
             sel = super(Event, self).sel()
             tau = self.pulse_width(energy_window)
-            startTime = self.start/self.fs
+
         else:
             windowStr = ''
             rms = self.rms()
@@ -70,9 +70,9 @@ class Event(Signal):
 
         peak = self.peak()
         kurtosis = self.kurtosis()
-        startTime = self.start / self.fs
+        start_time = self.start / self.fs
 
-        out = {'startTime':startTime,'peak':peak,f'rms{windowStr}':rms,'sel':sel,'tau':tau,'kurtosis':kurtosis}
+        out = {'startTime':start_time,'peak':peak,f'rms{windowStr}':rms,'sel':sel,'tau':tau,'kurtosis':kurtosis}
         return out
 
     def sel(self, high_noise=False):

@@ -4,7 +4,7 @@ import pytest
 import os
 
 # get relative path
-dir = os.path.dirname(__file__)
+test_dir = os.path.dirname(__file__)
 
 # Adapted from examples/millidecade_bands.py to use pytest and snapshots.
 
@@ -25,7 +25,7 @@ def millidecade_bands():
     method = 'density'
     band = [0, 4000]
 
-    wav_path = f'{dir}/test_data/67416073.210610033655.wav'
+    wav_path = f'{test_dir}/test_data/67416073.210610033655.wav'
     acu_file = AcuFile(sfile=wav_path, hydrophone=soundtrap,
                        p_ref=p_ref, timezone='UTC', channel=0, calibration=None,
                        dc_subtract=False)
