@@ -4,6 +4,9 @@ import pandas as pd
 import os
 import pyhydrophone as pyhy
 import pypam
+import xarray as xr
+
+from examples.create_acoustic_survey import dc_subtract
 from pypam._event import Event
 import matplotlib.pyplot as plt
 
@@ -131,6 +134,21 @@ def test_verify_results():
     assert sel_diff[0]<tol_max
     assert sel_diff[1]<tol_median
     assert tau_diff[1]<tol_pulse_width
+
+def test_kurtosis_over_file():
+    #calculate 0.1 s kurtosis
+    ds = acu_file.kurtosis(binsize=0.1)
+    ds.attrs['dc_subtract'] = str(ds.attrs['dc_subtract'])
+    ds.to_netcdf(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
+    assert isinstance(ds,xr.Dataset)
+
+def test_plot_kurtosis():
+    ds = xr.load_dataset(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
+    fig,ax = plt.subplots()
+    ax.plot(ds.datetime,ds.kurtosis)
+    ax.set_ylabel(f'{ds.kurtosis.standard_name} ({ds.kurtosis.units})')
+    fig.suptitle('test_plot_kurtosis in test_impulsive_metrics.py')
+    plt.show()
 
 @skip_unless_with_plots()
 def test_plot_metrics():

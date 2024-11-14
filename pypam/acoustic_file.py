@@ -570,7 +570,7 @@ class AcuFile:
         bin_overlap : float [0 to 1]
             Percentage to overlap the bin windows
         """
-        kurtosis_ds = self._apply(method_name='kurtosis', binsize=binsize, bin_overlap=bin_overlap)
+        kurtosis_ds = self._apply(method_name='kurtosis', binsize=binsize, bin_overlap=bin_overlap, db=False)
         return kurtosis_ds
 
     def aci(self, binsize=None, bin_overlap=0, nfft=1024, fft_overlap=0.5):

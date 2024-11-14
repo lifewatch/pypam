@@ -64,4 +64,7 @@ docs/source/generated/
 .DS_Store
 
 tests/test_data/data_exploration
+tests/test_data/impulsive_data/kurtosis_result.nc
+tests/test_data/impulsive_data/pileDriving_results_pypam.csv
+
 pypam.egg-info/
