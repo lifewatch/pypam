@@ -79,6 +79,7 @@ def simplePeaks(
 
 
 def test_do_analysis():
+    """perform analysis on pile driving data, save metrics"""
     event_separation_s = 1.0
     buffer_s = 0.2
     locations = simplePeaks(acu_file, 25, event_separation_s, buffer_s)
@@ -109,6 +110,8 @@ def test_do_analysis():
 
 
 def test_verify_results():
+    """compare results here with benchmark"""
+
     def calc_diff(df1, df2, key):
         max_diff = np.max(np.abs(df1[key].values - df2[key].values[0:39]))
         median_diff = np.abs(np.median(df1[key].values)-np.median(df2[key].values[0:39]))
@@ -136,13 +139,16 @@ def test_verify_results():
     assert tau_diff[1]<tol_pulse_width
 
 def test_kurtosis_over_file():
+    """test acu_file implementation of kurtosis (i.e. _apply_multiple)"""
     #calculate 0.1 s kurtosis
     ds = acu_file.kurtosis(binsize=0.1)
     ds.attrs['dc_subtract'] = str(ds.attrs['dc_subtract'])
     ds.to_netcdf(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
     assert isinstance(ds,xr.Dataset)
 
+@skip_unless_with_plots()
 def test_plot_kurtosis():
+    """plot results from above test"""
     ds = xr.load_dataset(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
     fig,ax = plt.subplots()
     ax.plot(ds.datetime,ds.kurtosis)
@@ -152,6 +158,10 @@ def test_plot_kurtosis():
 
 @skip_unless_with_plots()
 def test_plot_metrics():
+    """
+    plot pile driving metrics against benchmark, disagreement (~10%) in pulse width assumed to be detector
+    related as energy_window testing confirms that methodology
+    """
     df = pd.read_csv(os.path.join(pile_driving_dir, 'pileDriving_results_pypam.csv'))
     df_bm = load_benchmark_data()
 
