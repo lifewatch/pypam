@@ -544,7 +544,7 @@ class AcuFile:
     def rms(self, binsize=None, bin_overlap=0, db=True):
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
+        Returns Dataset with 'datetime' as coordinate and 'rms' value as a variable
 
         Parameters
         ----------
@@ -561,7 +561,7 @@ class AcuFile:
     def kurtosis(self, binsize=None, bin_overlap=0):
         """
         Calculation of kurtosis value of the signal for each bin
-        Returns Dataframe with 'datetime' as index and 'kurtosis' value as a column
+        Returns Dataset with 'datetime' as coordinate and 'kurtosis' value as a variable
 
         Parameters
         ----------
@@ -576,7 +576,7 @@ class AcuFile:
     def aci(self, binsize=None, bin_overlap=0, nfft=1024, fft_overlap=0.5):
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
+        Returns Dataset with 'datetime' as coordinate and 'aci' value as a variable
 
         Parameters
         ----------
@@ -596,7 +596,7 @@ class AcuFile:
     def dynamic_range(self, binsize=None, bin_overlap=0, db=True):
         """
         Compute the dynamic range of each bin
-        Returns a dataframe with datetime as index and dr as column
+        Returns a Dataset with 'datetime' as coordinate and 'dr' as variable
 
         Parameters
         ----------
