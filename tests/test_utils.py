@@ -129,7 +129,7 @@ def test_energy_window():
     tol = 7 # us
     plot=True
     def load_and_window_data(filename, plot=False):
-        raw_data = np.loadtxt(f'{test_dir}\\test_data\\impulsive_data\{filename}',delimiter=',')
+        raw_data = np.loadtxt(f'{test_dir}\\test_data\\impulsive_data\\{filename}',delimiter=',')
         t, P = raw_data[:,0], raw_data[:,1]
         t = t+np.abs(np.min(t))
         t_interp = np.linspace(0,np.max(t),num=500)
