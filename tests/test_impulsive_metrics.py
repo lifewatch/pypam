@@ -6,7 +6,6 @@ import pyhydrophone as pyhy
 import pypam
 import xarray as xr
 
-from examples.create_acoustic_survey import dc_subtract
 from pypam._event import Event
 import matplotlib.pyplot as plt
 
