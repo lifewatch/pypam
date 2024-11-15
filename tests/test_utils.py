@@ -1,4 +1,5 @@
 import pytest
+import os
 import numpy as np
 import pandas as pd
 import xarray
@@ -7,6 +8,8 @@ import scipy
 from tests import with_plots
 from pypam import utils
 
+# get relative path
+dir = os.path.dirname(__file__)
 
 # Create artificial data of 1 second
 @pytest.fixture
@@ -16,7 +19,7 @@ def artificial_data():
     samples = fs
     noise_amp = 100
     signal_amp = 100
-    data = pd.read_csv('tests/test_data/signal_data.csv', header=None)[0].values
+    data = pd.read_csv(f'{dir}/test_data/signal_data.csv', header=None)[0].values
     t = np.linspace(0, 1 - 1 / fs, samples)
     phase = 2 * np.pi * t
     for test_freq in test_freqs:
@@ -30,7 +33,7 @@ def artificial_data():
 def test_get_millidecade_bands(artificial_data):
     _, nfft, fs = artificial_data
     bands_limits, bands_c = utils.get_hybrid_millidecade_limits(band=[0, fs/2], nfft=nfft)
-    mdec_bands_test = pd.read_csv('tests/test_data/mdec_bands_test.csv', header=None)
+    mdec_bands_test = pd.read_csv(f'{dir}//test_data/mdec_bands_test.csv', header=None)
     assert ((mdec_bands_test.iloc[:, 0] - bands_limits[:-1]) > 5e-5).sum() == 0
     assert ((mdec_bands_test.iloc[:, 2] - bands_limits[1:]) > 5e-5).sum() == 0
     assert ((mdec_bands_test.iloc[:, 1] - bands_c) > 5e-5).sum() == 0
@@ -51,7 +54,7 @@ def test_psd_to_millidecades(artificial_data):
     fbands = scipy.fft.rfftfreq(nfft, 1/fs)
 
     # Load the spectrum used for MANTA
-    spectra_manta = pd.read_csv('tests/test_data/spectra.csv', header=None)
+    spectra_manta = pd.read_csv(f'{dir}//test_data/spectra.csv', header=None)
 
     # Check if they are the same
     assert (abs(spectra_manta[0].values - spectra) > 1e-5).sum() == 0
@@ -64,7 +67,7 @@ def test_psd_to_millidecades(artificial_data):
     bandwidths = milli_psd.upper_frequency - milli_psd.lower_frequency
     milli_psd_power = milli_psd * bandwidths
     # Read MANTA's output
-    mdec_power_test = pd.read_csv('tests/test_data/mdec_power_test.csv')
+    mdec_power_test = pd.read_csv(f'{dir}//test_data/mdec_power_test.csv')
 
     if with_plots():
         # Plot the two outputs for comparison
@@ -85,7 +88,7 @@ def test_psd_to_millidecades(artificial_data):
 
 
 def test_hmb_to_decidecade():
-    daily_ds = xarray.load_dataset('tests/test_data/test_day.nc')
+    daily_ds = xarray.load_dataset(f'{dir}//test_data/test_day.nc')
     daily_ds_deci = utils.hmb_to_decidecade(daily_ds, 'millidecade_bands', freq_coord='frequency_bins')
 
     if with_plots():

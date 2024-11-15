@@ -137,6 +137,8 @@ class AcuFile:
         Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
         of the bin
         """
+        if bin_overlap>1:
+            raise ValueError(f'bin_overlap must be fractional.')
         if binsize is None:
             blocksize = self.file.frames - self._start_frame
         else:
@@ -145,7 +147,7 @@ class AcuFile:
         n_blocks = self._n_blocks(blocksize, noverlap=noverlap)
         time_array, _, _ = self._time_array(binsize, bin_overlap=bin_overlap)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame,
-                                                 overlap=bin_overlap, always_2d=True, fill_value=0.0)),
+                                                 overlap=noverlap, always_2d=True, fill_value=0.0)),
                              total=n_blocks, leave=False, position=0):
             # Select the desired channel
             block = block[:, self.channel]
@@ -155,8 +157,9 @@ class AcuFile:
             signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             if self.dc_subtract:
                 signal.remove_dc()
-            start_sample = i * blocksize + self._start_frame
-            end_sample = start_sample + len(signal_upa)
+            step = blocksize - noverlap
+            start_sample = i * step + self._start_frame
+            end_sample = start_sample + blocksize
             yield i, time_bin, signal, start_sample, end_sample
         self.file.seek(0)
 
