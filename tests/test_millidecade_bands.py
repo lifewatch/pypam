@@ -4,6 +4,7 @@ import pytest
 import os
 
 # get relative path
+
 test_dir = os.path.dirname(__file__)
 
 # Adapted from examples/millidecade_bands.py to use pytest and snapshots.
