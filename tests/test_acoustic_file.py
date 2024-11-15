@@ -4,6 +4,7 @@ import pyhydrophone as pyhy
 from tests import skip_unless_with_plots
 import pathlib
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 plt.rcParams.update(plt.rcParamsDefault)
 # get relative path
