@@ -272,6 +272,35 @@ def oct_fbands(min_freq, max_freq, fraction):
 
     return bands, f
 
+def decidecade_bands(min_freq, max_freq, bounded=False):
+    """
+    find center and limit frequencies associated with base 10 third octave (decidecade) bands in range
+    [min_freq,max_freq]
+
+    Parameters
+    ----------
+    min_freq : float
+       lower frequency limit of output bands
+    max_freq : float
+       upper frequency limit of output bands
+    bounded : bool
+        if True, exclude bands which are only partially bounded by requested frequency band
+    """
+    min_band = np.floor(10 * np.log10(min_freq))
+    max_band = np.ceil(10 * np.log10(max_freq))
+    bands = np.arange(min_band,max_band)
+    center,high,low = np.zeros((len(bands),)),np.zeros((len(bands),)),np.zeros((len(bands),))
+    for i,b in enumerate(bands):
+        center[i] = 10 ** ( b / 10 )
+        high[i] = 10 ** ( 1 / 20 ) * center[i]
+        low[i] = 10 ** ( -1 / 20 ) * center[i]
+    # require that all lower limits > min_freq and
+    # all upper limits < max_freq
+    if bounded:
+        bounded_indices = np.where((low>min_freq) & (high<max_freq))
+        return center[bounded_indices],high[bounded_indices],low[bounded_indices]
+    else:
+        return center,high,low
 
 def octdsgn(fc, fs, fraction=1, n=2):
     """

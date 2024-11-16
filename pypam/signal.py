@@ -9,6 +9,7 @@ import operator
 import matplotlib.pyplot as plt
 import noisereduce as nr
 import numpy as np
+import scipy.signal
 import scipy.signal as sig
 import seaborn as sns
 import sklearn.linear_model as linear_model
@@ -401,6 +402,17 @@ class Signal:
             Level of each band
         """
         return self.octave_levels(db, 3)
+
+    def decidecade_sel(self):
+        f,psd = scipy.signal.periodogram(self.signal,fs=self.fs)
+        Ef = psd*len(self.signal)/self.fs
+        centers, highs, lows = utils.decidecade_bands(f[1], max(f),bounded=True)
+        sel = np.zeros((len(centers),))
+        for i,(center,high,low) in enumerate(zip(centers,highs,lows)):
+            indices = np.where((f > low) & (f < high))
+            Ef_band = np.trapz(Ef[indices],x=f[indices])
+            sel[i] = 10 * np.log10( Ef_band )
+        return centers,sel
 
     def octave_levels(self, db=True, fraction=1, **kwargs):
         """
