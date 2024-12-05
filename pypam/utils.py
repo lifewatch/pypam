@@ -120,7 +120,7 @@ def sel(signal, fs):
     Parameters
     ----------
     signal : numpy array
-        Signal to compute the dynamic range
+        Signal to compute the SEL
     fs : int
         Sampling frequency
     """
@@ -135,10 +135,52 @@ def peak(signal):
     Parameters
     ----------
     signal : numpy array
-        Signal to compute the dynamic range
+        Signal to compute the peak value
     """
     return np.max(np.abs(signal))
 
+
+@nb.njit
+def kurtosis(signal):
+    """
+    Return the kurtosis of the signal according to Muller et al. 2020
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the kurtosis
+    """
+    n = len(signal)
+    var = (signal - np.mean(signal)) ** 2
+    mu4 = np.sum(var ** 2) / n
+    mu2 = np.sum(var) / (n-1)
+    return mu4/mu2 ** 2
+
+@nb.njit
+def energy_window(signal, percentage):
+    """
+    Return sample window [start, end] which contains a given percentage of the
+    signals total energy. See Madsen 2005 for more details.
+    Parameters
+    ----------
+    signal : numpy array
+        Signal to compute the sel
+    percentage : float between [0,1]
+        percentage of total energy contained in output window
+    """
+    # calculate beginning and ending percentage window (e.g., for x=90%, window = [5%,95%])
+    percent_start = .50 - percentage / 2
+    percent_end = .50 + percentage / 2
+
+    # calculate normalized cumulative energy distribution
+    Ep_cs = np.cumsum(signal ** 2)
+    Ep_cs_norm = Ep_cs / np.max(Ep_cs)
+
+    # find corresponding indices
+    iStartPercent = np.argmin(np.abs(Ep_cs_norm - percent_start))
+    iEndPercent = np.argmin(np.abs(Ep_cs_norm - percent_end))
+
+    window = [iStartPercent, iEndPercent]
+    return window
 
 @nb.njit
 def set_gain(wave, gain):

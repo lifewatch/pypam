@@ -137,6 +137,8 @@ class AcuFile:
         Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
         of the bin
         """
+        if bin_overlap>1:
+            raise ValueError(f'bin_overlap must be fractional.')
         if binsize is None:
             blocksize = self.file.frames - self._start_frame
         else:
@@ -145,7 +147,7 @@ class AcuFile:
         n_blocks = self._n_blocks(blocksize, noverlap=noverlap)
         time_array, _, _ = self._time_array(binsize, bin_overlap=bin_overlap)
         for i, block in tqdm(enumerate(sf.blocks(self.file_path, blocksize=blocksize, start=self._start_frame,
-                                                 overlap=bin_overlap, always_2d=True, fill_value=0.0)),
+                                                 overlap=noverlap, always_2d=True, fill_value=0.0)),
                              total=n_blocks, leave=False, position=0):
             # Select the desired channel
             block = block[:, self.channel]
@@ -155,8 +157,9 @@ class AcuFile:
             signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
             if self.dc_subtract:
                 signal.remove_dc()
-            start_sample = i * blocksize + self._start_frame
-            end_sample = start_sample + len(signal_upa)
+            step = blocksize - noverlap
+            start_sample = i * step + self._start_frame
+            end_sample = start_sample + blocksize
             yield i, time_bin, signal, start_sample, end_sample
         self.file.seek(0)
 
@@ -544,7 +547,7 @@ class AcuFile:
     def rms(self, binsize=None, bin_overlap=0, db=True):
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
+        Returns Dataset with 'datetime' as coordinate and 'rms' value as a variable
 
         Parameters
         ----------
@@ -558,10 +561,25 @@ class AcuFile:
         rms_ds = self._apply(method_name='rms', binsize=binsize, bin_overlap=bin_overlap, db=db)
         return rms_ds
 
+    def kurtosis(self, binsize=None, bin_overlap=0):
+        """
+        Calculation of kurtosis value of the signal for each bin
+        Returns Dataset with 'datetime' as coordinate and 'kurtosis' value as a variable
+
+        Parameters
+        ----------
+        binsize : float, in sec
+            Time window considered. If set to None, only one value is returned
+        bin_overlap : float [0 to 1]
+            Percentage to overlap the bin windows
+        """
+        kurtosis_ds = self._apply(method_name='kurtosis', binsize=binsize, bin_overlap=bin_overlap, db=False)
+        return kurtosis_ds
+
     def aci(self, binsize=None, bin_overlap=0, nfft=1024, fft_overlap=0.5):
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
-        Returns Dataframe with 'datetime' as index and 'rms' value as a column
+        Returns Dataset with 'datetime' as coordinate and 'aci' value as a variable
 
         Parameters
         ----------
@@ -581,7 +599,7 @@ class AcuFile:
     def dynamic_range(self, binsize=None, bin_overlap=0, db=True):
         """
         Compute the dynamic range of each bin
-        Returns a dataframe with datetime as index and dr as column
+        Returns a Dataset with 'datetime' as coordinate and 'dr' as variable
 
         Parameters
         ----------

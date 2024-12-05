@@ -17,7 +17,8 @@ LINEAR_UNITS = {'rms': ('L_rms', 'upa'),
                 'aei': ('AEI', 'unitless'),
                 'adi': ('ADI', 'unitless'),
                 'zcr': ('zcr', 'unitless'),
-                'zcr_avg': ('zcr_avg', 'unitless')
+                'zcr_avg': ('zcr_avg', 'unitless'),
+                'kurtosis': ('Kurtosis', 'unitless'),
                 }
 
 
