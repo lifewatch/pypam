@@ -1,10 +1,14 @@
+import pathlib
+import os
+
 import numpy as np
 import scipy
 import pandas as pd
-import os
+import xarray as xr
+
 import pyhydrophone as pyhy
 import pypam
-import xarray as xr
+
 
 from pypam._event import Event
 import matplotlib.pyplot as plt
@@ -12,7 +16,7 @@ import matplotlib.pyplot as plt
 from tests import skip_unless_with_plots
 
 test_dir = os.path.dirname(__file__)
-pile_driving_dir = f"{test_dir}\\test_data\\impulsive_data"
+pile_driving_dir = pathlib.Path(f"{test_dir}/test_data/impulsive_data")
 plt.rcParams.update(plt.rcParamsDefault)
 
 name = "AMAR 1"
@@ -26,12 +30,13 @@ AMAR = pyhy.amar.AmarG3(
     name, model, serial_number, sensitivity, preamp_gain, Vpp
 )
 
-wav_file = os.path.join(pile_driving_dir, 'pileDriving_excerpt.wav')
+wav_file = pile_driving_dir / 'pileDriving_excerpt.wav'
 acu_file = pypam.AcuFile(wav_file, AMAR, 1.0)
 
 def load_benchmark_data():
     """load benchmark data, which was calculated in matlab independently, to a dataframe."""
-    mat = scipy.io.loadmat(os.path.join(pile_driving_dir, 'pileDriving_results_benchmark'))
+    benchmark_path = pile_driving_dir / 'pileDriving_results_benchmark.mat'
+    mat = scipy.io.loadmat(benchmark_path)
 
     df_val = pd.DataFrame(
         {
@@ -121,7 +126,8 @@ def test_verify_results():
     tol_max = 0.5
     tol_pulse_width = 0.01 # s
     # read data calculated here and from matlab benchmark
-    df = pd.read_csv(os.path.join(pile_driving_dir ,'pileDriving_results_pypam.csv'))
+    results_path = pile_driving_dir / 'pileDriving_results_pypam.csv'
+    df = pd.read_csv(results_path)
     df_bm = load_benchmark_data()
 
     peak_diff = calc_diff(df, df_bm, "peak")
@@ -142,13 +148,15 @@ def test_kurtosis_over_file():
     #calculate 0.1 s kurtosis
     ds = acu_file.kurtosis(binsize=0.1)
     ds.attrs['dc_subtract'] = str(ds.attrs['dc_subtract'])
-    ds.to_netcdf(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
+    outpath = pile_driving_dir / 'kurtosis_result.nc'
+    ds.to_netcdf(outpath)
     assert isinstance(ds,xr.Dataset)
 
 @skip_unless_with_plots()
 def test_plot_kurtosis():
     """plot results from above test"""
-    ds = xr.load_dataset(os.path.join(pile_driving_dir, 'kurtosis_result.nc'))
+    inpath = pile_driving_dir / 'kurtosis_result.nc'
+    ds = xr.load_dataset(inpath)
     fig,ax = plt.subplots()
     ax.plot(ds.datetime,ds.kurtosis)
     ax.set_ylabel(f'{ds.kurtosis.standard_name} ({ds.kurtosis.units})')
@@ -161,7 +169,8 @@ def test_plot_metrics():
     plot pile driving metrics against benchmark, disagreement (~10%) in pulse width assumed to be detector
     related as energy_window testing confirms that methodology
     """
-    df = pd.read_csv(os.path.join(pile_driving_dir, 'pileDriving_results_pypam.csv'))
+    resultspath = pile_driving_dir / 'pileDriving_results_pypam.csv'
+    df = pd.read_csv(resultspath)
     df_bm = load_benchmark_data()
 
     fig,axes = plt.subplots(4,1,sharex=True,figsize=(10,7))
