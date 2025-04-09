@@ -28,3 +28,7 @@ jobs:
       - name: Run unit tests
         run: |
           PYPAM_TEST_NO_PLOTS= make test
+
+      - run: just format-check
+      - run: just lint-check
+      - run: just mypy
