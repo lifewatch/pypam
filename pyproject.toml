@@ -64,6 +64,7 @@ docutils = ">=0.20"
 sphinx-copybutton = ">=0.5.2"
 ipykernel = "^6.29.5"
 sphinx-gallery = "^0.19.0"
+numpydoc = "^1.8.0"
 
 
 [build-system]
