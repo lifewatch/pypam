@@ -57,22 +57,29 @@ class Event(Signal):
         """
 
         if impulsive:
-            windowStr = str(int(energy_window*100))
+            windowStr = str(int(energy_window * 100))
             rms = self.rms(energy_window=energy_window)
             sel = super(Event, self).sel()
             tau = self.pulse_width(energy_window)
 
         else:
-            windowStr = ''
+            windowStr = ""
             rms = self.rms()
             sel = self.sel()
-            tau = (self.end-self.start)/self.fs
+            tau = (self.end - self.start) / self.fs
 
         peak = self.peak()
         kurtosis = self.kurtosis()
         start_time = self.start / self.fs
 
-        out = {'startTime':start_time,'peak':peak,f'rms{windowStr}':rms,'sel':sel,'tau':tau,'kurtosis':kurtosis}
+        out = {
+            "startTime": start_time,
+            "peak": peak,
+            f"rms{windowStr}": rms,
+            "sel": sel,
+            "tau": tau,
+            "kurtosis": kurtosis,
+        }
         return out
 
     def sel(self, high_noise=False):
@@ -92,21 +99,23 @@ class Event(Signal):
             diff_db = 5
         # Find the peak
         if len(self.signal) == 0:
-            raise UserWarning('This event is empty!')
+            raise UserWarning("This event is empty!")
         cut_start = np.argmax(self.signal)
         peak = self.signal[cut_start]
 
         # Compute the cut level
         cut_level = peak / (10 ** (diff_db / 10))
-        cut_end = np.argwhere(self._total_signal[cut_start+self.start::] < cut_level)
+        cut_end = np.argwhere(
+            self._total_signal[cut_start + self.start : :] < cut_level
+        )
         if len(cut_end) == 0:
             cut_end = self.end
         else:
             cut_end = cut_end[0][0] + self.start + cut_start
         # Reasign signal to the new part and compute SEL
-        self.signal = self._total_signal[cut_start+self.start:cut_end]
+        self.signal = self._total_signal[cut_start + self.start : cut_end]
         sel = super(Event, self).sel()
 
         # Go back to the previous signal
-        self.signal = self._total_signal[self.start:self.end]
+        self.signal = self._total_signal[self.start : self.end]
         return sel

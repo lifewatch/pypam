@@ -9,13 +9,16 @@ test_dir = os.path.dirname(__file__)
 
 # Adapted from examples/millidecade_bands.py to use pytest and snapshots.
 
+
 @pytest.fixture
 def millidecade_bands():
     # If the model is not implemented yet in pyhydrophone, a general Hydrophone can be defined
-    model = 'ST300HF'
-    name = 'SoundTrap'
+    model = "ST300HF"
+    name = "SoundTrap"
     serial_number = 67416073
-    soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+    soundtrap = pyhy.soundtrap.SoundTrap(
+        name=name, model=model, serial_number=serial_number
+    )
 
     p_ref = 1.0
     fs = 8000
@@ -23,23 +26,35 @@ def millidecade_bands():
     fft_overlap = 0.5
     binsize = 60.0
     bin_overlap = 0
-    method = 'density'
+    method = "density"
     band = [0, 4000]
 
-    wav_path = f'{test_dir}/test_data/67416073.210610033655.wav'
-    acu_file = AcuFile(sfile=wav_path, hydrophone=soundtrap,
-                       p_ref=p_ref, timezone='UTC', channel=0, calibration=None,
-                       dc_subtract=False)
+    wav_path = f"{test_dir}/test_data/67416073.210610033655.wav"
+    acu_file = AcuFile(
+        sfile=wav_path,
+        hydrophone=soundtrap,
+        p_ref=p_ref,
+        timezone="UTC",
+        channel=0,
+        calibration=None,
+        dc_subtract=False,
+    )
 
-    millis = acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=fft_overlap, binsize=binsize,
-                                               bin_overlap=bin_overlap,
-                                               db=True, method=method, band=band)
+    millis = acu_file.hybrid_millidecade_bands(
+        nfft=nfft,
+        fft_overlap=fft_overlap,
+        binsize=binsize,
+        bin_overlap=bin_overlap,
+        db=True,
+        method=method,
+        band=band,
+    )
     # Round the values of the coordinates (does not work directly with round) so it can be checked in the CI
     for c in millis.coords:
         if millis[c].dtype == float:
             millis[c] = millis[c].round(6)
     # Returnt the fixture with the data also rounded to 6 dec positions
-    return millis['millidecade_bands'].round(6)
+    return millis["millidecade_bands"].round(6)
 
 
 def test_millidecade_bands(millidecade_bands, snapshot):
@@ -53,4 +68,6 @@ def test_millidecade_bands(millidecade_bands, snapshot):
     # assert millidecade_bands.data.tolist() == snapshot(name="data-as-list")
 
     # check coords:
-    assert millidecade_bands.coords.to_dataset().to_dataframe().round(6).to_dict() == snapshot(name="coords")
+    assert millidecade_bands.coords.to_dataset().to_dataframe().round(
+        6
+    ).to_dict() == snapshot(name="coords")
