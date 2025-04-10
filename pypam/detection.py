@@ -18,7 +18,7 @@ from pypam import signal as sig
 from pypam import acoustic_file
 
 pd.plotting.register_matplotlib_converters()
-plt.rcParams.update({'pcolor.shading': 'auto'})
+plt.rcParams.update({"pcolor.shading": "auto"})
 
 # Apply the default theme
 sns.set_theme()
@@ -50,11 +50,27 @@ class Detection(sig.Signal):
         Seconds from start where the detection ends
     """
 
-    def __init__(self, start_seconds, end_seconds, sfile, hydrophone, p_ref, timezone='UTC', channel=0,
-                 calibration=None, dc_subtract=False):
-
-        self.acu_file = acoustic_file.AcuFile(sfile, hydrophone, p_ref, timezone=timezone, channel=channel,
-                                              calibration=calibration, dc_subtract=dc_subtract)
+    def __init__(
+        self,
+        start_seconds,
+        end_seconds,
+        sfile,
+        hydrophone,
+        p_ref,
+        timezone="UTC",
+        channel=0,
+        calibration=None,
+        dc_subtract=False,
+    ):
+        self.acu_file = acoustic_file.AcuFile(
+            sfile,
+            hydrophone,
+            p_ref,
+            timezone=timezone,
+            channel=channel,
+            calibration=calibration,
+            dc_subtract=dc_subtract,
+        )
         self.start_seconds = start_seconds
         self.end_seconds = end_seconds
 
@@ -65,14 +81,19 @@ class Detection(sig.Signal):
 
         self.duration = self.end_seconds - self.start_seconds
 
-        wav_sig, fs = sf.read(self.acu_file.file_path, start=self.frame_init, stop=min(self.frame_end,
-                                                                                       self.acu_file.file.frames))
+        wav_sig, fs = sf.read(
+            self.acu_file.file_path,
+            start=self.frame_init,
+            stop=min(self.frame_end, self.acu_file.file.frames),
+        )
 
         self.orig_wav = wav_sig
         self.orig_fs = fs
         # Read the signal and prepare it for analysis
         signal_upa = self.acu_file.wav2upa(wav=wav_sig)
-        super().__init__(signal=signal_upa, fs=self.acu_file.fs, channel=self.acu_file.channel)
+        super().__init__(
+            signal=signal_upa, fs=self.acu_file.fs, channel=self.acu_file.channel
+        )
 
     def save_clip(self, clip_path):
         """
@@ -85,4 +106,3 @@ class Detection(sig.Signal):
 
         """
         sf.write(clip_path, self.orig_wav, self.orig_fs)
-

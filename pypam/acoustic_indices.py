@@ -63,8 +63,9 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     -------
     Bioacoustic Index (BI) value
     """
-    bi = maad.features.alpha_indices.bioacoustics_index(Sxx=sxx, fn=frequencies, flim=(min_freq, max_freq),
-                                                        R_compatible='soundecology')
+    bi = maad.features.alpha_indices.bioacoustics_index(
+        Sxx=sxx, fn=frequencies, flim=(min_freq, max_freq), R_compatible="soundecology"
+    )
     return bi
 
 
@@ -120,12 +121,19 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
     biophony: tuple of ints
         Tuple of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
-    ndsi, _, _, _ = maad.features.alpha_indices.soundscape_index(Sxx_power=sxx, fn=frequencies, flim_bioPh=biophony,
-                                                                 flim_antroPh=anthrophony, R_compatible='soundecology')
+    ndsi, _, _, _ = maad.features.alpha_indices.soundscape_index(
+        Sxx_power=sxx,
+        fn=frequencies,
+        flim_bioPh=biophony,
+        flim_antroPh=anthrophony,
+        R_compatible="soundecology",
+    )
     return ndsi
 
 
-def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
+def compute_aei(
+    sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000
+):
     """
     Compute Acoustic Evenness Index of an audio signal.
     Reference: Villanueva-Rivera, L. J., B. C. Pijanowski, J. Doucette, and B. Pekin. 2011.
@@ -147,12 +155,20 @@ def compute_aei(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     freq_step: int
         Size of frequency bands to compute AEI (in Hertz)
     """
-    aei = maad.features.alpha_indices.acoustic_eveness_index(Sxx=sxx, fn=frequencies, fmin=min_freq, fmax=max_freq,
-                                                             bin_step=freq_step, dB_threshold=db_threshold)
+    aei = maad.features.alpha_indices.acoustic_eveness_index(
+        Sxx=sxx,
+        fn=frequencies,
+        fmin=min_freq,
+        fmax=max_freq,
+        bin_step=freq_step,
+        dB_threshold=db_threshold,
+    )
     return aei
 
 
-def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000):
+def compute_adi(
+    sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000
+):
     """
     Compute Acoustic Diversity Index.
     Reference: Villanueva-Rivera, L. J., B. C. Pijanowski, J. Doucette, and B. Pekin. 2011.
@@ -174,9 +190,15 @@ def compute_adi(sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, 
     freq_step: int
         Size of frequency bands to compute AEI (in Hertz)
     """
-    adi = maad.features.alpha_indices.acoustic_diversity_index(Sxx=sxx, fn=frequencies, fmin=min_freq, fmax=max_freq,
-                                                               bin_step=freq_step, dB_threshold=db_threshold,
-                                                               index='shannon')
+    adi = maad.features.alpha_indices.acoustic_diversity_index(
+        Sxx=sxx,
+        fn=frequencies,
+        fmin=min_freq,
+        fmax=max_freq,
+        bin_step=freq_step,
+        dB_threshold=db_threshold,
+        index="shannon",
+    )
     return adi
 
 
@@ -221,7 +243,7 @@ def compute_zcr_avg(s, fs, window_length=512, window_hop=256):
     times = np.arange(0, len(s) - window_length + window_hop)
     zcr_bins = np.zeros(times.size)
     for k, i in enumerate(times):
-        x = s[i: i + window_length]
+        x = s[i : i + window_length]
         zcr_bins[k] = compute_zcr(s=x, fs=fs)
 
     return np.mean(zcr_bins)

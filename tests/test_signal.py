@@ -30,7 +30,9 @@ class TestSignal(unittest.TestCase):
     def test_spectrum(self):
         s = sig.Signal(self.data, fs=fs)
         s.set_band(None)
-        fbands, spectra, _ = s.spectrum(scaling='spectrum', nfft=fs, db=False, overlap=0, force_calc=True)
+        fbands, spectra, _ = s.spectrum(
+            scaling="spectrum", nfft=fs, db=False, overlap=0, force_calc=True
+        )
         plt.plot(fbands, spectra)
         plt.show()
 
@@ -54,5 +56,3 @@ class TestSignal(unittest.TestCase):
         assert np.logical_and(zcr >= 0, zcr <= 1)
         zcr_avg = s.zcr_avg()
         assert np.logical_and(zcr_avg >= 0, zcr_avg <= 1)
-
-
