@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: Format code with Ruff
+        entry: 'poetry run ruff format .'
+        verbose: true
+        language: system
+        types: [python]
+        pass_filenames: false

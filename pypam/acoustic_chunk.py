@@ -25,7 +25,7 @@ from pypam import utils
 from pypam import units as output_units
 
 pd.plotting.register_matplotlib_converters()
-plt.rcParams.update({'pcolor.shading': 'auto'})
+plt.rcParams.update({"pcolor.shading": "auto"})
 
 # Apply the default theme
 sns.set_theme()
@@ -55,8 +55,20 @@ class AcuChunk:
         Set to True to subtract the dc noise (root mean squared value
     """
 
-    def __init__(self, sfile_start, sfile_end, hydrophone, p_ref, time_bin, chunk_id, chunk_file_id,
-                 start_frame=0, end_frame=-1, channel=0, dc_subtract=False):
+    def __init__(
+        self,
+        sfile_start,
+        sfile_end,
+        hydrophone,
+        p_ref,
+        time_bin,
+        chunk_id,
+        chunk_file_id,
+        start_frame=0,
+        end_frame=-1,
+        channel=0,
+        dc_subtract=False,
+    ):
         # Save hydrophone model
         self.hydrophone = hydrophone
 
@@ -64,9 +76,11 @@ class AcuChunk:
         # Signal
         self.file_start_path = sfile_start
         self.file_end_path = sfile_end
-        self.file_start = sf.SoundFile(self.file_start_path, 'r')
-        self.file_end = sf.SoundFile(self.file_end_path, mode='r')
-        self.fs = self.file_start.samplerate  # Should be the same for both files, only reading one!
+        self.file_start = sf.SoundFile(self.file_start_path, "r")
+        self.file_end = sf.SoundFile(self.file_end_path, mode="r")
+        self.fs = (
+            self.file_start.samplerate
+        )  # Should be the same for both files, only reading one!
 
         # Time and id
         self.time_bin = time_bin
@@ -89,9 +103,9 @@ class AcuChunk:
         """
         Specific methods to make it easier to access attributes
         """
-        if name == 'signal':
+        if name == "signal":
             return self.read()
-        elif name == 'time':
+        elif name == "time":
             if self.__dict__[name] is None:
                 return self._time_array(binsize=1 / self.fs)[0]
             else:
@@ -110,10 +124,12 @@ class AcuChunk:
             Must be a power of 2, in Hz
         """
         n = np.log2(self.fs / freq_resolution)
-        nfft = 2 ** n
+        nfft = 2**n
         if nfft > self.file.frames:
-            raise Exception('This is not achievable with this sampling rate, '
-                            'it must be downsampled!')
+            raise Exception(
+                "This is not achievable with this sampling rate, "
+                "it must be downsampled!"
+            )
         return nfft
 
     def wav2upa(self, wav=None):
@@ -162,7 +178,7 @@ class AcuChunk:
         """
         if db is None:
             wav = self._signal.signal
-            db = 10 * np.log10(wav ** 2)
+            db = 10 * np.log10(wav**2)
         # return np.power(10, db / 20.0 - np.log10(self.p_ref))
         return utils.to_mag(wave=db, ref=self.p_ref)
 
@@ -198,11 +214,17 @@ class AcuChunk:
         if self._signal is None:
             self.file_start.seek(self.start_frame)
             if self.file_start_path == self.file_end_path:
-                signal = self.file_start.read(self.end_frame - self.start_frame, always_2d=True)[:, self.channel]
+                signal = self.file_start.read(
+                    self.end_frame - self.start_frame, always_2d=True
+                )[:, self.channel]
             else:
-                first_chunk = self.file_start.read(frames=-1, always_2d=True)[:, self.channel]
+                first_chunk = self.file_start.read(frames=-1, always_2d=True)[
+                    :, self.channel
+                ]
                 self.file_end.seek(0)
-                second_chunk = self.file_end.read(frames=self.end_frame, always_2d=True)[:, self.channel]
+                second_chunk = self.file_end.read(
+                    frames=self.end_frame, always_2d=True
+                )[:, self.channel]
                 signal = np.concatenate((first_chunk, second_chunk))
 
             # Read the signal and prepare it for analysis
@@ -252,8 +274,8 @@ class AcuChunk:
                 else:
                     sorted_bands = sorted_bands + [band]
         log = True
-        if 'db' in kwargs.keys():
-            if not kwargs['db']:
+        if "db" in kwargs.keys():
+            if not kwargs["db"]:
                 log = False
         # Define an empty dataset
         ds_bands = xarray.Dataset()
@@ -265,27 +287,34 @@ class AcuChunk:
                 try:
                     output = f(signal)
                 except Exception as e:
-                    print('There was an error in band %s, feature %s. Setting to None. '
-                          'Error: %s' % (band, method_name, e))
+                    print(
+                        "There was an error in band %s, feature %s. Setting to None. "
+                        "Error: %s" % (band, method_name, e)
+                    )
                     output = None
 
-                units_attrs = output_units.get_units_attrs(method_name=method_name, log=log,
-                                                           p_ref=self.p_ref, **kwargs)
-                methods_output[method_name] = xarray.DataArray([[output]],
-                                                               coords={'id': [self.chunk_id],
-                                                                       'file_id': ('id', [self.chunk_file_id]),
-                                                                       'datetime': ('id', [self.time_bin]),
-                                                                       'start_sample': ('id', [self.start_frame]),
-                                                                       'end_sample': ('id', [self.end_frame]),
-                                                                       'band': [j],
-                                                                       'low_freq': ('band', [band[0]]),
-                                                                       'high_freq': ('band', [band[1]])},
-                                                               dims=['id', 'band'],
-                                                               attrs=units_attrs)
+                units_attrs = output_units.get_units_attrs(
+                    method_name=method_name, log=log, p_ref=self.p_ref, **kwargs
+                )
+                methods_output[method_name] = xarray.DataArray(
+                    [[output]],
+                    coords={
+                        "id": [self.chunk_id],
+                        "file_id": ("id", [self.chunk_file_id]),
+                        "datetime": ("id", [self.time_bin]),
+                        "start_sample": ("id", [self.start_frame]),
+                        "end_sample": ("id", [self.end_frame]),
+                        "band": [j],
+                        "low_freq": ("band", [band[0]]),
+                        "high_freq": ("band", [band[1]]),
+                    },
+                    dims=["id", "band"],
+                    attrs=units_attrs,
+                )
                 if j == 0:
                     ds_bands = methods_output
                 else:
-                    ds_bands = xarray.concat((ds_bands, methods_output), 'band')
+                    ds_bands = xarray.concat((ds_bands, methods_output), "band")
 
         return ds_bands
 
@@ -313,19 +342,29 @@ class AcuChunk:
         signal = self.signal
         signal.set_band(band, downsample=downsample)
         fbands, levels = signal.octave_levels(db, fraction)
-        da_levels = xarray.DataArray(data=[levels],
-                                     coords={'id': [self.chunk_id],
-                                             'file_id': ('id', [self.chunk_file_id]),
-                                             'start_sample': ('id', [self.start_frame]),
-                                             'end_sample': ('id', [self.end_frame]),
-                                             'datetime': ('id', [self.time_bin]),
-                                             'frequency': fbands},
-                                     dims=['id', 'frequency']
-                                     )
+        da_levels = xarray.DataArray(
+            data=[levels],
+            coords={
+                "id": [self.chunk_id],
+                "file_id": ("id", [self.chunk_file_id]),
+                "start_sample": ("id", [self.start_frame]),
+                "end_sample": ("id", [self.end_frame]),
+                "datetime": ("id", [self.time_bin]),
+                "frequency": fbands,
+            },
+            dims=["id", "frequency"],
+        )
         return da_levels
 
-    def hybrid_millidecade_bands(self, nfft, fft_overlap=0.5, db=True,
-                                 method='density', band=None, percentiles=None):
+    def hybrid_millidecade_bands(
+        self,
+        nfft,
+        fft_overlap=0.5,
+        db=True,
+        method="density",
+        band=None,
+        percentiles=None,
+    ):
         """
 
         Parameters
@@ -352,17 +391,32 @@ class AcuChunk:
 
         if band is None:
             band = [0, self.fs / 2]
-        spectra_ds = self.spectrum(scaling=method, nfft=nfft, fft_overlap=fft_overlap,
-                                   db=False, percentiles=percentiles, band=band)
-        millidecade_bands_limits, millidecade_bands_c = utils.get_hybrid_millidecade_limits(band, nfft)
+        spectra_ds = self.spectrum(
+            scaling=method,
+            nfft=nfft,
+            fft_overlap=fft_overlap,
+            db=False,
+            percentiles=percentiles,
+            band=band,
+        )
+        (
+            millidecade_bands_limits,
+            millidecade_bands_c,
+        ) = utils.get_hybrid_millidecade_limits(band, nfft)
         fft_bin_width = band[1] * 2 / nfft
-        hybrid_millidecade_ds = utils.spectra_ds_to_bands(spectra_ds['band_%s' % method],
-                                                          millidecade_bands_limits, millidecade_bands_c,
-                                                          fft_bin_width=fft_bin_width, db=db)
-        spectra_ds['millidecade_bands'] = hybrid_millidecade_ds
+        hybrid_millidecade_ds = utils.spectra_ds_to_bands(
+            spectra_ds["band_%s" % method],
+            millidecade_bands_limits,
+            millidecade_bands_c,
+            fft_bin_width=fft_bin_width,
+            db=db,
+        )
+        spectra_ds["millidecade_bands"] = hybrid_millidecade_ds
         return spectra_ds
 
-    def spectrogram(self, nfft=512, fft_overlap=0.5, scaling='density', db=True, band=None):
+    def spectrogram(
+        self, nfft=512, fft_overlap=0.5, scaling="density", db=True, band=None
+    ):
         """
         Return the spectrogram of the signal (entire file)
 
@@ -397,18 +451,33 @@ class AcuChunk:
 
         signal = self.signal
         signal.set_band(band, downsample=downsample)
-        freq, t, sxx = signal.spectrogram(nfft=nfft, overlap=fft_overlap, scaling=scaling, db=db)
-        da_sxx = xarray.DataArray([sxx], coords={'id': [self.chunk_id],
-                                                 'file_id': ('id', [self.chunk_file_id]),
-                                                 'start_sample': ('id', [self.start_frame]),
-                                                 'end_sample': ('id', [self.end_frame]),
-                                                 'datetime': ('id', [self.time_bin]),
-                                                 'frequency': freq, 'time': t},
-                                  dims=['id', 'frequency', 'time'])
+        freq, t, sxx = signal.spectrogram(
+            nfft=nfft, overlap=fft_overlap, scaling=scaling, db=db
+        )
+        da_sxx = xarray.DataArray(
+            [sxx],
+            coords={
+                "id": [self.chunk_id],
+                "file_id": ("id", [self.chunk_file_id]),
+                "start_sample": ("id", [self.start_frame]),
+                "end_sample": ("id", [self.end_frame]),
+                "datetime": ("id", [self.time_bin]),
+                "frequency": freq,
+                "time": t,
+            },
+            dims=["id", "frequency", "time"],
+        )
         return da_sxx
 
-    def spectrum(self, scaling='density', nfft=512, fft_overlap=0.5,
-                 db=True, percentiles=None, band=None):
+    def spectrum(
+        self,
+        scaling="density",
+        nfft=512,
+        fft_overlap=0.5,
+        db=True,
+        percentiles=None,
+        band=None,
+    ):
         """
         Return the spectrum : frequency distribution of every bin (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and each
@@ -437,35 +506,57 @@ class AcuChunk:
         if band is None:
             band = [None, self.fs / 2]
 
-        spectrum_str = 'band_' + scaling
+        spectrum_str = "band_" + scaling
         signal = self.signal
         signal.set_band(band, downsample=downsample)
-        fbands, spectra, percentiles_val = signal.spectrum(scaling=scaling, nfft=nfft, db=db,
-                                                           percentiles=percentiles, overlap=fft_overlap)
+        fbands, spectra, percentiles_val = signal.spectrum(
+            scaling=scaling,
+            nfft=nfft,
+            db=db,
+            percentiles=percentiles,
+            overlap=fft_overlap,
+        )
 
-        spectra_da = xarray.DataArray([spectra],
-                                      coords={'id': [self.chunk_id],
-                                              'file_id': ('id', [self.chunk_file_id]),
-                                              'datetime': ('id', [self.time_bin]),
-                                              'frequency': fbands,
-                                              'start_sample': ('id',
-                                                               [self.start_frame]),
-                                              'end_sample': ('id', [self.end_frame]),
-                                              },
-                                      dims=['id', 'frequency'])
-        percentiles_da = xarray.DataArray([percentiles_val],
-                                          coords={'id': [self.chunk_id],
-                                                  'file_id': ('id', [self.chunk_file_id]),
-                                                  'datetime': ('id', [self.time_bin]),
-                                                  'percentiles': percentiles},
-                                          dims=['id', 'percentiles'])
+        spectra_da = xarray.DataArray(
+            [spectra],
+            coords={
+                "id": [self.chunk_id],
+                "file_id": ("id", [self.chunk_file_id]),
+                "datetime": ("id", [self.time_bin]),
+                "frequency": fbands,
+                "start_sample": ("id", [self.start_frame]),
+                "end_sample": ("id", [self.end_frame]),
+            },
+            dims=["id", "frequency"],
+        )
+        percentiles_da = xarray.DataArray(
+            [percentiles_val],
+            coords={
+                "id": [self.chunk_id],
+                "file_id": ("id", [self.chunk_file_id]),
+                "datetime": ("id", [self.time_bin]),
+                "percentiles": percentiles,
+            },
+            dims=["id", "percentiles"],
+        )
 
-        ds_bin = xarray.Dataset({spectrum_str: spectra_da, 'value_percentiles': percentiles_da})
+        ds_bin = xarray.Dataset(
+            {spectrum_str: spectra_da, "value_percentiles": percentiles_da}
+        )
 
         return ds_bin
 
-    def spd(self, h=0.1, nfft=512, fft_overlap=0.5,
-            db=True, percentiles=None, min_val=None, max_val=None, band=None):
+    def spd(
+        self,
+        h=0.1,
+        nfft=512,
+        fft_overlap=0.5,
+        db=True,
+        percentiles=None,
+        min_val=None,
+        max_val=None,
+        band=None,
+    ):
         """
         Return the spectral probability density.
 
@@ -507,11 +598,30 @@ class AcuChunk:
             list of matrices with all the probabilities
 
         """
-        psd_evolution = self.psd(nfft=nfft, fft_overlap=fft_overlap, db=db, percentiles=percentiles,
-                                 band=band)
-        return utils.compute_spd(psd_evolution, h=h, percentiles=percentiles, max_val=max_val, min_val=min_val)
+        psd_evolution = self.psd(
+            nfft=nfft,
+            fft_overlap=fft_overlap,
+            db=db,
+            percentiles=percentiles,
+            band=band,
+        )
+        return utils.compute_spd(
+            psd_evolution,
+            h=h,
+            percentiles=percentiles,
+            max_val=max_val,
+            min_val=min_val,
+        )
 
-    def source_separation(self, window_time=1.0, n_sources=15, binsize=None, save_path=None, verbose=False, band=None):
+    def source_separation(
+        self,
+        window_time=1.0,
+        n_sources=15,
+        binsize=None,
+        save_path=None,
+        verbose=False,
+        band=None,
+    ):
         """
         Perform non-negative Matrix Factorization to separate sources
 
@@ -534,19 +644,27 @@ class AcuChunk:
         """
         if band is None:
             band = [None, self.fs / 2]
-        separator = nmf.NMF(window_time=window_time, rank=n_sources, save_path=save_path)
+        separator = nmf.NMF(
+            window_time=window_time, rank=n_sources, save_path=save_path
+        )
         ds = xarray.Dataset()
-        for i, time_bin, signal, start_sample, end_sample in self._bins(binsize, bin_overlap=0.0):
+        for i, time_bin, signal, start_sample, end_sample in self._bins(
+            binsize, bin_overlap=0.0
+        ):
             signal.set_band(band)
             separation_ds = separator(signal, verbose=verbose)
-            separation_ds = separation_ds.assign_coords({'id': [i], 'datetime': ('id', [time_bin])})
+            separation_ds = separation_ds.assign_coords(
+                {"id": [i], "datetime": ("id", [time_bin])}
+            )
             if i == 0:
                 ds = separation_ds
             else:
-                ds = xarray.concat((ds, separation_ds), 'id')
+                ds = xarray.concat((ds, separation_ds), "id")
         return ds
 
-    def plot_spectrum_median(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_median(
+        self, scaling="density", db=True, log=True, save_path=None, **kwargs
+    ):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
@@ -563,9 +681,13 @@ class AcuChunk:
         **kwargs : any attribute valid on psd() function
         """
         psd = self.spectrum(db=db, scaling=scaling, **kwargs)
-        plots.plot_spectrum_median(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
+        plots.plot_spectrum_median(
+            ds=psd, data_var="band_" + scaling, log=log, save_path=save_path
+        )
 
-    def plot_spectrum_per_chunk(self, scaling='density', db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrum_per_chunk(
+        self, scaling="density", db=True, log=True, save_path=None, **kwargs
+    ):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
@@ -582,7 +704,9 @@ class AcuChunk:
         **kwargs : any attribute valid on psd() function
         """
         psd = self.spectrum(db=db, scaling=scaling, **kwargs)
-        plots.plot_spectrum_per_chunk(ds=psd, data_var='band_' + scaling, log=log, save_path=save_path)
+        plots.plot_spectrum_per_chunk(
+            ds=psd, data_var="band_" + scaling, log=log, save_path=save_path
+        )
 
     def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
         """
@@ -598,15 +722,28 @@ class AcuChunk:
             Where to save the images
         **kwargs : any attribute valid on spectrogram() function
         """
-        if 'scaling' not in kwargs.keys():
-            scaling = 'density'
+        if "scaling" not in kwargs.keys():
+            scaling = "density"
         ds_spectrogram = self.spectrogram(db=db, **kwargs)
-        ds_spectrogram = ds_spectrogram.squeeze(dim='id')
-        units_attrs = output_units.get_units_attrs(method_name=f'spectrogram_{scaling}', p_ref=self.p_ref, log=db)
+        ds_spectrogram = ds_spectrogram.squeeze(dim="id")
+        units_attrs = output_units.get_units_attrs(
+            method_name=f"spectrogram_{scaling}", p_ref=self.p_ref, log=db
+        )
         ds_spectrogram.attrs.update(units_attrs)
-        plots.plot_2d(ds=ds_spectrogram, x='time', y='frequency', xlabel='Time [s]', ylabel='Frequency [Hz]',
-                cbar_label=r'%s [$%s$]' % (re.sub('_', ' ', ds_spectrogram.standard_name).title(),
-                                           ds_spectrogram.units), ylog=log, title=f'Chunk {ds_spectrogram.id.values}')
+        plots.plot_2d(
+            ds=ds_spectrogram,
+            x="time",
+            y="frequency",
+            xlabel="Time [s]",
+            ylabel="Frequency [Hz]",
+            cbar_label=r"%s [$%s$]"
+            % (
+                re.sub("_", " ", ds_spectrogram.standard_name).title(),
+                ds_spectrogram.units,
+            ),
+            ylog=log,
+            title=f"Chunk {ds_spectrogram.id.values}",
+        )
 
     def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
         """
@@ -626,4 +763,6 @@ class AcuChunk:
         plots.plot_spd(spd_ds, log=log, save_path=save_path)
 
     def update_freq_cal(self, ds, data_var, **kwargs):
-        return utils.update_freq_cal(hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs)
+        return utils.update_freq_cal(
+            hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs
+        )

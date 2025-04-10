@@ -19,7 +19,7 @@ from pypam import utils
 from pypam import units as output_units
 
 # Apply the default theme
-plt.rcParams.update({'pcolor.shading': 'auto'})
+plt.rcParams.update({"pcolor.shading": "auto"})
 sns.set_theme()
 
 
@@ -62,15 +62,15 @@ class Signal:
         """
         Return the current band
         """
-        if item == 'band':
+        if item == "band":
             if len(self.bands_list) == 0:
                 band = -1
             else:
                 band = self.bands_list[self.band_n]
             return band
-        elif item == 'duration':
+        elif item == "duration":
             return len(self.signal) / self.fs
-        elif item == 'times':
+        elif item == "times":
             return np.arange(self.signal.shape[0]) / self.fs
         else:
             return self.__dict__[item]
@@ -83,7 +83,7 @@ class Signal:
         self.psd = None
         self.freq = None
         self.t = None
-    
+
     def _band_is_broadband(self, band):
         """
         Return True if the selected band is "broaband", return False otherwise
@@ -93,7 +93,9 @@ class Signal:
         band : list or tuple
             [low_freq, high_freq] of the desired band
         """
-        return (band is None) or (band[0] in [0, None] and band[1] in [self.fs/2, None])
+        return (band is None) or (
+            band[0] in [0, None] and band[1] in [self.fs / 2, None]
+        )
 
     def set_band(self, band=None, downsample=True):
         """
@@ -119,7 +121,10 @@ class Signal:
                 self.fs = self._fs
             else:
                 if band[1] > self._fs / 2:
-                    print('Band upper limit %s is too big, setting to maximum fs: new fs %s' % (band[1], self._fs/2))
+                    print(
+                        "Band upper limit %s is too big, setting to maximum fs: new fs %s"
+                        % (band[1], self._fs / 2)
+                    )
                     band[1] = self._fs / 2
                 if band[1] > self.fs / 2:
                     # Reset to the original data
@@ -153,14 +158,14 @@ class Signal:
         """
         if self.signal.size >= n_samples:
             self.signal = self.signal[0:n_samples]
-            self._processed[self.band_n].append('crop')
+            self._processed[self.band_n].append("crop")
         else:
-            one_array = np.full((n_samples, ), 0)
-            one_array[0:self.signal.size] = self.signal
+            one_array = np.full((n_samples,), 0)
+            one_array[0 : self.signal.size] = self.signal
             self.signal = one_array
-            self._processed[self.band_n].append('one-pad')
+            self._processed[self.band_n].append("one-pad")
 
-    def _create_filter(self, band, output='sos'):
+    def _create_filter(self, band, output="sos"):
         """
         Return the butterworth filter for the specified band. If the limits are set to None, 0 or the nyquist
         frequency, only high-pass or low-pass filters are applied. Otherwise, a band-pass filter.
@@ -170,17 +175,38 @@ class Signal:
             [low_freq, high_freq], band to be filtered
         """
         if band[0] is None or band[0] == 0:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='lowpass', Wn=band[1], analog=False, output=output, fs=self.fs)
+            sosfilt = sig.butter(
+                N=FILTER_ORDER,
+                btype="lowpass",
+                Wn=band[1],
+                analog=False,
+                output=output,
+                fs=self.fs,
+            )
         elif band[1] is None or band[1] == self.fs / 2:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='highpass', Wn=band[0], analog=False, output=output, fs=self.fs)
+            sosfilt = sig.butter(
+                N=FILTER_ORDER,
+                btype="highpass",
+                Wn=band[0],
+                analog=False,
+                output=output,
+                fs=self.fs,
+            )
         else:
-            sosfilt = sig.butter(N=FILTER_ORDER, btype='bandpass', Wn=band, analog=False, output=output, fs=self.fs)
+            sosfilt = sig.butter(
+                N=FILTER_ORDER,
+                btype="bandpass",
+                Wn=band,
+                analog=False,
+                output=output,
+                fs=self.fs,
+            )
         return sosfilt
 
     def downsample(self, new_fs, filt=None):
         """
         Downsamples the signal to the new fs. If the downsampling factor is an integer, performs resample_poly,
-        which applies a 
+        which applies a
         Parameters
         ----------
         new_fs: float
@@ -192,9 +218,9 @@ class Signal:
         ratio_up = int(lcm / self.fs)
         ratio_down = int(lcm / new_fs)
         self.signal = sig.sosfilt(filt, self.signal)
-        self._processed[self.band_n].append('filtered')
+        self._processed[self.band_n].append("filtered")
         self.signal = sig.resample_poly(self.signal, up=ratio_up, down=ratio_down)
-        self._processed[self.band_n].append('downsample')
+        self._processed[self.band_n].append("downsample")
         self.fs = new_fs
 
     def downsample2band(self, band):
@@ -209,11 +235,14 @@ class Signal:
         new_fs = band[1] * 2
         if new_fs != self.fs:
             if new_fs > self.fs:
-                raise Exception('This is upsampling, can not downsample %s to %s!' % (self.fs, new_fs))
+                raise Exception(
+                    "This is upsampling, can not downsample %s to %s!"
+                    % (self.fs, new_fs)
+                )
             filt = self._create_filter(band)
             self.downsample(new_fs, filt)
         else:
-            print('trying to downsample to the same fs, ignoring...')
+            print("trying to downsample to the same fs, ignoring...")
 
     def filter(self, band):
         """
@@ -224,13 +253,15 @@ class Signal:
             [low_freq, high_freq], band to be filtered
         """
         if band[1] > self._fs / 2:
-            raise ValueError('Frequency %s is higher than nyquist frequency %s, and can not be filtered' % 
-                             (band[1], self.fs / 2))
+            raise ValueError(
+                "Frequency %s is higher than nyquist frequency %s, and can not be filtered"
+                % (band[1], self.fs / 2)
+            )
         if not self._band_is_broadband(band):
             # Filter the signal
             sosfilt = self._create_filter(band)
             self.signal = sig.sosfilt(sosfilt, self.signal)
-            self._processed[self.band_n].append('filter')
+            self._processed[self.band_n].append("filter")
 
     def remove_dc(self):
         """
@@ -238,7 +269,7 @@ class Signal:
         """
         dc = np.mean(self.signal)
         self.signal = self.signal - dc
-        self._processed[self.band_n].append('dc_removal')
+        self._processed[self.band_n].append("dc_removal")
 
     def envelope(self):
         """
@@ -282,14 +313,16 @@ class Signal:
             try:
                 output = f(block)
             except Exception as e:
-                print('There was an error in feature %s. Setting to None. '
-                      'Error: %s' % (method_name, e))
+                print(
+                    "There was an error in feature %s. Setting to None. "
+                    "Error: %s" % (method_name, e)
+                )
                 output = None
             result.append(output)
             time.append(block.time)
         return time, output
 
-    def rms(self, db=True, **kwargs):
+    def rms(self, db=True, energy_window=None, **kwargs):
         """
         Calculation of root mean squared value (rms) of the signal in uPa
 
@@ -297,12 +330,41 @@ class Signal:
         ----------
         db : bool
             If set to True the result will be given in db, otherwise in uPa
+        energy_window: float
+            If provided, calculate the rms over the given energy window (e.g. RMS_90
+            for energy_window= .9).
         """
-        rms_val = utils.rms(self.signal)
+        if energy_window:
+            [start, end] = utils.energy_window(self.signal, energy_window)
+            rms_val = utils.rms(self.signal[start:end])
+        else:
+            rms_val = utils.rms(self.signal)
         # Convert it to db if applicable
         if db:
             rms_val = utils.to_db(rms_val, ref=1.0, square=True)
         return rms_val
+
+    def pulse_width(self, energy_window, **kwargs):
+        """
+        Returns the pulse width of an impulsive signal
+        according to a fractional energy window
+
+        Parameters
+        ----------
+        energy_window : float [0,1]
+            given energy window to calculate pulse width
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        tau: float
+        energy_window pulse width in seconds
+
+        """
+        [start, end] = utils.energy_window(self.signal, energy_window)
+
+        return (end - start) / self.fs
 
     def dynamic_range(self, db=True, **kwargs):
         """
@@ -323,8 +385,19 @@ class Signal:
     def sel(self, db=True, **kwargs):
         """
         Calculate the sound exposure level of an event
+
+        Parameters
+        ----------
+        db : bool
+            If set to True the result will be given in db, otherwise in uPa
+
+        Returns
+        -------
+        sel: float
+        sound exposure level
         """
         y = utils.sel(self.signal, self.fs)
+
         if db:
             y = utils.to_db(y, square=False)
         return y
@@ -338,6 +411,16 @@ class Signal:
         if db:
             y = utils.to_db(y, square=True)
         return y
+
+    def kurtosis(self, **kwargs):
+        """
+        Calculation of kurtosis of the signal
+
+        Parameters
+        ----------
+
+        """
+        return utils.kurtosis(self.signal)
 
     def third_octave_levels(self, db=True, **kwargs):
         """
@@ -365,7 +448,9 @@ class Signal:
         fraction : int
             fraction of an octave to compute the bands (i.e. fraction=3 leads to 1/3 octave bands)
         """
-        bands, f = utils.oct_fbands(min_freq=MIN_FREQ, max_freq=self.fs/2, fraction=fraction)
+        bands, f = utils.oct_fbands(
+            min_freq=MIN_FREQ, max_freq=self.fs / 2, fraction=fraction
+        )
 
         # construct filterbank
         filterbank, fsnew, d = utils.octbankdsgn(self.fs, bands, fraction, 2)
@@ -382,13 +467,13 @@ class Signal:
             y = sig.sosfilt(filterbank[i], newx[d[i]])  # Check the filter!
             # Calculate level time series
             if db:
-                spg[i] = 10 * np.log10(np.sum(y ** 2) / len(y))
+                spg[i] = 10 * np.log10(np.sum(y**2) / len(y))
             else:
                 spg[i] = y
 
         return f, spg
 
-    def _spectrogram(self, nfft=512, scaling='density', overlap=0.2):
+    def _spectrogram(self, nfft=512, scaling="density", overlap=0.2):
         """
         Computes the spectrogram of the signal and saves it in the attributes
 
@@ -408,9 +493,16 @@ class Signal:
         real_size = self.signal.size
         if self.signal.size < nfft:
             self.fill_or_crop(n_samples=nfft)
-        window = sig.get_window('hann', nfft)
+        window = sig.get_window("hann", nfft)
         noverlap = overlap * nfft
-        freq, t, sxx = sig.spectrogram(self.signal, fs=self.fs, nfft=nfft, window=window, scaling=scaling, noverlap=noverlap)
+        freq, t, sxx = sig.spectrogram(
+            self.signal,
+            fs=self.fs,
+            nfft=nfft,
+            window=window,
+            scaling=scaling,
+            noverlap=noverlap,
+        )
         if self.band is not None:
             if self.band[0] is None:
                 low_freq = 0
@@ -423,7 +515,9 @@ class Signal:
         self.sxx = sxx[low_freq:, 0:n_bins]
         self.t = t[0:n_bins]
 
-    def spectrogram(self, nfft=512, scaling='density', overlap=0, db=True, force_calc=False):
+    def spectrogram(
+        self, nfft=512, scaling="density", overlap=0, db=True, force_calc=False
+    ):
         """
         Return the spectrogram of the signal (entire file)
 
@@ -452,7 +546,15 @@ class Signal:
             sxx = self.sxx
         return self.freq, self.t, sxx
 
-    def _spectrum(self, scaling='density', nfft=512, db=True, overlap=0, window_name='hann', **kwargs):
+    def _spectrum(
+        self,
+        scaling="density",
+        nfft=512,
+        db=True,
+        overlap=0,
+        window_name="hann",
+        **kwargs,
+    ):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a colum for each frequency and each
@@ -475,8 +577,16 @@ class Signal:
         if nfft > self.signal.size:
             self.fill_or_crop(n_samples=nfft)
         window = sig.get_window(window_name, nfft)
-        freq, psd = sig.welch(self.signal, fs=self.fs, window=window, nfft=nfft, scaling=scaling, noverlap=noverlap,
-                              detrend=False, **kwargs)
+        freq, psd = sig.welch(
+            self.signal,
+            fs=self.fs,
+            window=window,
+            nfft=nfft,
+            scaling=scaling,
+            noverlap=noverlap,
+            detrend=False,
+            **kwargs,
+        )
         if self.band is not None and self.band[0] is not None:
             low_freq = np.argmax(freq >= self.band[0])
         else:
@@ -489,7 +599,16 @@ class Signal:
 
     # TODO implement stft!
 
-    def spectrum(self, scaling='density', nfft=512, db=True, overlap=0, force_calc=False, percentiles=None, **kwargs):
+    def spectrum(
+        self,
+        scaling="density",
+        nfft=512,
+        db=True,
+        overlap=0,
+        force_calc=False,
+        percentiles=None,
+        **kwargs,
+    ):
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and
@@ -523,7 +642,7 @@ class Signal:
 
         return self.freq, self.psd, percentiles_val
 
-    def spectrum_slope(self, scaling='density', nfft=512, db=True, overlap=0, **kwargs):
+    def spectrum_slope(self, scaling="density", nfft=512, db=True, overlap=0, **kwargs):
         """
         Return the slope of the spectrum
 
@@ -544,7 +663,9 @@ class Signal:
         """
         if self.psd is None:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
-        regression = linear_model.LinearRegression().fit(np.log10(self.freq), np.log10(self.psd))
+        regression = linear_model.LinearRegression().fit(
+            np.log10(self.freq), np.log10(self.psd)
+        )
         slope = regression.coef_[0]
         y_pred = regression.predict(np.log10(self.freq))
         error = metrics.mean_squared_error(np.log10(self.psd), y_pred)
@@ -562,8 +683,10 @@ class Signal:
         overlap : float [0, 1]
             Percentage (in 1) to overlap
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
-        aci_val = self.acoustic_index('aci', sxx=sxx)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, scaling="density", overlap=overlap, db=False
+        )
+        aci_val = self.acoustic_index("aci", sxx=sxx)
 
         return aci_val
 
@@ -586,13 +709,22 @@ class Signal:
         BI value
         """
         if self.band[1] < max_freq or self.band[0] > min_freq:
-            print('The band %s does not include this band limits (%s, %s). '
-                  'BI will be set to nan' % (self.band, min_freq, max_freq))
+            print(
+                "The band %s does not include this band limits (%s, %s). "
+                "BI will be set to nan" % (self.band, min_freq, max_freq)
+            )
             return np.nan
         else:
-            _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
-            bi_val = self.acoustic_index('bi', sxx=sxx, frequencies=self.freq, min_freq=min_freq,
-                                         max_freq=max_freq)
+            _, _, sxx = self.spectrogram(
+                nfft=nfft, scaling="density", overlap=overlap, db=False
+            )
+            bi_val = self.acoustic_index(
+                "bi",
+                sxx=sxx,
+                frequencies=self.freq,
+                min_freq=min_freq,
+                max_freq=max_freq,
+            )
             return bi_val
 
     def sh(self, nfft=512, overlap=0, **kwargs):
@@ -609,8 +741,10 @@ class Signal:
         -------
         SH index
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
-        sh_val = self.acoustic_index('sh', sxx=sxx)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, overlap=overlap, scaling="density", db=False
+        )
+        sh_val = self.acoustic_index("sh", sxx=sxx)
         return sh_val
 
     def th(self, **kwargs):
@@ -621,10 +755,17 @@ class Signal:
         -------
         TH value
         """
-        th_val = self.acoustic_index('th', s=self.signal)
+        th_val = self.acoustic_index("th", s=self.signal)
         return th_val
 
-    def ndsi(self, nfft=512, overlap=0, anthrophony=(1000, 2000), biophony=(2000, 11000), **kwargs):
+    def ndsi(
+        self,
+        nfft=512,
+        overlap=0,
+        anthrophony=(1000, 2000),
+        biophony=(2000, 11000),
+        **kwargs,
+    ):
         """
         Compute the Normalized Difference Sound Index
         Parameters
@@ -643,13 +784,22 @@ class Signal:
         NDSI value
         """
         if self.band[1] < anthrophony[1] or self.band[1] < biophony[1]:
-            print('The band %s does not include anthrophony %s or biophony %s. '
-                  'NDSI will be set to nan' % (self.band, anthrophony, biophony))
+            print(
+                "The band %s does not include anthrophony %s or biophony %s. "
+                "NDSI will be set to nan" % (self.band, anthrophony, biophony)
+            )
             return np.nan
         else:
-            _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
-            ndsi_val = self.acoustic_index('ndsi', sxx=sxx, frequencies=self.freq, anthrophony=anthrophony,
-                                           biophony=biophony)
+            _, _, sxx = self.spectrogram(
+                nfft=nfft, overlap=overlap, scaling="density", db=False
+            )
+            ndsi_val = self.acoustic_index(
+                "ndsi",
+                sxx=sxx,
+                frequencies=self.freq,
+                anthrophony=anthrophony,
+                biophony=biophony,
+            )
             return ndsi_val
 
     def aei(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
@@ -670,9 +820,18 @@ class Signal:
         -------
         AEI value
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
-        aei_val = self.acoustic_index('aei', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
-                                      min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, scaling="density", overlap=overlap, db=False
+        )
+        aei_val = self.acoustic_index(
+            "aei",
+            sxx=sxx,
+            frequencies=self.freq,
+            max_freq=self.band[1],
+            min_freq=self.band[0],
+            db_threshold=db_threshold,
+            freq_step=freq_step,
+        )
         return aei_val
 
     def adi(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
@@ -692,9 +851,18 @@ class Signal:
         -------
         ADI value
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling='density', overlap=overlap, db=False)
-        adi_val = self.acoustic_index('adi', sxx=sxx, frequencies=self.freq, max_freq=self.band[1],
-                                      min_freq=self.band[0], db_threshold=db_threshold, freq_step=freq_step)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, scaling="density", overlap=overlap, db=False
+        )
+        adi_val = self.acoustic_index(
+            "adi",
+            sxx=sxx,
+            frequencies=self.freq,
+            max_freq=self.band[1],
+            min_freq=self.band[0],
+            db_threshold=db_threshold,
+            freq_step=freq_step,
+        )
         return adi_val
 
     def zcr(self, **kwargs):
@@ -705,7 +873,7 @@ class Signal:
         -------
         A list of values (number of zero crossing for each window)
         """
-        zcr = self.acoustic_index('zcr', s=self.signal, fs=self.fs)
+        zcr = self.acoustic_index("zcr", s=self.signal, fs=self.fs)
         return zcr
 
     def zcr_avg(self, window_length=512, window_hop=256, **kwargs):
@@ -722,11 +890,24 @@ class Signal:
         -------
         ZCR average
         """
-        zcr = self.acoustic_index('zcr_avg', s=self.signal, fs=self.fs, window_length=window_length,
-                                  window_hop=window_hop)
+        zcr = self.acoustic_index(
+            "zcr_avg",
+            s=self.signal,
+            fs=self.fs,
+            window_length=window_length,
+            window_hop=window_hop,
+        )
         return zcr
 
-    def bn_peaks(self, freqband=200, normalization=True, slopes=(0.01, 0.01), nfft=512, overlap=0, **kwargs):
+    def bn_peaks(
+        self,
+        freqband=200,
+        normalization=True,
+        slopes=(0.01, 0.01),
+        nfft=512,
+        overlap=0,
+        **kwargs,
+    ):
         """
         Counts the number of major frequency peaks obtained on a mean spectrum.
         Parameters
@@ -762,7 +943,9 @@ class Signal:
         -------
         Int, number of BN peaks
         """
-        _, _, sxx = self.spectrogram(nfft=nfft, overlap=overlap, scaling='density', db=False)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, overlap=overlap, scaling="density", db=False
+        )
         frequencies = self.freq
         meanspec = sxx.mean(axis=1)
 
@@ -771,13 +954,22 @@ class Signal:
 
         if slopes is not None:
             # Find peaks (with slopes)
-            peaks_indices = np.r_[False,
-                                  meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]])] & np.r_[
-                                meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]), False]
+            peaks_indices = (
+                np.r_[
+                    False,
+                    meanspec[1:] > np.array([x + slopes[0] for x in meanspec[:-1]]),
+                ]
+                & np.r_[
+                    meanspec[:-1] > np.array([y + slopes[1] for y in meanspec[1:]]),
+                    False,
+                ]
+            )
             peaks_indices = peaks_indices.nonzero()[0].tolist()
         else:
             # scipy method (without slope)
-            peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[0].tolist()
+            peaks_indices = sig.argrelextrema(np.array(meanspec), np.greater)[
+                0
+            ].tolist()
 
         # Remove peaks with difference of frequency < freqband
         # number of consecutive index
@@ -786,8 +978,17 @@ class Signal:
             if len(np.intersect1d(consecutiveIndices, peaks_indices)) > 1:
                 # close values has been found
                 maxi, _, _ = np.intersect1d(consecutiveIndices, peaks_indices)
-                maxi = maxi[np.argmax([meanspec[f] for f in np.intersect1d(consecutiveIndices, peaks_indices)])]
-                peaks_indices = [x for x in peaks_indices if x not in consecutiveIndices]
+                maxi = maxi[
+                    np.argmax(
+                        [
+                            meanspec[f]
+                            for f in np.intersect1d(consecutiveIndices, peaks_indices)
+                        ]
+                    )
+                ]
+                peaks_indices = [
+                    x for x in peaks_indices if x not in consecutiveIndices
+                ]
                 # remove all indices that are in consecutiveIndices
                 # append the max
                 peaks_indices.append(maxi)
@@ -913,7 +1114,7 @@ class Signal:
                 startindex = (k - 1) * n / factor + 1
                 endindex = (k * n) / factor
                 z = y[startindex:endindex]
-                spg[k, j] = 10 * np.log10(np.sum(z ** 2) / len(z))
+                spg[k, j] = 10 * np.log10(np.sum(z**2) / len(z))
 
         return t, f, spg
 
@@ -927,7 +1128,7 @@ class Signal:
         name : string
             Name of the Acoustic Index to compute
         """
-        f = getattr(acoustic_indices, 'compute_' + name)
+        f = getattr(acoustic_indices, "compute_" + name)
         return f(**kwargs)
 
     def reduce_noise(self, nfft=512, verbose=False):
@@ -944,36 +1145,65 @@ class Signal:
         s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
         if verbose:
             db = True
-            label, units = output_units.get_units('spectrogram', log=db, p_ref=1.0)
-            label_a, units_a = output_units.get_units('amplitude', log=False)
+            label, units = output_units.get_units("spectrogram", log=db, p_ref=1.0)
+            label_a, units_a = output_units.get_units("amplitude", log=False)
             _, _, sxx0 = self.spectrogram(nfft, db=db, force_calc=True)
-            fig, ax = plt.subplots(2, 3, gridspec_kw={'width_ratios': [1, 1, 0.05]}, sharex='col')
+            fig, ax = plt.subplots(
+                2, 3, gridspec_kw={"width_ratios": [1, 1, 0.05]}, sharex="col"
+            )
             ax[0, 0].plot(self.times, self.signal)
-            ax[0, 0].set_title('Signal')
-            ax[0, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
+            ax[0, 0].set_title("Signal")
+            ax[0, 0].set_ylabel(r"% [%s]" % (label_a, units_a))
             ax[0, 1].set_axis_off()
-            im = ax[0, 1].pcolormesh(self.t, self.freq, sxx0, vmin=60, vmax=150, shading='auto', cmap='viridis')
-            plt.colorbar(im, cax=ax[0, 2], label=r'%s [%s]' % (label, units))
-            ax[0, 1].set_title('Spectrogram')
+            im = ax[0, 1].pcolormesh(
+                self.t,
+                self.freq,
+                sxx0,
+                vmin=60,
+                vmax=150,
+                shading="auto",
+                cmap="viridis",
+            )
+            plt.colorbar(im, cax=ax[0, 2], label=r"%s [%s]" % (label, units))
+            ax[0, 1].set_title("Spectrogram")
 
             self.signal = s
             _, _, sxx1 = self.spectrogram(nfft, db=True, force_calc=True)
             ax[1, 0].plot(self.times, s)
-            ax[1, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
-            ax[1, 0].set_xlabel('Time [s]')
+            ax[1, 0].set_ylabel(r"% [%s]" % (label_a, units_a))
+            ax[1, 0].set_xlabel("Time [s]")
             ax[1, 1].set_axis_off()
-            ax[1, 1].set_xlabel('Time [s]')
-            im = ax[1, 1].pcolormesh(self.t, self.freq, sxx1, vmin=60, vmax=150, shading='auto', cmap='viridis')
-            plt.colorbar(im, cax=ax[1, 2], label=r'%s [%s]' % (label, units))
+            ax[1, 1].set_xlabel("Time [s]")
+            im = ax[1, 1].pcolormesh(
+                self.t,
+                self.freq,
+                sxx1,
+                vmin=60,
+                vmax=150,
+                shading="auto",
+                cmap="viridis",
+            )
+            plt.colorbar(im, cax=ax[1, 2], label=r"%s [%s]" % (label, units))
             plt.show()
             plt.close()
         else:
             self.signal = s
 
-        self._processed[self.band_n].append('noisereduction')
+        self._processed[self.band_n].append("noisereduction")
 
-    def plot(self, nfft=512, overlap=0, scaling='density', db=True, force_calc=False, show=False, save_path=None,
-             vmin=None, vmax=None, log=False):
+    def plot(
+        self,
+        nfft=512,
+        overlap=0,
+        scaling="density",
+        db=True,
+        force_calc=False,
+        show=False,
+        save_path=None,
+        vmin=None,
+        vmax=None,
+        log=False,
+    ):
         """
         Plot the signal and its spectrogram
         Parameters
@@ -998,27 +1228,33 @@ class Signal:
             maximum value to plot in the spectrogram
         """
         plt.rcParams.update(plt.rcParamsDefault)
-        _, _, sxx = self.spectrogram(nfft=nfft, scaling=scaling, overlap=overlap, db=db, force_calc=force_calc)
+        _, _, sxx = self.spectrogram(
+            nfft=nfft, scaling=scaling, overlap=overlap, db=db, force_calc=force_calc
+        )
 
-        label, units = output_units.get_units('spectrum_' + scaling, log=db, p_ref=1.0)
-        label_a, units_a = output_units.get_units('amplitude', log=False)
+        label, units = output_units.get_units("spectrum_" + scaling, log=db, p_ref=1.0)
+        label_a, units_a = output_units.get_units("amplitude", log=False)
 
-        fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 0.05]}, sharex='col')
-        ax[0, 0].plot(self.times, self.signal, color='k', linewidth=1)
-        ax[0, 0].set_title('Signal')
-        ax[0, 0].set_ylabel(r'% [%s]' % (label_a, units_a))
+        fig, ax = plt.subplots(
+            2, 2, gridspec_kw={"width_ratios": [1, 0.05]}, sharex="col"
+        )
+        ax[0, 0].plot(self.times, self.signal, color="k", linewidth=1)
+        ax[0, 0].set_title("Signal")
+        ax[0, 0].set_ylabel(r"% [%s]" % (label_a, units_a))
         ax[0, 1].set_axis_off()
         if vmin is None:
             vmin = sxx.min()
         if vmax is None:
             vmax = sxx.max()
-        im = ax[1, 0].pcolormesh(self.t, self.freq, sxx, vmin=vmin, vmax=vmax, shading='auto', cmap='magma')
+        im = ax[1, 0].pcolormesh(
+            self.t, self.freq, sxx, vmin=vmin, vmax=vmax, shading="auto", cmap="magma"
+        )
         plt.colorbar(im, cax=ax[1, 1], label=label)
         if log:
-            ax[1, 0].set_yscale('symlog')
-        ax[1, 0].set_title('Spectrogram')
-        ax[1, 0].set_xlabel('Time [s]')
-        ax[1, 0].set_ylabel('Frequency [Hz]')
+            ax[1, 0].set_yscale("symlog")
+        ax[1, 0].set_title("Spectrogram")
+        ax[1, 0].set_xlabel("Time [s]")
+        ax[1, 0].set_ylabel("Frequency [Hz]")
         if save_path is not None:
             plt.savefig(save_path)
         if show:
@@ -1057,7 +1293,7 @@ class Blocks:
         """
         Return the attribute
         """
-        if item == 'time':
+        if item == "time":
             return self.n * self.blocksize
         else:
             return self.__dict__[item]
@@ -1075,7 +1311,9 @@ class Blocks:
         Return next block
         """
         if (self.n * self.blocksize) < self.nsamples:
-            block = self.signal[self.n * self.blocksize: self.n * self.blocksize + self.blocksize]
+            block = self.signal[
+                self.n * self.blocksize : self.n * self.blocksize + self.blocksize
+            ]
             self.n += 1
             s = Signal(block, self.fs)
             return s
