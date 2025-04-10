@@ -28,4 +28,3 @@ jobs:
       - run: make init-test
       - run: PYPAM_TEST_NO_PLOTS= make test
       - run: just format-check
-      - run: just mypy

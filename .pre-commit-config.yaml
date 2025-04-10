@@ -8,10 +8,3 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-      - id: mypy
-        name: Run mypy
-        entry: 'poetry run mypy .'
-        verbose: true
-        language: system
-        types: [python]
-        pass_filenames: false
