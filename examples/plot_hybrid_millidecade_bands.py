@@ -66,7 +66,9 @@ milli_psd_day = xarray.open_dataset("./../tests/test_data/test_day.nc")
 milli_psd_day = milli_psd_day.where(milli_psd_day.frequency_bins > 10, drop=True)
 
 # Plot the spectrum mean with the standard deviation
-pypam.plots.plot_spectrum_median(milli_psd_day, data_var="millidecade_bands")
+pypam.plots.plot_spectrum_median(
+    milli_psd_day, data_var="millidecade_bands", frequency_coord="frequency_bins"
+)
 
 # Plot the SPD with percentiles
 percentiles = [10, 50, 90]
