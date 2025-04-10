@@ -63,6 +63,7 @@ class DataSet:
         nfft=512,
         fft_overlap=0,
         dc_subtract=False,
+        gridded_data=True,
     ):
         self.metadata = pd.read_csv(summary_path)
         if "end_to_end_calibration" not in self.metadata.columns:
@@ -77,6 +78,7 @@ class DataSet:
         self.nfft = nfft
         self.fft_overlap = fft_overlap
         self.dc_subtract = dc_subtract
+        self.gridded = gridded_data
 
         if not isinstance(output_folder, pathlib.Path):
             output_folder = pathlib.Path(output_folder)
@@ -187,13 +189,20 @@ class DataSet:
             binsize=self.binsize,
             nfft=self.nfft,
             fft_overlap=self.fft_overlap,
+            gridded_data=self.gridded,
             extra_attrs=extra_attrs,
             **self.metadata.loc[(idx, survey_columns)].to_dict(),
         )
         ds = xarray.Dataset()
         if self.frequency_features not in [[], None]:
             for f in self.frequency_features:
-                freq_evo = asa.evolution_freq_dom(f, band=None, db=True)
+                freq_evo = asa.evolution_freq_dom(
+                    f,
+                    band=None,
+                    db=True,
+                    save_daily=True,
+                    output_folder=self.output_folder.joinpath("deployments"),
+                )
                 for data_var in freq_evo.data_vars:
                     ds = ds.merge(freq_evo[data_var])
         if self.temporal_features not in [[], None]:

@@ -53,7 +53,7 @@ def millidecade_bands():
     for c in millis.coords:
         if millis[c].dtype == float:
             millis[c] = millis[c].round(6)
-    # Returnt the fixture with the data also rounded to 6 dec positions
+    # Return the fixture with the data also rounded to 6 dec positions
     return millis["millidecade_bands"].round(6)
 
 
