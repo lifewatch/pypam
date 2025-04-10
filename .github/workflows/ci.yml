@@ -24,7 +24,7 @@ jobs:
       - uses: extractions/setup-just@v2
       - run: sudo apt-get install libsndfile1
       - run: just install-poetry
-      - run: poetry install
+      - run: poetry install --with dev,test
       - run: make init-test
       - run: PYPAM_TEST_NO_PLOTS= make test
       - run: just format-check
