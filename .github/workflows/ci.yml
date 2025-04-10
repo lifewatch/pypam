@@ -13,22 +13,20 @@ jobs:
       fail-fast: false
       matrix:
         python-versions: ["3.9", "3.10", "3.11", "3.12"]
-        os: [ ubuntu-20.04 ]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-versions }}
-      - name: Install dependencies
-        run: |    
-          make init-test
-
-      - name: Run unit tests
-        run: |
-          PYPAM_TEST_NO_PLOTS= make test
-
+      - uses: extractions/setup-just@v2
+      - run: sudo apt-get install libsndfile1
+      - run: just install-poetry
+      - run: poetry install
+      - run: make init-test
+      - run: PYPAM_TEST_NO_PLOTS= make test
       - run: just format-check
       - run: just lint-check
       - run: just mypy
