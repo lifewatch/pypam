@@ -1,0 +1,35 @@
+site_name: pypam Documentation
+site_description: "Process underwater acoustic data in chunks"
+repo_url: "https://github.com/lifewatch/pypam"
+theme:
+  name: 'material'
+  logo: https://github.com/lifewatch/pypam/blob/70bfba2effc4b65d8bdaa99e30d0a75d10aef0ff/docs/source/_static/PyPAM_colour_white_bg.png?raw=true
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [ .. ]
+          options:
+            filters:
+              - "!^_"
+              - "^__"
+            members_order: source
+            heading_level: 3
+  - gallery:
+      examples_dirs: examples          # path to your example scripts
+      gallery_dirs: docs/generated/gallery
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Features: available_features.md
+  - Installation: install.md
+  - API:
+      - Classes:
+        - DataSet: dataset.md
+        - ASA: asa.md
+        - AcuFile: acufile.md
+        - Signal: signal.md
+      - Plots: plots.md
+      - Utils: utils.md
+  - Examples: generated/gallery

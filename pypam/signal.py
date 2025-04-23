@@ -1,10 +1,5 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 import operator
+import pathlib
 
 import matplotlib.pyplot as plt
 import noisereduce as nr
@@ -15,30 +10,26 @@ import sklearn.linear_model as linear_model
 import sklearn.metrics as metrics
 
 from pypam import acoustic_indices
-from pypam import utils
 from pypam import units as output_units
+from pypam import utils
 
 # Apply the default theme
 plt.rcParams.update({"pcolor.shading": "auto"})
 sns.set_theme()
-
 
 FILTER_ORDER = 4
 MIN_FREQ = 1
 
 
 class Signal:
-    def __init__(self, signal, fs, channel=0):
+    def __init__(self, signal: np.array, fs: int, channel: int = 0):
         """
         Representation of a signal
-        Parameters
-        ----------
-        signal : np.array
-            Signal to process
-        fs : int
-            Sample rate
-        channel : int
-            Channel to perform the calculations in
+
+        Args:
+            signal: Signal to process
+            fs: Sample rate
+            channel: Channel to perform the calculations in
         """
         # Original signal
         self._fs = fs
@@ -75,7 +66,7 @@ class Signal:
         else:
             return self.__dict__[item]
 
-    def _reset_spectro(self):
+    def _reset_spectro(self) -> None:
         """
         Reset the spectrogram parameters
         """
@@ -84,20 +75,18 @@ class Signal:
         self.freq = None
         self.t = None
 
-    def _band_is_broadband(self, band):
+    def _band_is_broadband(self, band: list or tuple) -> bool:
         """
-        Return True if the selected band is "broaband", return False otherwise
+        Return True if the selected band is "broadband", return False otherwise
 
-        Parameters
-        ----------
-        band : list or tuple
-            [low_freq, high_freq] of the desired band
+        Args:
+            band: [low_freq, high_freq] of the desired band, in Hz
         """
         return (band is None) or (
             band[0] in [0, None] and band[1] in [self.fs / 2, None]
         )
 
-    def set_band(self, band=None, downsample=True):
+    def set_band(self, band: list or tuple = None, downsample: bool = True) -> None:
         """
         Process the signal to be working on the specified band.
         If the upper limit band is higher than the nyquist frequency (fs/2), the band limit is set to the
@@ -106,12 +95,10 @@ class Signal:
         If downsample is set to False, the signal is filtered in the specified band. In case one of the boundaries is
         None, 0 or fs/2, high-pass or low-pass (respectively) filters are used. Otherwise band-pass filter.
         See self.filter for more information about the filtering process.
-        Parameters
-        ----------
-        band : list or tuple
-            [low_freq, high_freq] of the desired band
-        downsample: bool
-            Set to True if signal has to be downsampled for spectral resolution incrementation
+
+        Args:
+            band: [low_freq, high_freq] of the desired band
+            downsample: Set to True if signal has to be downsampled for spectral resolution incrementation
         """
         if band is None:
             band = [0, self.fs / 2]
@@ -140,21 +127,19 @@ class Signal:
             self.bands_list[self.band_n] = band
         self._reset_spectro()
 
-    def reset_original(self):
+    def reset_original(self) -> None:
         """
         Reset the signal to the original band and process
         """
         original_band = self.bands_list[0]
         self.set_band(original_band)
 
-    def fill_or_crop(self, n_samples):
+    def fill_or_crop(self, n_samples: int) -> None:
         """
         Crop the signal to the number specified or fill it with 0 values in case it is too short
 
-        Parameters
-        ----------
-        n_samples : int
-            Number of desired samples
+        Args:
+            n_samples: Number of desired samples
         """
         if self.signal.size >= n_samples:
             self.signal = self.signal[0:n_samples]
@@ -165,14 +150,16 @@ class Signal:
             self.signal = one_array
             self._processed[self.band_n].append("one-pad")
 
-    def _create_filter(self, band, output="sos"):
+    def _create_filter(self, band: list or tuple, output: str = "sos") -> tuple:
         """
         Return the butterworth filter for the specified band. If the limits are set to None, 0 or the nyquist
         frequency, only high-pass or low-pass filters are applied. Otherwise, a band-pass filter.
-        Parameters
-        ----------
-        band: tuple or list
-            [low_freq, high_freq], band to be filtered
+        Args:
+            band: [low_freq, high_freq], band to be filtered
+            output: filter style
+
+        Returns:
+            tuple representing the filter
         """
         if band[0] is None or band[0] == 0:
             sosfilt = sig.butter(
@@ -203,16 +190,13 @@ class Signal:
             )
         return sosfilt
 
-    def downsample(self, new_fs, filt=None):
+    def downsample(self, new_fs: int, filt: tuple or list = None) -> None:
         """
-        Downsamples the signal to the new fs. If the downsampling factor is an integer, performs resample_poly,
-        which applies a
-        Parameters
-        ----------
-        new_fs: float
-            New sampling frequency
-        filt:
-            filter output of _create_filter(band). If None it will be set to [0, new_fs/2]
+        Downsample the signal to the new fs. If the downsampling factor is an integer, performs resample_poly.
+
+        Args:
+            new_fs: New sampling frequency
+            filt: filter output from _create_filter(band). If None it will be set to [0, new_fs/2]
         """
         lcm = np.lcm(int(self.fs), int(new_fs))
         ratio_up = int(lcm / self.fs)
@@ -223,14 +207,13 @@ class Signal:
         self._processed[self.band_n].append("downsample")
         self.fs = new_fs
 
-    def downsample2band(self, band):
+    def downsample2band(self, band: list or tuple) -> None:
         """
         Reduce the sampling frequency. It uses the decimate function of scipy.signal
         In case the ratio is not an int, the closest int is chosen.
-        Parameters
-        ----------
-        band : tuple
-            Band to downsample to (low_freq, high_freq)
+
+        Args:
+            band: Band to downsample to (low_freq, high_freq)
         """
         new_fs = band[1] * 2
         if new_fs != self.fs:
@@ -244,13 +227,12 @@ class Signal:
         else:
             print("trying to downsample to the same fs, ignoring...")
 
-    def filter(self, band):
+    def filter(self, band: list or tuple) -> None:
         """
         Filter the signal
-        Parameters
-        ----------
-        band: tuple or list
-            [low_freq, high_freq], band to be filtered
+
+        Args:
+            band: [low_freq, high_freq], band to be filtered
         """
         if band[1] > self._fs / 2:
             raise ValueError(
@@ -263,7 +245,7 @@ class Signal:
             self.signal = sig.sosfilt(sosfilt, self.signal)
             self._processed[self.band_n].append("filter")
 
-    def remove_dc(self):
+    def remove_dc(self) -> None:
         """
         Remove the dc component of the signal
         """
@@ -271,7 +253,7 @@ class Signal:
         self.signal = self.signal - dc
         self._processed[self.band_n].append("dc_removal")
 
-    def envelope(self):
+    def envelope(self) -> None:
         """
         Return the envelope of the signal
         """
@@ -279,13 +261,15 @@ class Signal:
         amplitude_envelope = np.abs(analytic_signal)
         return amplitude_envelope
 
-    def average_envelope(self, window):
+    def average_envelope(self, window: int) -> tuple:
         """
         Return the average envelope for each window
-        Parameters
-        ----------
-        window : int
-            Number of samples for each window to average
+
+        Args:
+            window: Number of samples for each window to average
+
+        Returns:
+            time, envelope
         """
         result = []
         envelope = self.envelope()
@@ -296,15 +280,16 @@ class Signal:
         times = np.arange(len(result)) * window / self.fs
         return times, result
 
-    def window_method(self, method_name, window, **kwargs):
+    def window_method(self, method_name: str, window: int, **kwargs) -> tuple:
         """
         Return the average envelope for each window
-        Parameters
-        ----------
-        method_name : string
-            Name of the function to calculate in each window
-        window : int
-            Number of samples for each window to average
+
+        Args:
+            method_name: Name of the function to calculate in each window
+            window: Number of samples for each window to average
+
+        Returns:
+            time, envelope
         """
         f = operator.methodcaller(method_name, **kwargs)
         result = []
@@ -322,17 +307,16 @@ class Signal:
             time.append(block.time)
         return time, output
 
-    def rms(self, db=True, energy_window=None, **kwargs):
+    def rms(self, db: bool = True, energy_window: float = None, **kwargs) -> float:
         """
         Calculation of root mean squared value (rms) of the signal in uPa
 
-        Parameters
-        ----------
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa
-        energy_window: float
-            If provided, calculate the rms over the given energy window (e.g. RMS_90
-            for energy_window= .9).
+        Args:
+            db : If set to True the result will be given in db, otherwise in uPa
+            energy_window: If provided, calculate the rms over the given energy window (e.g. RMS_90 for energy_window= .9).
+
+        Returns:
+            rms value
         """
         if energy_window:
             [start, end] = utils.energy_window(self.signal, energy_window)
@@ -344,37 +328,29 @@ class Signal:
             rms_val = utils.to_db(rms_val, ref=1.0, square=True)
         return rms_val
 
-    def pulse_width(self, energy_window, **kwargs):
+    def pulse_width(self, energy_window, **kwargs) -> float:
         """
         Returns the pulse width of an impulsive signal
         according to a fractional energy window
 
-        Parameters
-        ----------
-        energy_window : float [0,1]
-            given energy window to calculate pulse width
-        **kwargs : TYPE
-            DESCRIPTION.
+        Args:
+            energy_window : given energy window to calculate pulse width [0 to 1]
 
-        Returns
-        -------
-        tau: float
-        energy_window pulse width in seconds
+        Returns:
+            tau: energy_window pulse width in seconds
 
         """
         [start, end] = utils.energy_window(self.signal, energy_window)
 
         return (end - start) / self.fs
 
-    def dynamic_range(self, db=True, **kwargs):
+    def dynamic_range(self, db: bool = True, **kwargs):
         """
         Compute the dynamic range of each bin
         Returns a dataframe with datetime as index and dr as column
 
-        Parameters
-        ----------
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa
+        Args:
+            db: If set to True the result will be given in db, otherwise in uPa
         """
         dr = utils.dynamic_range(self.signal)
         # Convert it to db if applicable
@@ -382,19 +358,15 @@ class Signal:
             dr = utils.to_db(dr, ref=1.0, square=True)
         return dr
 
-    def sel(self, db=True, **kwargs):
+    def sel(self, db: bool = True, **kwargs) -> float:
         """
         Calculate the sound exposure level of an event
 
-        Parameters
-        ----------
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa
+        Args:
+            db: If set to True the result will be given in db, otherwise in uPa
 
-        Returns
-        -------
-        sel: float
-        sound exposure level
+        Returns:
+            sel: sound exposure level
         """
         y = utils.sel(self.signal, self.fs)
 
@@ -402,10 +374,13 @@ class Signal:
             y = utils.to_db(y, square=False)
         return y
 
-    def peak(self, db=True, **kwargs):
+    def peak(self, db: bool = True, **kwargs) -> float:
         """
-        Calculate the peak sound exposure level of an event (pressure and velocity)
+        Calculate the peak sound exposure level of the signal
         Returns a 2-element array with peak values
+
+        Args:
+            db: If set to True the result will be given in db, otherwise in uPa
         """
         y = utils.peak(self.signal)
         if db:
@@ -415,38 +390,33 @@ class Signal:
     def kurtosis(self, **kwargs):
         """
         Calculation of kurtosis of the signal
-
-        Parameters
-        ----------
-
         """
         return utils.kurtosis(self.signal)
 
-    def third_octave_levels(self, db=True, **kwargs):
+    def third_octave_levels(self, db: bool = True, **kwargs) -> tuple:
         """
         Calculation of calibrated 1/3-octave band levels
 
-        Returns
-        -------
-        f : numpy array
-            Array with the center frequencies of the bands
-        spg : numpy array
-            Level of each band
+        Args:
+            db: If set to True the result will be given in db, otherwise in uPa
+
+        Returns:
+            f: Array with the center frequencies of the bands
+            spg: Level of each band
         """
         return self.octave_levels(db, 3)
 
-    def octave_levels(self, db=True, fraction=1, **kwargs):
+    def octave_levels(self, db: bool = True, fraction: int = 1, **kwargs) -> np.array:
         """
         Calculation of calibrated octave band levels
 
-        Returns
-        -------
-        f : numpy array
-            Array with the center frequencies of the bands
-        db : boolean
-            Set to True to get the result in db
-        fraction : int
-            fraction of an octave to compute the bands (i.e. fraction=3 leads to 1/3 octave bands)
+        Args:
+            db: If set to True the result will be given in db, otherwise in uPa
+            fraction: fraction of an octave to compute the bands (i.e. fraction=3 leads to 1/3 octave bands)
+
+
+        Returns:
+            f : Array with the center frequencies of the bands
         """
         bands, f = utils.oct_fbands(
             min_freq=MIN_FREQ, max_freq=self.fs / 2, fraction=fraction
@@ -473,22 +443,16 @@ class Signal:
 
         return f, spg
 
-    def _spectrogram(self, nfft=512, scaling="density", overlap=0.2):
+    def _spectrogram(
+        self, nfft: int = 512, scaling: str = "density", overlap: float = 0.2
+    ) -> None:
         """
         Computes the spectrogram of the signal and saves it in the attributes
 
-        Parameters
-        ----------
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
-
-        Returns
-        -------
-        None
+        Args:
+            nfft: Length of the fft window in samples. Power of 2.
+            scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+            overlap: Percentage to overlap [0 to 1]
         """
         real_size = self.signal.size
         if self.signal.size < nfft:
@@ -516,27 +480,25 @@ class Signal:
         self.t = t[0:n_bins]
 
     def spectrogram(
-        self, nfft=512, scaling="density", overlap=0, db=True, force_calc=False
-    ):
+        self,
+        nfft: int = 512,
+        scaling: str = "density",
+        overlap: float = 0,
+        db: bool = True,
+        force_calc: bool = False,
+    ) -> tuple:
         """
         Return the spectrogram of the signal (entire file)
 
-        Parameters
-        ----------
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa^2
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        force_calc : bool
-            Set to True if the computation has to be forced
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
+        Args:
+        db: If set to True the result will be given in db, otherwise in uPa^2
+        nfft: Length of the fft window in samples. Power of 2.
+        scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+        force_calc: Set to True if the computation has to be forced
+        overlap: Percentage to overlap [0 to 1]
 
-        Returns
-        -------
-        freq, t, sxx
+        Returns:
+            freq, t, sxx
         """
         if self.sxx is None or force_calc:
             self._spectrogram(nfft=nfft, scaling=scaling, overlap=overlap)
@@ -548,11 +510,11 @@ class Signal:
 
     def _spectrum(
         self,
-        scaling="density",
-        nfft=512,
-        db=True,
-        overlap=0,
-        window_name="hann",
+        scaling: str = "density",
+        nfft: int = 512,
+        db: bool = True,
+        overlap: float = 0,
+        window_name: str = "hann",
         **kwargs,
     ):
         """
@@ -560,18 +522,12 @@ class Signal:
         Returns Dataframe with 'datetime' as index and a colum for each frequency and each
         percentile, and a frequency array
 
-        Parameters
-        ----------
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        nfft : int
-            Length of the fft window in samples. Power of 2. If the signal is shorter it will be
-            zero-padded
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa^2
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
-
+        Args:
+            scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+            nfft: Length of the fft window in samples. Power of 2. If the signal is shorter it will be
+                zero-padded
+            db: If set to True the result will be given in db, otherwise in uPa^2
+            overlap: Percentage to overlap [0 to 1]
         """
         noverlap = nfft * overlap
         if nfft > self.signal.size:
@@ -601,37 +557,30 @@ class Signal:
 
     def spectrum(
         self,
-        scaling="density",
-        nfft=512,
-        db=True,
-        overlap=0,
-        force_calc=False,
-        percentiles=None,
+        scaling: str = "density",
+        nfft: int = 512,
+        db: bool = True,
+        overlap: float = 0,
+        force_calc: float = False,
+        percentiles: list = None,
         **kwargs,
-    ):
+    ) -> tuple:
         """
         Return the spectrum : frequency distribution of all the file (periodogram)
         Returns Dataframe with 'datetime' as index and a column for each frequency and
         each percentile, and a frequency array
 
-        Parameters
-        ----------
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa^2
-        force_calc : bool
-            Set to True if the computation has to be forced
-        percentiles : list
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        Returns
-        -------
-        Frequency array, psd values
+        Args:
+            scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+            nfft: Length of the fft window in samples. Power of 2.
+            overlap : Percentage to overlap [0 to 1]
+            db: If set to True the result will be given in db, otherwise in uPa^2
+            force_calc: Set to True if the computation has to be forced
+            percentiles: List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
+
+        Returns:
+            Frequency array, psd values
         """
         if self.psd is None or force_calc:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap, **kwargs)
@@ -642,24 +591,25 @@ class Signal:
 
         return self.freq, self.psd, percentiles_val
 
-    def spectrum_slope(self, scaling="density", nfft=512, db=True, overlap=0, **kwargs):
+    def spectrum_slope(
+        self,
+        scaling: str = "density",
+        nfft: int = 512,
+        db: bool = True,
+        overlap: float = 0,
+        **kwargs,
+    ) -> float:
         """
         Return the slope of the spectrum
 
-        Parameters
-        ----------
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
-        db : bool
-            If set to True the result will be given in db, otherwise in uPa^2
+        Args:
+            scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+            nfft : Length of the fft window in samples. Power of 2.
+            overlap : Percentage to overlap [0 to 1]
+            db: If set to True the result will be given in db, otherwise in uPa^2
 
-        Returns
-        -------
-        slope of the spectrum (float)
+        Returns:
+            slope of the spectrum (float)
         """
         if self.psd is None:
             self._spectrum(scaling=scaling, nfft=nfft, db=db, overlap=overlap)
@@ -671,17 +621,17 @@ class Signal:
         error = metrics.mean_squared_error(np.log10(self.psd), y_pred)
         return slope, error
 
-    def aci(self, nfft=512, overlap=0, **kwargs):
+    def aci(self, nfft: int = 512, overlap: float = 0, **kwargs) -> float:
         """
         Calculation of root mean squared value (rms) of the signal in uPa for each bin
         Returns Dataframe with 'datetime' as index and 'rms' value as a column
 
-        Parameters
-        ----------
-        nfft : int
-            Number of fft
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
+        Args:
+            nfft: Number of fft
+            overlap: Percentage (in 1) to overlap
+
+        Returns:
+            ACI value
         """
         _, _, sxx = self.spectrogram(
             nfft=nfft, scaling="density", overlap=overlap, db=False
@@ -690,23 +640,25 @@ class Signal:
 
         return aci_val
 
-    def bi(self, min_freq=2000, max_freq=8000, nfft=512, overlap=0, **kwargs):
+    def bi(
+        self,
+        min_freq: int = 2000,
+        max_freq: int = 8000,
+        nfft: int = 512,
+        overlap: float = 0,
+        **kwargs,
+    ) -> float:
         """
         Calculate the Bioacoustic Index index
-        Parameters
-        ----------
-        min_freq: int
-            Minimum frequency (in Hertz)
-        max_freq: int
-            Maximum frequency (in Hertz)
-        nfft: int
-            FFT number
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
 
-        Returns
-        -------
-        BI value
+        Args:
+            min_freq: Minimum frequency (in Hertz)
+            max_freq: Maximum frequency (in Hertz)
+            nfft: FFT number
+            overlap : Percentage to overlap [0 to 1]
+
+        Returns:
+            BI value
         """
         if self.band[1] < max_freq or self.band[0] > min_freq:
             print(
@@ -727,19 +679,16 @@ class Signal:
             )
             return bi_val
 
-    def sh(self, nfft=512, overlap=0, **kwargs):
+    def sh(self, nfft: int = 512, overlap: float = 0, **kwargs) -> float:
         """
         Return the Spectral Entropy of Shannon
-        Parameters
-        ----------
-        nfft: int
-            FFT number
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
 
-        Returns
-        -------
-        SH index
+        Args:
+            nfft: FFT number
+            overlap : Percentage to overlap [0 to 1]
+
+        Returns:
+            SH index
         """
         _, _, sxx = self.spectrogram(
             nfft=nfft, overlap=overlap, scaling="density", db=False
@@ -747,41 +696,35 @@ class Signal:
         sh_val = self.acoustic_index("sh", sxx=sxx)
         return sh_val
 
-    def th(self, **kwargs):
+    def th(self, **kwargs) -> float:
         """
         Compute Temporal Entropy of Shannon
 
-        Returns
-        -------
-        TH value
+        Returns:
+            TH value
         """
         th_val = self.acoustic_index("th", s=self.signal)
         return th_val
 
     def ndsi(
         self,
-        nfft=512,
-        overlap=0,
-        anthrophony=(1000, 2000),
-        biophony=(2000, 11000),
+        nfft: int = 512,
+        overlap: float = 0,
+        anthrophony: tuple = (1000, 2000),
+        biophony: tuple = (2000, 11000),
         **kwargs,
-    ):
+    ) -> float:
         """
         Compute the Normalized Difference Sound Index
-        Parameters
-        ----------
-        nfft: int
-            FFT number
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
-        anthrophony: tuple
-            Band to consider the anthrophony.
-        biophony: tuple
-            Band to consider the biophony.
 
-        Returns
-        -------
-        NDSI value
+        Args:
+            nfft: FFT number
+            overlap : Percentage to overlap [0 to 1]
+            anthrophony: Band to consider the anthrophony.
+            biophony: Band to consider the biophony.
+
+        Returns:
+            NDSI value
         """
         if self.band[1] < anthrophony[1] or self.band[1] < biophony[1]:
             print(
@@ -802,23 +745,25 @@ class Signal:
             )
             return ndsi_val
 
-    def aei(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
+    def aei(
+        self,
+        db_threshold: int or float = -50,
+        freq_step: int = 100,
+        nfft: int = 512,
+        overlap: float = 0,
+        **kwargs,
+    ) -> float:
         """
         Compute Acoustic Evenness Index
-        Parameters
-        ----------
-        db_threshold: int or float
-            The minimum db value to consider for the bins of the spectrogram
-        freq_step: int
-            Size of frequency bands to compute AEI (in Hertz)
-        nfft: int
-            FFT number
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
 
-        Returns
-        -------
-        AEI value
+        Args:
+            db_threshold: The minimum db value to consider for the bins of the spectrogram
+            freq_step: Size of frequency bands to compute AEI (in Hertz)
+            nfft:  FFT number
+            overlap : Percentage to overlap [0 to 1]
+
+        Returns:
+            AEI value
         """
         _, _, sxx = self.spectrogram(
             nfft=nfft, scaling="density", overlap=overlap, db=False
@@ -834,22 +779,25 @@ class Signal:
         )
         return aei_val
 
-    def adi(self, db_threshold=-50, freq_step=100, nfft=512, overlap=0, **kwargs):
+    def adi(
+        self,
+        db_threshold: int or float = -50,
+        freq_step: int = 100,
+        nfft: int = 512,
+        overlap: float = 0,
+        **kwargs,
+    ) -> float:
         """
         Compute Acoustic Diversity Index
-        Parameters
-        db_threshold: int or float
-            The minimum db value to consider for the bins of the spectrogram
-        freq_step: int
-            Size of frequency bands to compute AEI (in Hertz)
-        nfft: int
-            FFT number
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
 
-        Returns
-        -------
-        ADI value
+        Args:
+            db_threshold: The minimum db value to consider for the bins of the spectrogram
+            freq_step: Size of frequency bands to compute AEI (in Hertz)
+            nfft: FFT number
+            overlap: Percentage to overlap [0 to 1]
+
+        Returns:
+            ADI value
         """
         _, _, sxx = self.spectrogram(
             nfft=nfft, scaling="density", overlap=overlap, db=False
@@ -865,30 +813,28 @@ class Signal:
         )
         return adi_val
 
-    def zcr(self, **kwargs):
+    def zcr(self, **kwargs) -> float:
         """
         Compute the Zero Crossing Rate
 
-        Returns
-        -------
-        A list of values (number of zero crossing for each window)
+        Returns:
+            A list of values (number of zero crossing for each window)
         """
         zcr = self.acoustic_index("zcr", s=self.signal, fs=self.fs)
         return zcr
 
-    def zcr_avg(self, window_length=512, window_hop=256, **kwargs):
+    def zcr_avg(
+        self, window_length: int = 512, window_hop: int = 256, **kwargs
+    ) -> list or np.ndarray:
         """
         Zero Crossing Rate average
-        Parameters
-        ----------
-        window_length: int
-            Size of the sliding window (samples)
-        window_hop: int
-            Size of the lag window (samples)
 
-        Returns
-        -------
-        ZCR average
+        Args:
+            window_length: Size of the sliding window (samples)
+            window_hop: Size of the lag window (samples)
+
+        Returns:
+            ZCR average (list)
         """
         zcr = self.acoustic_index(
             "zcr_avg",
@@ -901,47 +847,29 @@ class Signal:
 
     def bn_peaks(
         self,
-        freqband=200,
-        normalization=True,
-        slopes=(0.01, 0.01),
-        nfft=512,
-        overlap=0,
+        freqband: int or float = 200,
+        normalization: bool = True,
+        slopes: tuple = (0.01, 0.01),
+        nfft: int = 512,
+        overlap: float = 0,
         **kwargs,
-    ):
+    ) -> int:
         """
         Counts the number of major frequency peaks obtained on a mean spectrum.
-        Parameters
-        ----------
-        freqband: int or float
-            frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
-            is less than this threshold, then the peak of highest amplitude will be kept only.
-            normalization: if set at True, the mean spectrum is scaled between 0 and 1
-        normalization : bool
-            Set to true if normalization is desired
-        slopes: tuple of length 2
-            Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
-            The first value is the left slope and the second value is the right slope. Only peaks with
-            higher slopes than threshold values will be kept. i.e (0.01, 0.01)
-        nfft: int
-            FFT number
-        frequencies: np.array 1D
-            List of the frequencies of the spectrogram
-        freqband: int or float
-            frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
-            is less than this threshold, then the peak of highest amplitude will be kept only.
-            normalization: if set at True, the mean spectrum is scaled between 0 and 1
-        normalization : bool
-            Set to true if normalization is desired
-        slopes: tuple of length 2
-            Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
-            The first value is the left slope and the second value is the right slope. Only peaks with
-            higher slopes than threshold values will be kept. i.e (0.01, 0.01)
-        overlap : float [0, 1]
-            Percentage (in 1) to overlap
 
-        Returns
-        -------
-        Int, number of BN peaks
+        Args:
+            freqband: frequency threshold parameter (in Hz). If the frequency difference of two successive peaks
+                is less than this threshold, then the peak of highest amplitude will be kept only.
+                normalization: if set at True, the mean spectrum is scaled between 0 and 1
+            normalization: Set to true if normalization is desired
+            slopes: Amplitude slope parameter, a tuple of length 2. Refers to the amplitude slopes of the peak.
+                The first value is the left slope and the second value is the right slope. Only peaks with
+                higher slopes than threshold values will be kept. i.e (0.01, 0.01)
+            nfft: FFT number
+            overlap : Percentage to overlap [0 to 1]
+
+        Returns:
+            Number of BN peaks
         """
         _, _, sxx = self.spectrogram(
             nfft=nfft, overlap=overlap, scaling="density", db=False
@@ -998,14 +926,15 @@ class Signal:
         peak_freqs = [frequencies[p] for p in peaks_indices]
         return len(peaks_indices), peak_freqs
 
-    def total_correlation(self, signal):
+    def total_correlation(self, signal: np.array) -> float:
         """
         Compute the correlation with the signal
 
-        Parameters
-        ----------
-        signal : numpy array or signal object
-            Signal to be correlated with
+        Args:
+            signal: Signal to be correlated with
+
+        Returns:
+            correlation coefficient
         """
         if isinstance(signal, Signal):
             if signal.fs > self.fs:
@@ -1016,70 +945,64 @@ class Signal:
 
         return coeff
 
-    def blocks_correlation(self, signal):
+    def blocks_correlation(self, signal: np.array) -> float:
         """
         Compute the correlation with the signal for each block of the same length than the signal
 
-        Parameters
-        ----------
-        signal : numpy array or signal object
-            Signal to be correlated with
+        Args:
+            signal: Signal to be correlated with
+
+        Returns:
+            correlation coefficient list per each block
         """
         coeff_evo = []
         for block in self.blocks(blocksize=signal.size):
             coeff_evo.append(np.corrcoef(block.signal, signal))
         return coeff_evo
 
-    def sel_spectrum(self, spg, dt):
+    def sel_spectrum(self, spg: np.array, dt: float) -> np.array:
         """
         Calculation of total spectrum (SEL) of the calibrated spectrogram
-        Returns a numpy matrix with in each cell the spectrum of a single channel of
-        the input signal
 
-        Parameters
-        ----------
-        spg: numpy matrix
-            Array with in each cell the spectrogram of a single channel of the input signal
-        dt : float
-            timestep of the spectrogram calculation, in seconds
+        Args:
+            spg: Array with in each cell the spectrogram of a single channel of the input signal
+            dt: timestep of the spectrogram calculation, in seconds
+
+        Returns:
+            numpy matrix with in each cell the spectrum of a single channel of the input signal
         """
         y = []
         for spg_i in spg:
             y.append(10.0 * np.log10(sum(10.0 ** (spg_i / 10.0), 1) * dt))
         return y
 
-    def average_spectrum(self, spg):
+    def average_spectrum(self, spg: np.array) -> np.array:
         """
         Calculation of average spectrum (Leq) of the calibrated spectrogram
-        Returns a numpy array with in each cell the spectrum of a single channel of
-        the input signal
 
-        Parameters
-        ----------
-        spg: numpy matrix
-            Array with in each cell the spectrogram of a single channel of the input signal
+
+        Args:
+            spg: Array with in each cell the spectrogram of a single channel of the input signal
+
+        Returns:
+             numpy array with in each cell the spectrum of a single channel of the input signal
         """
         y = []
         for spg_i in spg:
             y.append(10.0 * np.log10(np.mean(10.0 ** (spg_i / 10.0), 1)))
         return y
 
-    def spectrogram_third_bands(self, dt):
+    def spectrogram_third_bands(self, dt: float) -> tuple:
         """
         Calculation of calibrated 1/3-octave band spectrogram for 28 bands from 25 Hz to 12.5 kHz
-        Parameters
-        ----------
-        dt: float
-            Timestep for calculation of spectrogram, in seconds
 
-        Returns
-        -------
-        t : numpy array
-            Array with the time values of the spectrogram, in seconds
-        f : numpy array
-            Array with the frequency values of the spectrogram
-        spg : numpy matrix
-            Array with in each cell the spectrogram of a single channel of the input signal
+        Args:
+            dt: Timestep for calculation of spectrogram, in seconds
+
+        Returns:
+            t: Array with the time values of the spectrogram, in seconds
+            f: Array with the frequency values of the spectrogram
+            spg: Array with in each cell the spectrogram of a single channel of the input signal
         """
         # resample signal to 48 kHz
         new_fs = 48000
@@ -1119,28 +1042,23 @@ class Signal:
         return t, f, spg
 
     @staticmethod
-    def acoustic_index(name, **kwargs):
+    def acoustic_index(name: str, **kwargs):
         """
         Return the acoustic index
 
-        Parameters
-        ----------
-        name : string
-            Name of the Acoustic Index to compute
+        Args:
+            name: Name of the Acoustic Index to compute
         """
         f = getattr(acoustic_indices, "compute_" + name)
         return f(**kwargs)
 
-    def reduce_noise(self, nfft=512, verbose=False):
+    def reduce_noise(self, nfft: int = 512, verbose: bool = False) -> None:
         """
         Remove the noise of the signal using the noise clip
 
-        Parameters
-        ----------
-        nfft : int
-            Window size to compute the spectrum
-        verbose : boolean
-            Set to True to plot the signal before and after the reduction
+        Args:
+            nfft: Window size to compute the spectrum
+            verbose: Set to True to plot the signal before and after the reduction
         """
         s = nr.reduce_noise(y=self.signal, sr=self.fs, n_fft=nfft, win_length=nfft)
         if verbose:
@@ -1193,39 +1111,30 @@ class Signal:
 
     def plot(
         self,
-        nfft=512,
-        overlap=0,
-        scaling="density",
-        db=True,
-        force_calc=False,
-        show=False,
-        save_path=None,
-        vmin=None,
-        vmax=None,
-        log=False,
-    ):
+        nfft: int = 512,
+        overlap: float = 0,
+        scaling: str = "density",
+        db: bool = True,
+        force_calc: bool = False,
+        show: bool = False,
+        save_path: str or pathlib.Path = None,
+        vmin: float = None,
+        vmax: float = None,
+        log: bool = False,
+    ) -> None:
         """
         Plot the signal and its spectrogram
-        Parameters
-        ----------
-        nfft : int
-            nfft value
-        scaling : string
-            'density' or 'spectrum'
-        db : bool
-            Set to True for dB output
-        force_calc : bool
-            Set to True to force the re-calulation of the spectrogram
-        overlap : float [0, 1]
-            Percentage to overlap in windows for the plot
-        show: bool
-            Set to True to show
-        save_path: str or Path
-            Where to save the output. Set to None to not save if (default)
-        vmin : float
-            minimum value to plot in the spectrogram
-        vmax: float
-            maximum value to plot in the spectrogram
+
+        Args:
+            nfft: nfft value
+            scaling: 'density' or 'spectrum'
+            db: Set to True for dB output
+            force_calc: Set to True to force the re-calulation of the spectrogram
+            overlap: Percentage to overlap in windows for the plot [0 to 1]
+            show: Set to True to show
+            save_path: Where to save the output. Set to None to not save if (default)
+            vmin: minimum value to plot in the spectrogram
+            vmax: maximum value to plot in the spectrogram
         """
         plt.rcParams.update(plt.rcParamsDefault)
         _, _, sxx = self.spectrogram(
@@ -1261,27 +1170,23 @@ class Signal:
             plt.show()
         plt.close()
 
-    def blocks(self, blocksize):
+    def blocks(self, blocksize: int):
         """
         Wrapper for the Blocks class
 
-        Parameters
-        ----------
-        blocksize : float
-            Window integration time, in samples
+        Args:
+            blocksize:  Window integration time, in samples
         """
         return Blocks(self.signal, self.fs, blocksize)
 
 
 class Blocks:
-    def __init__(self, signal, fs, blocksize):
+    def __init__(self, signal: np.array, fs: int, blocksize: int):
         """
-        Init
-
-        Parameters
-        ----------
-        blocksize : float
-            Window integration time, in samples
+        Args:
+            signal: Signal to process
+            fs: Sample rate
+            blocksize: Window integration time, in samples
         """
         self.blocksize = blocksize
         self.signal = signal

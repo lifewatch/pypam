@@ -17,28 +17,27 @@ __credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
 __email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
 __status__ = "Development"
 
-import numpy as np
 import maad.features
+import numpy as np
 
 
-def compute_aci(sxx: np.ndarray):
+def compute_aci(sxx: np.ndarray) -> float:
     """
     Return the aci of the signal
 
-    Parameters
-    ----------
-    sxx : np.array 2D
-        Spectrogram of the signal in linear units
+    Args:
+        sxx: Spectrogram of the signal in linear units
 
-    Returns
-    -------
-    ACI value
+    Returns:
+        ACI value
     """
     _, _, aci_val = maad.features.alpha_indices.acoustic_complexity_index(Sxx=sxx)
     return aci_val
 
 
-def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
+def compute_bi(
+    sxx: np.array, frequencies: np.array, min_freq: int = 2000, max_freq: int = 8000
+) -> float:
     """
     Compute the Bioacoustic Index from the spectrogram of an audio signal.
     In this code, the Bioacoustic Index correspond to the area under the mean spectre (in db)
@@ -48,20 +47,14 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     Ecological Applications 17: 2137-2144.
     Ported from the soundecology R package.
 
-    Parameters
-    ----------
-    sxx: np.array 2D
-        The spectrogram of the audio signal in linear units
-    frequencies: np.array 1D
-        List of the frequencies of the spectrogram
-    min_freq: int
-        Minimum frequency (in Hertz)
-    max_freq: int
-        Maximum frequency (in Hertz)
+    Args:
+        sxx: The spectrogram of the audio signal in linear units
+        frequencies: List of the frequencies of the spectrogram
+        min_freq:  Minimum frequency (in Hertz)
+        max_freq: Maximum frequency (in Hertz)
 
-    Returns
-    -------
-    Bioacoustic Index (BI) value
+    Returns:
+        Bioacoustic Index (BI) value
     """
     bi = maad.features.alpha_indices.bioacoustics_index(
         Sxx=sxx, fn=frequencies, flim=(min_freq, max_freq), R_compatible="soundecology"
@@ -69,39 +62,39 @@ def compute_bi(sxx, frequencies, min_freq=2000, max_freq=8000):
     return bi
 
 
-def compute_sh(sxx):
+def compute_sh(sxx: np.array) -> float:
     """
     Compute Spectral Entropy of Shannon from the spectrogram of an audio signal.
     Ported from the seewave R package.
 
-    Parameters
-    ----------
-    sxx: np.array 2D
-     The spectrogram of the audio signal in linear units
+    Args:
+        sxx: The spectrogram of the audio signal in linear units
 
-    Returns
-    -------
-    Spectral Entropy (SH)
+    Returns:
+        Spectral Entropy (SH)
     """
     sh, _ = maad.features.alpha_indices.frequency_entropy(X=sxx)
     return sh
 
 
-def compute_th(s):
+def compute_th(s: np.array) -> float:
     """
     Compute Temporal Entropy of Shannon from an audio signal.
     Ported from the seewave R package.
 
-    Parameters
-    ----------
-    s: np.array
-        Signal
+    Args:
+    s: Signal
     """
     th = maad.features.alpha_indices.temporal_entropy(s=s)
     return th
 
 
-def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 11000)):
+def compute_ndsi(
+    sxx: np.array,
+    frequencies: np.array,
+    anthrophony: tuple = (1000, 2000),
+    biophony: tuple = (2000, 11000),
+) -> float:
     """
     Compute Normalized Difference Sound Index from power spectrogram.
     Reference: Kasten, Eric P., Stuart H. Gage, Jordan Fox, and Wooyeong Joo. 2012.
@@ -110,16 +103,11 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
     Ecological Informatics 12: 50-67.
     Inspired by the seewave R package, the soundecology R package and the original matlab code from the authors.
 
-    Parameters
-    ----------
-    sxx: np.array 2D
-        The spectrogram of the audio signal in linear units
-    frequencies: np.array 1D
-        List of the frequencies of the spectrogram
-    anthrophony: tuple of ints
-        Tuple of two values containing the minimum and maximum frequencies (in Hertz) for antrophony.
-    biophony: tuple of ints
-        Tuple of two values containing the minimum and maximum frequencies (in Hertz) for biophony.
+    Args:
+        sxx: The spectrogram of the audio signal in linear units
+        frequencies: List of the frequencies of the spectrogram
+        anthrophony: Tuple of two int values containing the minimum and maximum frequencies (in Hertz) for antrophony.
+        biophony: Tuple of two int values containing the minimum and maximum frequencies (in Hertz) for biophony.
     """
     ndsi, _, _, _ = maad.features.alpha_indices.soundscape_index(
         Sxx_power=sxx,
@@ -132,7 +120,12 @@ def compute_ndsi(sxx, frequencies, anthrophony=(1000, 2000), biophony=(2000, 110
 
 
 def compute_aei(
-    sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000
+    sxx: np.array,
+    frequencies: list,
+    max_freq: int = 10000,
+    min_freq: int = 0,
+    db_threshold: int or float = -50,
+    freq_step: int = 1000,
 ):
     """
     Compute Acoustic Evenness Index of an audio signal.
@@ -140,20 +133,13 @@ def compute_aei(
     A primer of acoustic analysis for landscape ecologists. Landscape Ecology 26: 1233-1246.
     Ported from the soundecology R package.
 
-    Parameters
-    ----------
-    sxx: 2d np array
-        Spectrogram of the audio signal in linear units
-    frequencies: list of ints
-        Frequencies list of the spectrogram
-    max_freq: int
-        The maximum frequency to consider to compute AEI (in Hertz)
-    min_freq: int
-        The minimum frequency to consider to compute AEI (in Hertz)
-    db_threshold: int or float
-        The minimum db value to consider for the bins of the spectrogram
-    freq_step: int
-        Size of frequency bands to compute AEI (in Hertz)
+    Args:
+        sxx: Spectrogram of the audio signal in linear units
+        frequencies: Frequencies list of the spectrogram (in Hz)
+        max_freq: The maximum frequency to consider to compute AEI (in Hz)
+        min_freq: The minimum frequency to consider to compute AEI (in Hz)
+        db_threshold: The minimum db value to consider for the bins of the spectrogram
+        freq_step: Size of frequency bands to compute AEI (in Hz)
     """
     aei = maad.features.alpha_indices.acoustic_eveness_index(
         Sxx=sxx,
@@ -167,7 +153,12 @@ def compute_aei(
 
 
 def compute_adi(
-    sxx, frequencies, max_freq=10000, min_freq=0, db_threshold=-50, freq_step=1000
+    sxx,
+    frequencies: list,
+    max_freq: int = 10000,
+    min_freq: int = 0,
+    db_threshold: int or float = -50,
+    freq_step: int = 1000,
 ):
     """
     Compute Acoustic Diversity Index.
@@ -175,20 +166,13 @@ def compute_adi(
     A primer of acoustic analysis for landscape ecologists. Landscape Ecology 26: 1233-1246.
     Ported from the soundecology R package.
 
-    Parameters
-    ----------
-    sxx:
-        Spectrogram of the audio signal in linear units
-    frequencies: list of ints
-        Frequencies list of the spectrogram
-    max_freq: int
-        The maximum frequency to consider to compute AEI (in Hertz)
-    min_freq: int
-        The minimum frequency to consider to compute AEI (in Hertz)
-    db_threshold: int or float
-        The minimum db value to consider for the bins of the spectrogram
-    freq_step: int
-        Size of frequency bands to compute AEI (in Hertz)
+    Args:
+        sxx: Spectrogram of the audio signal in linear units
+        frequencies: Frequencies list of the spectrogram
+        max_freq: The maximum frequency to consider to compute AEI (in Hz)
+        min_freq: The minimum frequency to consider to compute AEI (in Hz)
+        db_threshold: The minimum db value to consider for the bins of the spectrogram
+        freq_step: Size of frequency bands to compute AEI (in Hz)
     """
     adi = maad.features.alpha_indices.acoustic_diversity_index(
         Sxx=sxx,
@@ -202,43 +186,35 @@ def compute_adi(
     return adi
 
 
-def compute_zcr(s, fs):
+def compute_zcr(s: np.array, fs: int):
     """
     Compute the Zero Crossing Rate of an audio signal.
 
-    Parameters
-    ----------
-    s: np.array
-        Signal
-    fs : int
-        Sampling frequency in Hz
+    Args:
+        s: Signal
+        fs : Sampling frequency in Hz
 
-    Returns
-    -------
-    A list of values (number of zero crossing for each window)
+    Returns:
+        A list of values (number of zero crossing for each window)
     """
     zcr = maad.features.temporal.zero_crossing_rate(s=s, fs=fs) / fs
     return zcr
 
 
-def compute_zcr_avg(s, fs, window_length=512, window_hop=256):
+def compute_zcr_avg(
+    s: np.array, fs: int, window_length: int = 512, window_hop: int = 256
+):
     """
     Compute the Zero Crossing Rate of an audio signal.
 
-    Parameters
-    ----------
-    s: np.array
-        Signal to process
-    fs : int
-        Sampling frequency in Hz
-    window_length: int
-        Size of the sliding window (samples)
-    window_hop: int
-        Size of the lag window (samples)
+    Args:
+        s: Signal to process
+        fs: Sampling frequency in Hz
+        window_length: Size of the sliding window (samples)
+        window_hop: Size of the lag window (samples)
 
-    Returns
-    -------
-    A list of values (number of zero crossing for each window)
+    Returns:
+        A list of values (number of zero crossing for each window)
     """
     times = np.arange(0, len(s) - window_length + window_hop)
     zcr_bins = np.zeros(times.size)

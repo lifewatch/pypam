@@ -3,8 +3,8 @@ version: 2
 formats: []
 
 # Build documentation in the docs/ directory with sphinx
-sphinx:
-   configuration: docs/source/conf.py
+mkdocs:
+   configuration: ./mkdocs.yml
 
 build:
   os: ubuntu-20.04
