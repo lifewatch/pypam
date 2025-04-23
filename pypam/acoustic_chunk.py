@@ -1,28 +1,21 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 import datetime
 import operator
-import os
 import pathlib
-import zipfile
 import re
 
+import dateutil
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytz
 import seaborn as sns
 import soundfile as sf
 import xarray
-from tqdm.auto import tqdm
 
 from pypam import plots
 from pypam import signal as sig
-from pypam import utils
 from pypam import units as output_units
+from pypam import utils
 
 pd.plotting.register_matplotlib_converters()
 plt.rcParams.update({"pcolor.shading": "auto"})
@@ -31,80 +24,75 @@ plt.rcParams.update({"pcolor.shading": "auto"})
 sns.set_theme()
 
 
-class AcuChunk:
+class GenericAcuFile:
     """
-    Chunk recorded in a wav file.
-
-    Parameters
-    ----------
-    sfile_start : Sound file start
-        Can be a path or a file object
-    sfile_end : Sound file end
-        Can be a path or a file object
-    start_frame : int
-        Start frame on the start file
-    end_frame : int
-        End frame on the end file
-    hydrophone : Object for the class hydrophone
-    p_ref : Float
-        Reference pressure in upa
-
-    channel : int
-        Channel to perform the calculations in
-    dc_subtract: bool
-        Set to True to subtract the dc noise (root mean squared value
+    Generic Acoustic File class
     """
 
     def __init__(
         self,
-        sfile_start,
-        sfile_end,
-        hydrophone,
-        p_ref,
-        time_bin,
-        chunk_id,
-        chunk_file_id,
-        start_frame=0,
-        end_frame=-1,
-        channel=0,
-        dc_subtract=False,
+        sfile: sf.SoundFile or pathlib.Path,
+        hydrophone: object,
+        p_ref: float,
+        timezone: datetime.tzinfo
+        or pytz.tzinfo.BaseTZInfo
+        or dateutil.tz.tz.tzfile
+        or str
+        or None = "UTC",
+        channel: int = 0,
+        dc_subtract: bool = False,
+        chunk_id_start: int = 0,
     ):
         # Save hydrophone model
         self.hydrophone = hydrophone
 
         # Get the date from the name
-        # Signal
-        self.file_start_path = sfile_start
-        self.file_end_path = sfile_end
-        self.file_start = sf.SoundFile(self.file_start_path, "r")
-        self.file_end = sf.SoundFile(self.file_end_path, mode="r")
-        self.fs = (
-            self.file_start.samplerate
-        )  # Should be the same for both files, only reading one!
+        file_name = utils.parse_file_name(sfile)
+        self.date = utils.get_file_datetime(file_name, hydrophone)
 
-        # Time and id
-        self.time_bin = time_bin
-        self.chunk_id = chunk_id
-        self.chunk_file_id = chunk_file_id
+        # Signal
+        self.file_path = sfile
+        self.file = sf.SoundFile(self.file_path, "r")
+        self.fs = self.file.samplerate
+
+        # Check if next file is continuous
+        self.date_end = self.date + datetime.timedelta(seconds=self.total_time())
+
+        # Work on local time or UTC time
+        self.timezone = timezone
+
+        # datetime will always be in UTC
+        self.datetime_timezone = "UTC"
 
         # Reference pressure in upa
         self.p_ref = p_ref
 
+        # Work on local time or UTC time
+        self.timezone = timezone
+
+        # datetime will always be in UTC
+        self.datetime_timezone = "UTC"
+
         # Select channel
         self.channel = channel
-        self.start_frame = start_frame
-        self.end_frame = end_frame
+
+        # Set an empty wav array
+        self.wav = None
+        self.time = None
 
         self.dc_subtract = dc_subtract
 
-        self._signal = None
+        # Start to count chunk id's
+        self.chunk_id_start = chunk_id_start
 
-    def __getattr__(self, name):
+        self.wav = None
+
+    def __getattr__(self, name: str):
         """
         Specific methods to make it easier to access attributes
         """
         if name == "signal":
-            return self.read()
+            return self.signal("upa")
         elif name == "time":
             if self.__dict__[name] is None:
                 return self._time_array(binsize=1 / self.fs)[0]
@@ -113,15 +101,54 @@ class AcuChunk:
         else:
             return self.__dict__[name]
 
-    def freq_resolution_window(self, freq_resolution):
+    def _get_metadata_attrs(self):
+        metadata_keys = [
+            "file_path",
+            "timezone",
+            "datetime_timezone",
+            "p_ref",
+            "channel",
+            "_start_frame",
+            "calibration",
+            "dc_subtract",
+            "fs",
+            "hydrophone.name",
+            "hydrophone.model",
+            "hydrophone.sensitivity",
+            "hydrophone.preamp_gain",
+            "hydrophone.Vpp",
+        ]
+
+        metadata_attrs = {}
+        for k in metadata_keys:
+            d = self
+            for sub_k in k.split("."):
+                d = d.__dict__[sub_k]
+            if isinstance(d, pathlib.Path):
+                d = str(d)
+            if isinstance(d, bool):
+                d = int(d)
+            if d is None:
+                d = 0
+            metadata_attrs[k.replace(".", "_")] = d
+
+        return metadata_attrs
+
+    def read(self):
+        wav = self.file.read()
+        self.file.seek(0)
+        return wav
+
+    def freq_resolution_window(self, freq_resolution: int) -> int:
         """
         Given the frequency resolution, window length needed to obtain it
         Returns window length in samples
 
-        Parameters
-        ----------
-        freq_resolution : int
-            Must be a power of 2, in Hz
+        Args:
+            freq_resolution: Must be a power of 2, in Hz
+
+        Returns:
+            nfft, the number of FFT bins
         """
         n = np.log2(self.fs / freq_resolution)
         nfft = 2**n
@@ -132,18 +159,131 @@ class AcuChunk:
             )
         return nfft
 
-    def wav2upa(self, wav=None):
+    def samples(self, bintime: float):
+        """
+        Return the samples according to the fs
+
+        Args:
+            bintime: Seconds of bintime desired to convert2324.sh to samples
+        """
+        return int(bintime * self.fs)
+
+    def instrument(self):
+        """
+        Instrument will be the name of the hydrophone
+        """
+        return self.hydrophone.name
+
+    def total_time(self):
+        """
+        Return the total time in seconds of the file
+        """
+        return self.samples2time(self.file.frames)
+
+    def samples2time(self, samples: int):
+        """
+        Return the samples according to the fs
+
+        Args:
+            samples: Number of samples to convert to seconds
+        """
+        return float(samples) / self.fs
+
+    def is_in_period(self, period: list or tuple):
+        """
+        Return True if the WHOLE file is included in the specified period
+
+        Args:
+            period: list or a tuple with (start, end). Values have to be a datetime object
+        """
+        if period is None:
+            return True
+        else:
+            return (self.date >= period[0]) & (self.date <= period[1])
+
+    def contains_date(self, date: datetime.datetime):
+        """
+        Return True if data is included in the file
+
+        Args:
+            date: Datetime to check
+        """
+        end = self.date + datetime.timedelta(seconds=self.file.frames / self.fs)
+        return (self.date < date) & (end > date)
+
+    def signal(self, units: str = "wav") -> np.array:
+        """
+        Returns the signal in the specified units
+
+        Args:
+            units: Units in which to return the signal. Can be 'wav', 'db', 'upa', 'Pa' or 'acc'.
+        """
+        # First time, read the file and store it to not read it over and over
+        if self.wav is None:
+            self.wav = self.read()
+        if units == "wav":
+            signal = self.wav
+        elif units == "db":
+            signal = self.wav2db()
+        elif units == "upa":
+            signal = self.wav2upa()
+        elif units == "Pa":
+            signal = self.wav2upa() / 1e6
+        elif units == "acc":
+            signal = self.wav2acc()
+        else:
+            raise Exception("%s is not implemented as an outcome unit" % units)
+
+        return sig.Signal(signal=signal, fs=self.fs, channel=self.channel)
+
+    def _time_array(self, binsize: float = None, bin_overlap: float = 0) -> tuple:
+        """
+        Return a time array for each point of the signal
+        """
+        if binsize is None:
+            total_block = self.file.frames - self._start_frame
+        else:
+            total_block = self.samples(binsize)
+        blocksize = total_block - int(total_block) * bin_overlap
+        blocks_samples = np.arange(
+            start=self._start_frame, stop=self.file.frames - 1, step=blocksize
+        )
+        end_samples = blocks_samples + blocksize
+        incr = pd.to_timedelta(blocks_samples / self.fs, unit="seconds")
+        self.time = self.date + incr
+        if self.timezone != "UTC":
+            self.time = (
+                pd.to_datetime(self.time)
+                .tz_localize(self.timezone)
+                .tz_convert("UTC")
+                .tz_convert(None)
+            )
+        return self.time, blocks_samples.astype(int), end_samples.astype(int)
+
+    def timestamp_da(
+        self, binsize: float = None, bin_overlap: float = 0
+    ) -> xarray.Dataset:
+        time_array, start_samples, end_samples = self._time_array(binsize, bin_overlap)
+        ds = xarray.Dataset(
+            coords={
+                "id": np.arange(len(time_array)),
+                "datetime": ("id", time_array.values),
+                "start_sample": ("id", start_samples),
+                "end_sample": ("id", end_samples),
+            }
+        )
+        return ds
+
+    def wav2upa(self, wav: np.array = None) -> np.array:
         """
         Compute the pressure from the wav signal
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
         if wav is None:
-            wav = self._signal.signal
+            wav = self.signal("wav")._signal
         # First convert it to Volts and then to Pascals according to sensitivity
         mv = 10 ** (self.hydrophone.sensitivity / 20.0) * self.p_ref
         ma = 10 ** (self.hydrophone.preamp_gain / 20.0) * self.p_ref
@@ -151,114 +291,61 @@ class AcuChunk:
 
         return utils.set_gain(wave=wav, gain=gain_upa)
 
-    def wav2db(self, wav=None):
+    def wav2db(self, wav: np.array = None) -> np.array:
         """
         Compute the db from the wav signal. Consider the hydrophone sensitivity in db.
         If wav is None, it will read the whole file.
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
         if wav is None:
-            wav = self._signal.signal
+            wav = self.signal("wav")._signal
         upa = self.wav2upa(wav)
         return utils.to_db(wave=upa, ref=self.p_ref, square=True)
 
-    def db2upa(self, db=None):
+    def db2upa(self, db: np.array = None) -> np.array:
         """
         Compute the upa from the db signals. If db is None, it will read the whole file.
 
-        Parameters
-        ----------
-        db : ndarray
-            Signal in db
+        Args:
+            db: Signal in db
         """
         if db is None:
-            wav = self._signal.signal
-            db = 10 * np.log10(wav**2)
+            db = self.signal("db")._signal
         # return np.power(10, db / 20.0 - np.log10(self.p_ref))
         return utils.to_mag(wave=db, ref=self.p_ref)
 
-    def upa2db(self, upa=None):
+    def upa2db(self, upa: np.array = None) -> np.array:
         """
         Compute the db from the upa signal. If upa is None, it will read the whole file.
 
-        Parameters
-        ----------
-        upa : ndarray
-            Signal in upa
+        Args:
+            upa: Signal in upa
         """
         if upa is None:
-            wav = self._signal.signal
-            upa = self.wav2upa(wav)
+            upa = self.signal("upa")._signal
         return utils.to_db(upa, ref=self.p_ref, square=True)
 
-    def wav2acc(self, wav=None):
+    def wav2acc(self, wav: np.array = None) -> np.array:
         """
         Convert the wav file to acceleration. If wav is None, it will read the whole file.
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         if wav is None:
-            wav = self._signal.signal
+            wav = self.file.read()
         mv = 10 ** (self.hydrophone.mems_sensitivity / 20.0)
-        return wav / mv
+        return wav._signal / mv
 
-    def read(self):
-        if self._signal is None:
-            self.file_start.seek(self.start_frame)
-            if self.file_start_path == self.file_end_path:
-                signal = self.file_start.read(
-                    self.end_frame - self.start_frame, always_2d=True
-                )[:, self.channel]
-            else:
-                first_chunk = self.file_start.read(frames=-1, always_2d=True)[
-                    :, self.channel
-                ]
-                self.file_end.seek(0)
-                second_chunk = self.file_end.read(
-                    frames=self.end_frame, always_2d=True
-                )[:, self.channel]
-                signal = np.concatenate((first_chunk, second_chunk))
+    def update_freq_cal(self, ds, data_var, **kwargs):
+        return utils.update_freq_cal(
+            hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs
+        )
 
-            # Read the signal and prepare it for analysis
-            signal_upa = self.wav2upa(wav=signal)
-            signal = sig.Signal(signal=signal_upa, fs=self.fs, channel=self.channel)
-            if self.dc_subtract:
-                signal.remove_dc()
-            self._signal = signal
-        else:
-            return self._signal
-
-        return signal
-
-    def apply_multiple(self, method_list, band_list=None, **kwargs):
-        """
-        Apply multiple methods per bin to save computational time
-
-        Parameters
-        ----------
-        method_list: list of strings
-            List of all the methods to apply
-        band_list: list of tuples, tuple or None
-            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
-            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
-            frequency will be analyzed
-        kwargs: any parameters that have to be passed to the methods
-
-        Returns
-        -------
-        DataFrame with time as index and a multiindex column with band, method as levels.
-        """
-        signal = self.signal
-        downsample = False
-
+    def parse_band_list(self, band_list):
         # Bands selected to study
         if band_list is None:
             band_list = [[0, self.fs / 2]]
@@ -273,10 +360,110 @@ class AcuChunk:
                     sorted_bands = [band] + sorted_bands
                 else:
                     sorted_bands = sorted_bands + [band]
+        return sorted_bands
+
+
+class AcuChunk(GenericAcuFile):
+    """
+    Class for functions performed in a chunk recorded in a wav file.
+    """
+
+    def __init__(
+        self,
+        sfile_start: str or pathlib.Path or sf.SoundFile,
+        sfile_end: str or pathlib.Path or sf.SoundFile,
+        hydrophone: object,
+        p_ref: float,
+        time_bin: float,
+        chunk_id: int,
+        chunk_file_id: int,
+        start_frame: int = 0,
+        end_frame: int = -1,
+        channel: int = 0,
+        dc_subtract: bool = False,
+    ):
+        """
+        Args:
+            sfile_start: Sound file start, can be a path or a file object
+            sfile_end: Sound file end, can be a path or a file object
+            hydrophone: object for the class hydrophone
+            p_ref: Reference pressure in upa
+            time_bin:
+            chunk_id:
+            chunk_file_id:
+            start_frame: Start frame on the start file
+            end_frame: End frame on the end file
+            channel: Channel to perform the calculations in
+            dc_subtract: Set to True to subtract the dc noise (root mean squared value
+        """
+        super().__init__(
+            sfile=sfile_start,
+            hydrophone=hydrophone,
+            p_ref=p_ref,
+            channel=channel,
+            dc_subtract=dc_subtract,
+        )
+
+        # Second file info
+        self.file_end_path = sfile_end
+        self.file_end = sf.SoundFile(self.file_end_path, mode="r")
+
+        # Time and id
+        self.time_bin = time_bin
+        self.chunk_id = chunk_id
+        self.chunk_file_id = chunk_file_id
+
+        # Parameters specifics for chunk
+        self.start_frame = start_frame
+        self.end_frame = end_frame
+
+    def read(self):
+        if self.wav is None:
+            self.file.seek(self.start_frame)
+            if self.file_path == self.file_end_path:
+                signal = self.file.read(
+                    self.end_frame - self.start_frame, always_2d=True
+                )[:, self.channel]
+            else:
+                first_chunk = self.file.read(frames=-1, always_2d=True)[:, self.channel]
+                self.file_end.seek(0)
+                second_chunk = self.file_end.read(
+                    frames=self.end_frame, always_2d=True
+                )[:, self.channel]
+                signal = np.concatenate((first_chunk, second_chunk))
+
+            # Read the signal and prepare it for analysis
+            self.wav = signal
+        return self.wav
+
+    def apply_multiple(
+        self, method_list: list, band_list: list = None, **kwargs
+    ) -> xarray.Dataset:
+        """
+        Apply multiple methods per bin to save computational time
+
+        Args:
+        method_list: List of all the methods to apply
+        band_list: list of tuples, tuple or None. Bands to filter. Can be multiple bands (all of them will be analyzed)
+            or only one band. A band is represented with a tuple as (low_freq, high_freq).
+            If set to None, the broadband up to the Nyquist frequency will be analyzed
+        kwargs: any parameters that have to be passed to the methods
+
+        Returns:
+            xarray Dataset with time as index and a multiindex column with band, method as levels.
+        """
+        signal = self.signal("upa")
+        downsample = False
+
+        # Bands selected to study
+        sorted_bands = self.parse_band_list(band_list)
+
+        # Check if log or not
         log = True
         if "db" in kwargs.keys():
             if not kwargs["db"]:
                 log = False
+
         # Define an empty dataset
         ds_bands = xarray.Dataset()
         for j, band in enumerate(sorted_bands):
@@ -318,19 +505,19 @@ class AcuChunk:
 
         return ds_bands
 
-    def octaves_levels(self, fraction=1, db=True, band=None):
+    def octaves_levels(
+        self, fraction: int = 1, db: bool = True, band: list or tuple = None
+    ) -> xarray.DataArray:
         """
         Return the octave levels
-        Parameters
-        ----------
-        fraction: int
-            Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
-        db: boolean
-            Set to True if the result should be in decibels
 
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
+        Args:
+            fraction: Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
+            db: Set to True if the result should be in decibels
+            band: [min_freq, max_freq]
+
+        Returns:
+            xarray DataArray with multiindex columns with levels method and band. The method is '3-oct'
 
         """
         downsample = True
@@ -339,7 +526,7 @@ class AcuChunk:
             band = [None, self.fs / 2]
 
         # Create an empty dataset
-        signal = self.signal
+        signal = self.signal("upa")
         signal.set_band(band, downsample=downsample)
         fbands, levels = signal.octave_levels(db, fraction)
         da_levels = xarray.DataArray(
@@ -358,35 +545,27 @@ class AcuChunk:
 
     def hybrid_millidecade_bands(
         self,
-        nfft,
-        fft_overlap=0.5,
-        db=True,
-        method="density",
-        band=None,
-        percentiles=None,
-    ):
+        nfft: int,
+        fft_overlap: float = 0.5,
+        db: bool = True,
+        method: str = "density",
+        band: list or tuple = None,
+        percentiles: list or np.array = None,
+    ) -> xarray.Dataset:
         """
 
-        Parameters
-        ----------
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        method: string
-            Can be 'spectrum' or 'density'
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
+        Args:
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            method: Can be 'spectrum' or 'density'
+            band : Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+            percentiles: List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
 
-        Returns
-        -------
-
+        Returns:
+            xarray Dataset with the hybrid millidecade bands in the variable 'millidecade_bands'
         """
 
         if band is None:
@@ -415,13 +594,17 @@ class AcuChunk:
         return spectra_ds
 
     def spectrogram(
-        self, nfft=512, fft_overlap=0.5, scaling="density", db=True, band=None
+        self,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        scaling: str = "density",
+        db=True,
+        band=None,
     ):
         """
         Return the spectrogram of the signal (entire file)
 
-        Parameters
-        ----------
+        Args:
         db : bool
             If set to True the result will be given in db, otherwise in upa^2
         nfft : int
@@ -449,7 +632,7 @@ class AcuChunk:
         if band is None:
             band = [None, self.fs / 2]
 
-        signal = self.signal
+        signal = self.signal("upa")
         signal.set_band(band, downsample=downsample)
         freq, t, sxx = signal.spectrogram(
             nfft=nfft, overlap=fft_overlap, scaling=scaling, db=db
@@ -483,8 +666,7 @@ class AcuChunk:
         Returns Dataframe with 'datetime' as index and a column for each frequency and each
         percentile, and a frequency array
 
-        Parameters
-        ----------
+        Args:
         scaling : string
             Can be set to 'spectrum' or 'density' depending on the desired output
         nfft : int
@@ -507,7 +689,7 @@ class AcuChunk:
             band = [None, self.fs / 2]
 
         spectrum_str = "band_" + scaling
-        signal = self.signal
+        signal = self.signal("upa")
         signal.set_band(band, downsample=downsample)
         fbands, spectra, percentiles_val = signal.spectrum(
             scaling=scaling,
@@ -560,8 +742,7 @@ class AcuChunk:
         """
         Return the spectral probability density.
 
-        Parameters
-        ----------
+        Args:
         h : float
             Histogram bin width (in the correspondent units, upa or db)
         nfft : int
@@ -625,8 +806,7 @@ class AcuChunk:
         """
         Perform non-negative Matrix Factorization to separate sources
 
-        Parameters
-        ----------
+        Args:
         window_time: float
             window time to consider in seconds
         n_sources : int
@@ -668,8 +848,7 @@ class AcuChunk:
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
-        Parameters
-        ----------
+        Args:
         scaling : str
             'density' or 'spectrum'
         db : boolean
@@ -691,8 +870,7 @@ class AcuChunk:
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
-        Parameters
-        ----------
+        Args:
         scaling : str
             'density' or 'spectrum'
         db : boolean
@@ -712,8 +890,7 @@ class AcuChunk:
         """
         Return the spectrogram of the signal (entire file)
 
-        Parameters
-        ----------
+        Args:
         db : boolean
             If set to True the result will be given in db. Otherwise in upa^2/Hz
         log : boolean
@@ -749,8 +926,7 @@ class AcuChunk:
         """
         Plot the SPD graph of the bin
 
-        Parameters
-        ----------
+        Args:
         db : boolean
             If set to True the result will be given in db. Otherwise, in upa^2/Hz
         log : boolean
@@ -761,8 +937,3 @@ class AcuChunk:
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, log=log, save_path=save_path)
-
-    def update_freq_cal(self, ds, data_var, **kwargs):
-        return utils.update_freq_cal(
-            hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs
-        )

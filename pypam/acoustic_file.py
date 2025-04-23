@@ -23,7 +23,7 @@ plt.rcParams.update({"pcolor.shading": "auto"})
 sns.set_theme()
 
 
-class AcuFile:
+class AcuFile(acoustic_chunk.GenericAcuFile):
     """
     Data recorded in a wav file.
     """
@@ -58,17 +58,14 @@ class AcuFile:
             (and hydrophone object's metadata updated)
             dc_subtract: Set to True to subtract the dc noise (root mean squared value
         """
-        # Save hydrophone model
-        self.hydrophone = hydrophone
-
-        # Get the date from the name
-        file_name = utils.parse_file_name(sfile)
-        self.date = utils.get_file_datetime(file_name, hydrophone)
-
-        # Signal
-        self.file_path = sfile
-        self.file = sf.SoundFile(self.file_path, "r")
-        self.fs = self.file.samplerate
+        super().__init__(
+            sfile=sfile,
+            hydrophone=hydrophone,
+            p_ref=p_ref,
+            timezone=timezone,
+            channel=channel,
+            dc_subtract=dc_subtract,
+        )
 
         # Check if next file is continuous
         self.date_end = self.date + datetime.timedelta(seconds=self.total_time())
@@ -80,22 +77,6 @@ class AcuFile:
             if (next_date - self.date_end) < datetime.timedelta(seconds=1):
                 self.file_path_next = sfile_next
                 self.file_next = sf.SoundFile(self.file_path_next, "r")
-
-        # Reference pressure in upa
-        self.p_ref = p_ref
-
-        # Work on local time or UTC time
-        self.timezone = timezone
-
-        # datetime will always be in UTC
-        self.datetime_timezone = "UTC"
-
-        # Select channel
-        self.channel = channel
-
-        # Set an empty wav array
-        self.wav = None
-        self.time = None
 
         if gridded and calibration is not None:
             raise AttributeError(
@@ -120,24 +101,8 @@ class AcuFile:
             else:
                 self._start_frame = int(calibration * self.fs)
 
-        self.dc_subtract = dc_subtract
-
         # Start to count chunk id's
         self.chunk_id_start = chunk_id_start
-
-    def __getattr__(self, name: str):
-        """
-        Specific methods to make it easier to access attributes
-        """
-        if name == "signal":
-            return self.signal("upa")
-        elif name == "time":
-            if self.__dict__[name] is None:
-                return self._time_array(binsize=1 / self.fs)[0]
-            else:
-                return self.__dict__[name]
-        else:
-            return self.__dict__[name]
 
     def _bins(self, binsize: float = None, bin_overlap: float = 0) -> tuple:
         """
@@ -173,7 +138,7 @@ class AcuFile:
         for i in np.arange(n_blocks):
             time_bin = time_array[i]
             start_sample = i * (blocksize - noverlap) + self._start_frame
-            if i == n_blocks - 1:
+            if i == (n_blocks - 1):
                 if is_there_next:
                     end_sample = blocksize - (self.file.frames - start_sample)
                     file_end = self.file_path_next
@@ -212,15 +177,6 @@ class AcuFile:
             )
         return n_blocks
 
-    def samples(self, bintime: float):
-        """
-        Return the samples according to the fs
-
-        Args:
-            bintime: Seconds of bintime desired to convert2324.sh to samples
-        """
-        return int(bintime * self.fs)
-
     def set_calibration_time(self, calibration_time: float):
         """
         Set a calibration time in seconds. This time will be ignored in the processing
@@ -230,49 +186,6 @@ class AcuFile:
             Seconds to ignore at the beginning of the file
         """
         self._start_frame = int(calibration_time * self.fs)
-
-    def instrument(self):
-        """
-        Instrument will be the name of the hydrophone
-        """
-        return self.hydrophone.name
-
-    def total_time(self):
-        """
-        Return the total time in seconds of the file
-        """
-        return self.samples2time(self.file.frames)
-
-    def samples2time(self, samples: int):
-        """
-        Return the samples according to the fs
-
-        Args:
-            samples: Number of samples to convert to seconds
-        """
-        return float(samples) / self.fs
-
-    def is_in_period(self, period: list or tuple):
-        """
-        Return True if the WHOLE file is included in the specified period
-
-        Args:
-            period: list or a tuple with (start, end). Values have to be a datetime object
-        """
-        if period is None:
-            return True
-        else:
-            return (self.date >= period[0]) & (self.date <= period[1])
-
-    def contains_date(self, date: datetime.datetime):
-        """
-        Return True if data is included in the file
-
-        Args:
-            date: Datetime to check
-        """
-        end = self.date + datetime.timedelta(seconds=self.file.frames / self.fs)
-        return (self.date < date) & (end > date)
 
     def split(self, date: datetime.date):
         """
@@ -302,186 +215,6 @@ class AcuFile:
 
         return self.file_path, new_file_path
 
-    def freq_resolution_window(self, freq_resolution: int) -> int:
-        """
-        Given the frequency resolution, window length needed to obtain it
-        Returns window length in samples
-
-        Args:
-        freq_resolution: Must be a power of 2, in Hz
-        """
-        n = np.log2(self.fs / freq_resolution)
-        nfft = 2**n
-        if nfft > self.file.frames:
-            raise Exception(
-                "This is not achievable with this sampling rate, "
-                "it must be downsampled!"
-            )
-        return nfft
-
-    def signal(self, units: str = "wav") -> np.array:
-        """
-        Returns the signal in the specified units
-
-        Args:
-            units: Units in which to return the signal. Can be 'wav', 'db', 'upa', 'Pa' or 'acc'.
-        """
-        # First time, read the file and store it to not read it over and over
-        if self.wav is None:
-            self.wav = self.file.read()
-            self.file.seek(0)
-        if units == "wav":
-            signal = self.wav
-        elif units == "db":
-            signal = self.wav2db()
-        elif units == "upa":
-            signal = self.wav2upa()
-        elif units == "Pa":
-            signal = self.wav2upa() / 1e6
-        elif units == "acc":
-            signal = self.wav2acc()
-        else:
-            raise Exception("%s is not implemented as an outcome unit" % units)
-
-        return signal
-
-    def _time_array(self, binsize: float = None, bin_overlap: float = 0) -> tuple:
-        """
-        Return a time array for each point of the signal
-        """
-        if binsize is None:
-            total_block = self.file.frames - self._start_frame
-        else:
-            total_block = self.samples(binsize)
-        blocksize = total_block - int(total_block) * bin_overlap
-        blocks_samples = np.arange(
-            start=self._start_frame, stop=self.file.frames - 1, step=blocksize
-        )
-        end_samples = blocks_samples + blocksize
-        incr = pd.to_timedelta(blocks_samples / self.fs, unit="seconds")
-        self.time = self.date + incr
-        if self.timezone != "UTC":
-            self.time = (
-                pd.to_datetime(self.time)
-                .tz_localize(self.timezone)
-                .tz_convert("UTC")
-                .tz_convert(None)
-            )
-        return self.time, blocks_samples.astype(int), end_samples.astype(int)
-
-    def timestamp_da(
-        self, binsize: float = None, bin_overlap: float = 0
-    ) -> xarray.Dataset:
-        time_array, start_samples, end_samples = self._time_array(binsize, bin_overlap)
-        ds = xarray.Dataset(
-            coords={
-                "id": np.arange(len(time_array)),
-                "datetime": ("id", time_array.values),
-                "start_sample": ("id", start_samples),
-                "end_sample": ("id", end_samples),
-            }
-        )
-        return ds
-
-    def wav2upa(self, wav: np.array = None) -> np.array:
-        """
-        Compute the pressure from the wav signal
-
-        Args:
-            wav: Signal in wav (-1 to 1)
-        """
-        # Read if no signal is passed
-        if wav is None:
-            wav = self.signal("wav")
-        # First convert it to Volts and then to Pascals according to sensitivity
-        mv = 10 ** (self.hydrophone.sensitivity / 20.0) * self.p_ref
-        ma = 10 ** (self.hydrophone.preamp_gain / 20.0) * self.p_ref
-        gain_upa = (self.hydrophone.Vpp / 2.0) / (mv * ma)
-
-        return utils.set_gain(wave=wav, gain=gain_upa)
-
-    def wav2db(self, wav: np.array = None) -> np.array:
-        """
-        Compute the db from the wav signal. Consider the hydrophone sensitivity in db.
-        If wav is None, it will read the whole file.
-
-        Args:
-            wav: Signal in wav (-1 to 1)
-        """
-        # Read if no signal is passed
-        if wav is None:
-            wav = self.signal("wav")
-        upa = self.wav2upa(wav)
-        return utils.to_db(wave=upa, ref=self.p_ref, square=True)
-
-    def db2upa(self, db: np.array = None) -> np.array:
-        """
-        Compute the upa from the db signals. If db is None, it will read the whole file.
-
-        Args:
-            db: Signal in db
-        """
-        if db is None:
-            db = self.signal("db")
-        # return np.power(10, db / 20.0 - np.log10(self.p_ref))
-        return utils.to_mag(wave=db, ref=self.p_ref)
-
-    def upa2db(self, upa: np.array = None) -> np.array:
-        """
-        Compute the db from the upa signal. If upa is None, it will read the whole file.
-
-        Args:
-            upa: Signal in upa
-        """
-        if upa is None:
-            upa = self.signal("upa")
-        return utils.to_db(upa, ref=self.p_ref, square=True)
-
-    def wav2acc(self, wav: np.array = None) -> np.array:
-        """
-        Convert the wav file to acceleration. If wav is None, it will read the whole file.
-
-        Args:
-            wav: Signal in wav (-1 to 1)
-        """
-        if wav is None:
-            wav = self.file.read()
-        mv = 10 ** (self.hydrophone.mems_sensitivity / 20.0)
-        return wav / mv
-
-    def _get_metadata_attrs(self):
-        metadata_keys = [
-            "file_path",
-            "timezone",
-            "datetime_timezone",
-            "p_ref",
-            "channel",
-            "_start_frame",
-            "calibration",
-            "dc_subtract",
-            "fs",
-            "hydrophone.name",
-            "hydrophone.model",
-            "hydrophone.sensitivity",
-            "hydrophone.preamp_gain",
-            "hydrophone.Vpp",
-        ]
-
-        metadata_attrs = {}
-        for k in metadata_keys:
-            d = self
-            for sub_k in k.split("."):
-                d = d.__dict__[sub_k]
-            if isinstance(d, pathlib.Path):
-                d = str(d)
-            if isinstance(d, bool):
-                d = int(d)
-            if d is None:
-                d = 0
-            metadata_attrs[k.replace(".", "_")] = d
-
-        return metadata_attrs
-
     def _apply_multiple(
         self,
         method_list: list,
@@ -505,31 +238,11 @@ class AcuFile:
         Returns:
             DataFrame with time as index and a multiindex column with band, method as levels.
         """
-        # TODO decide if it is downsampled or not
-        downsample = False
-
-        # Bands selected to study
-        if band_list is None:
-            band_list = [[0, self.fs / 2]]
-
-        # Sort bands to diminish downsampling efforts!
-        sorted_bands = []
-        for band in band_list:
-            if len(sorted_bands) == 0:
-                sorted_bands = [band]
-            else:
-                if band[1] >= sorted_bands[-1][1]:
-                    sorted_bands = [band] + sorted_bands
-                else:
-                    sorted_bands = sorted_bands + [band]
-        if "db" in kwargs.keys():
-            if not kwargs["db"]:
-                log = False
         # Define an empty dataset
         ds = xarray.Dataset()
         for i, chunk in self._bins(binsize, bin_overlap=bin_overlap):
             ds_bands = chunk.apply_multiple(
-                method_list=method_list, band_list=None, **kwargs
+                method_list=method_list, band_list=band_list, **kwargs
             )
             if i == 0:
                 ds = ds_bands
@@ -880,7 +593,6 @@ class AcuFile:
         Returns:
              xarray Dataset
         """
-        downsample = True
         if percentiles is None:
             percentiles = []
         if band is None:
@@ -1126,8 +838,3 @@ class AcuFile:
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, log=log, save_path=save_path)
-
-    def update_freq_cal(self, ds: xarray.Dataset, data_var: str, **kwargs):
-        return utils.update_freq_cal(
-            hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs
-        )

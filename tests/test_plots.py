@@ -35,7 +35,7 @@ soundtrap = pyhy.soundtrap.SoundTrap(
 nfft = 8000
 binsize = 60.0
 dc_subtract = True
-include_dirs = True
+include_dirs = False
 zipped_files = False
 
 

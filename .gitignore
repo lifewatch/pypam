@@ -43,6 +43,7 @@ docs/_autosummary
 docs/source/_auto_examples/
 docs/source/_auto_examples/**
 docs/source/generated/
+docs/generated/gallery
 
 
 # Jupyter Notebook

@@ -42,10 +42,7 @@ class ASA:
         nfft: int = 1.0,
         fft_overlap: float = 0.5,
         period: tuple or list = None,
-        timezone: datetime.tzinfo
-        or pytz.tzinfo.BaseTZInfo
-        or dateutil.tz.tz.tzfile
-        or str = "UTC",
+        timezone: datetime.tzinfo or str = "UTC",
         channel: int = 0,
         calibration: float or int or None = None,
         dc_subtract: bool = False,
