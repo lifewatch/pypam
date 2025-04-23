@@ -7,8 +7,6 @@ The module ``utils`` is an ensemble of functions to re-process some of the outpu
 
 To merge or re-index output
 ---------------------------
-.. autosummary::
-    :toctree: generated/
 
     reindexing_datetime
     join_all_ds_output_station
@@ -20,9 +18,6 @@ To merge or re-index output
 
 To join frequency bands
 -----------------------
-.. autosummary::
-    :toctree: generated/
-
     get_bands_limits
     get_hybrid_millidecade_limits
     spectra_ds_to_bands
@@ -30,27 +25,21 @@ To join frequency bands
 
 SPD
 ---
-.. autosummary::
-    :toctree: generated/
-
     compute_spd
 
 """
-
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
+import datetime
+import pathlib
+from functools import partial
 
 import numba as nb
 import numpy as np
+import pandas as pd
 import scipy.signal as sig
 import xarray
-import pandas as pd
-import pathlib
 from tqdm import tqdm
-from functools import partial
+
+import pyhydrophone as pyhy
 
 try:
     import dask
@@ -70,14 +59,10 @@ def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
     """
     Return spd from the spectrogram
 
-    Parameters
-    ----------
-    sxx : numpy matrix
-        Spectrogram
-    h : float
-        Histogram bin width
-    bin_edges : numpy array
-        Limits of the histogram bins
+    Args:
+        sxx: Spectrogram
+        h: Histogram bin width
+        bin_edges: limits of the histogram bins
     """
     spd = np.zeros((sxx.shape[0], bin_edges.size - 1), dtype=np.float64)
     for i in nb.prange(sxx.shape[0]):
@@ -87,67 +72,72 @@ def sxx2spd(sxx: np.ndarray, h: float, bin_edges: np.ndarray):
 
 
 @nb.njit
-def rms(signal):
+def rms(signal: np.array) -> float:
     """
     Return the rms value of the signal
 
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the rms value
+    Args:
+        signal: Signal to compute the rms value
+
+    Returns:
+        RMS value of the signal
     """
     return np.sqrt(np.mean(signal**2))
 
 
 @nb.njit
-def dynamic_range(signal):
+def dynamic_range(signal: np.array) -> float:
     """
     Return the dynamic range of the signal
 
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the dynamic range
+    Args:
+        signal: Signal to compute the dynamic range
+
+    Returns:
+        dynamic range value of the signal
     """
     return np.max(signal) - np.min(signal)
 
 
 @nb.njit
-def sel(signal, fs):
+def sel(signal: np.array, fs: int) -> float:
     """
     Return the Sound Exposure Level
 
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the SEL
-    fs : int
-        Sampling frequency
+    Args:
+        signal: Signal to compute the SEL
+        fs: Sampling frequency
+
+    Returns:
+        SEL
     """
     return np.sum(signal**2) / fs
 
 
 @nb.njit
-def peak(signal):
+def peak(signal: np.array) -> float:
     """
     Return the peak value
 
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the peak value
+    Args:
+        signal: Signal to compute the peak value
+
+    Returns:
+        Peak value
     """
     return np.max(np.abs(signal))
 
 
 @nb.njit
-def kurtosis(signal):
+def kurtosis(signal: np.array):
     """
     Return the kurtosis of the signal according to Muller et al. 2020
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the kurtosis
+
+    Args:
+        signal: Signal to compute the kurtosis
+
+    Returns:
+        Kurtosis value
     """
     n = len(signal)
     var = (signal - np.mean(signal)) ** 2
@@ -157,16 +147,17 @@ def kurtosis(signal):
 
 
 @nb.njit
-def energy_window(signal, percentage):
+def energy_window(signal: np.array, percentage: float) -> list:
     """
     Return sample window [start, end] which contains a given percentage of the
     signals total energy. See Madsen 2005 for more details.
-    Parameters
-    ----------
-    signal : numpy array
-        Signal to compute the sel
-    percentage : float between [0,1]
-        percentage of total energy contained in output window
+
+    Args:
+        signal: Signal to compute the sel
+        percentage : percentage of total energy contained in output window [0 to 1]
+
+    Returns:
+        Sample window [start, end] which contains a given percentage of the signals total energy
     """
     # calculate beginning and ending percentage window (e.g., for x=90%, window = [5%,95%])
     percent_start = 0.50 - percentage / 2
@@ -185,72 +176,78 @@ def energy_window(signal, percentage):
 
 
 @nb.njit
-def set_gain(wave, gain):
+def set_gain(wave: np.array, gain: float) -> np.array:
     """
     Apply the gain in the same magnitude
 
-    Parameters
-    ----------
-    wave : numpy array
-        Signal in upa
-    gain :
-        Gain to apply, in uPa
+    Args:
+        wave: Signal in upa
+        gain: Gain to apply, in uPa
+
+    Returns:
+        signal with the applied gain
     """
     return wave * gain
 
 
 @nb.njit
-def set_gain_db(wave, gain):
+def set_gain_db(wave: np.array, gain: float) -> np.array:
     """
     Apply the gain in db
 
-    Parameters
-    ----------
-    wave : numpy array
-        Signal in db
-    gain :
-        Gain to apply, in db
+    Args:
+        wave: Signal in db
+        gain: Gain to apply, in db
+
+    Returns:
+        signal with the applied gain, in db
     """
     return wave + gain
 
 
 @nb.njit
-def set_gain_upa_db(wave, gain):
+def set_gain_upa_db(wave: np.array, gain: float) -> np.array:
     """
     Apply the gain in db to the signal in upa
+
+    Args:
+        wave: Signal in upla
+        gain: Gain to apply, in db
+
+    Returns:
+        signal with the applied gain, in upa
     """
     gain = np.pow(10, gain / 20.0)
     return gain(wave, gain)
 
 
 @nb.njit
-def to_mag(wave, ref):
+def to_mag(wave: np.array, ref: float) -> np.array:
     """
     Compute the upa from the db signals
 
-    Parameters
-    ----------
-    wave : numpy array
-        Signal in db
-    ref : float
-        Reference pressure
+    Args:
+        wave: Signal in db
+        ref  Reference pressure
+
+    Returns:
+        signal in upa
     """
     return np.power(10, wave / 20.0 - np.log10(ref))
 
 
 @nb.njit
-def to_db(wave, ref=1.0, square=False):
+def to_db(wave: np.array, ref: float = 1.0, square: bool = False) -> np.array:
     """
     Compute the db from the upa signal
 
-    Parameters
-    ----------
-    wave : numpy array
-        Signal in upa
-    ref : float
-        Reference pressure
-    square : boolean
-        Set to True if the signal has to be squared
+    Args:
+        wave: Signal in upa
+        ref: Reference pressure
+        square: Set to True if the signal has to be squared
+
+    Returns:
+        signal in db
     """
     if square:
         db = 10 * np.log10(wave**2 / ref**2)
@@ -260,7 +257,18 @@ def to_db(wave, ref=1.0, square=False):
 
 
 # @nb.jit
-def oct_fbands(min_freq, max_freq, fraction):
+def oct_fbands(min_freq: int, max_freq: int, fraction: int) -> tuple:
+    """
+
+    Args:
+        min_freq: minimum frequency to compute the octave bands
+        max_freq: maximum frequency to compute the octave bands
+        fraction: fraction of the bands (3 for 1/3 octave bands)
+
+    Returns:
+        bands: band limits
+        f: band centers
+    """
     min_band_n = 0
     max_band_n = 0
     while 1000 * 2 ** (min_band_n / fraction) > min_freq:
@@ -269,28 +277,26 @@ def oct_fbands(min_freq, max_freq, fraction):
         max_band_n += 1
     bands = np.arange(min_band_n, max_band_n)
 
-    # construct requency arrays
+    # construct frequency arrays
     f = 1000 * (2 ** (bands / fraction))
 
     return bands, f
 
 
-def octdsgn(fc, fs, fraction=1, n=2):
+def octdsgn(fc: float, fs: float, fraction: int = 1, n: int = 2) -> tuple:
     """
     Design of an octave band filter with center frequency fc for sampling frequency fs.
     Default value for N is 3. For meaningful results, fc should be in range fs/200 < fc < fs/5.
 
-    Parameters
-    ----------
-    fc : float
-      Center frequency, in Hz
-    fs : float
-      Sample frequency at least 2.3x the center frequency of the highest octave band, in Hz
-    fraction : int
-        fraction of the octave band (3 for 1/3-octave bands and 1 for octave bands)
-    n : int
-      Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
-      Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
+    Args:
+        fc: Center frequency, in Hz
+        fs: Sample frequency at least 2.3x the center frequency of the highest octave band, in Hz
+        fraction: fraction of the octave band (3 for 1/3-octave bands and 1 for octave bands)
+        n: Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
+          Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
+
+    Returns:
+        sos filter
     """
     if fc > 0.88 * fs / 2:
         raise Exception("Design not possible - check frequencies")
@@ -307,32 +313,23 @@ def octdsgn(fc, fs, fraction=1, n=2):
     return sos
 
 
-def octbankdsgn(fs, bands, fraction=1, n=2):
+def octbankdsgn(fs: int, bands: np.array, fraction: int = 1, n: int = 2) -> tuple:
     """
     Construction of an octave band filterbank.
 
-    Parameters
-    ----------
-    fs : float
-      Sample frequency, at least 2.3x the center frequency of the highest 1/3 octave band, in Hz
-    bands : numpy array
-      row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
-      e.g. [-16:11] gives all bands with center frequency between 25 Hz and 12.5 kHz
-    fraction : int
-        1 or 3 to get 1-octave or 1/3-octave bands
-    n : int
-      Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
-      Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
+    Args:
+        fs: Sample frequency, at least 2.3x the center frequency of the highest 1/3 octave band, in Hz
+        bands : row vector with the desired band numbers (0 = band with center frequency of 1 kHz)
+          e.g. [-16:11] gives all bands with center frequency between 25 Hz and 12.5 kHz
+        fraction: 1 or 3 to get 1-octave or 1/3-octave bands
+        n: Order specification of the filters, N = 2 gives 4th order, N = 3 gives 6th order
+          Higher N can give rise to numerical instability problems, so only 2 or 3 should be used
 
-    Returns
-    -------
-    b, a : numpy matrix
-      Matrices with filter coefficients, one row per filter.
-    d : numpy array
-      Downsampling factors for each filter 1 means no downsampling, 2 means
-      downsampling with factor 2, 3 means downsampling with factor 4 and so on.
-    fsnew : numpy array
-      New sample frequencies.
+    Returns:
+        b, a : Matrices with filter coefficients, one row per filter.
+        d : Downsampling factors for each filter 1 means no downsampling, 2 means downsampling with factor 2,
+            3 means downsampling with factor 4 and so on.
+        fsnew : New sample frequencies.
     """
     uneven = fraction % 2 != 0
     fc = f_ref * G ** ((2.0 * bands + 1.0) / (2.0 * fraction)) * np.logical_not(
@@ -358,21 +355,27 @@ def octbankdsgn(fs, bands, fraction=1, n=2):
     return filterbank, fsnew, d
 
 
-def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, fs=None):
+def get_bands_limits(
+    band: list or tuple,
+    nfft: int,
+    base: int,
+    bands_per_division: int,
+    hybrid_mode: bool,
+    fs: int = None,
+) -> tuple:
     """
+    Get the limits of the frequency bands between min and max frequency bands specified in band.
+    Args:
+        band: tuple of [min, max] frequency in Hz
+        nfft: number of FFT to use
+        base: 2 or 10, for logarithmic base
+        bands_per_division: number of bands per division
+        hybrid_mode: set to True to get a hybrid mode (bands smaller than 1 Hz are not split)
+        fs: if not provided, it will be assumed to be double the highest frequency band limit
 
-    Parameters
-    ----------
-    band
-    nfft
-    base
-    bands_per_division
-    hybrid_mode
-    fs: if not provided, it will be assumed to be double the highest frequency band limit
-
-    Returns
-    -------
-
+    Returns:
+        bands_limits: limits of the bands
+        bands_c: bands centers
     """
     first_bin_centre = 0
     low_side_multiplier = base ** (-1 / (2 * bands_per_division))
@@ -441,7 +444,21 @@ def get_bands_limits(band, nfft, base, bands_per_division, hybrid_mode, fs=None)
     return bands_limits, bands_c
 
 
-def get_center_freq(base, bands_per_division, n, first_out_band_centre_freq):
+def get_center_freq(
+    base: int, bands_per_division: int, n: int, first_out_band_centre_freq: float
+):
+    """
+    Get the center frequency
+
+    Args:
+        base: 2 or 10, for logarithmic base
+        bands_per_division: number of bands per division
+        n:
+        first_out_band_centre_freq:
+
+    Returns:
+
+    """
     if (bands_per_division == 10) or ((bands_per_division % 2) == 1):
         center_freq = first_out_band_centre_freq * base ** (
             (n - 1) / bands_per_division
@@ -453,17 +470,15 @@ def get_center_freq(base, bands_per_division, n, first_out_band_centre_freq):
     return center_freq
 
 
-def get_hybrid_millidecade_limits(band, nfft, fs=None):
+def get_hybrid_millidecade_limits(band: list or tuple, nfft: int, fs: int = None):
     """
 
-    Parameters
-    ----------
-    band: band to get the limits of [min_freq, max_freq]
-    nfft: number of fft
-    fs: sampling rate
+    Args:
+        band: band to get the limits of [min_freq, max_freq]
+        nfft: number of fft
+        fs: sampling rate
 
-    Returns
-    -------
+    Returns:
 
     """
     if fs is None:
@@ -473,17 +488,15 @@ def get_hybrid_millidecade_limits(band, nfft, fs=None):
     )
 
 
-def get_decidecade_limits(band, nfft, fs=None):
+def get_decidecade_limits(band: list or tuple, nfft: int, fs: int = None):
     """
 
-    Parameters
-    ----------
-    band: band to get the limits of [min_freq, max_freq]
-    nfft: number of fft
-    fs: sampling rate
+    Args:
+        band: band to get the limits of [min_freq, max_freq]
+        nfft: number of fft
+        fs: sampling rate
 
-    Returns
-    -------
+    Returns:
 
     """
     if fs is None:
@@ -494,33 +507,30 @@ def get_decidecade_limits(band, nfft, fs=None):
 
 
 def spectra_ds_to_bands(
-    psd, bands_limits, bands_c, fft_bin_width, freq_coord="frequency", db=True
-):
+    psd: np.array,
+    bands_limits: list or np.array,
+    bands_c: list or np.array,
+    fft_bin_width: float,
+    freq_coord: str = "frequency",
+    db: bool = True,
+) -> xarray.DataArray:
     """
     Group the psd according to the limits band_limits given. If a limit is not aligned with the limits in the psd
     frequency axis then that psd frequency bin is divided in proportion to each of the adjacent bands. For more details
     see publication Ocean Sound Analysis Software for Making Ambient Noise Trends Accessible (MANTA)
     (https://doi.org/10.3389/fmars.2021.703650)
 
-    Parameters
-    ----------
-    psd: xarray DataArray
-        Output of pypam spectrum function. It should not be directly the dataset
-    bands_limits: list or array
-        Limits of the desired bands
-    bands_c: list or array
-        Centre of the bands (used only of the output frequency axis naming)
-    fft_bin_width: float
-        fft bin width in seconds
-    freq_coord : str
-        Name of the frequency coordinate
-    db: bool
-        Set to True to return db instead of linear units
+    Args:
+        psd: Output of pypam spectrum function. It should not be directly the dataset
+        bands_limits: Limits of the desired bands
+        bands_c: Centre of the bands (used only of the output frequency axis naming)
+        fft_bin_width: fft bin width in seconds
+        freq_coord : Name of the frequency coordinate
+        db: Set to True to return db instead of linear units
 
 
-    Returns
-    -------
-    xarray DataArray with frequency_bins instead of frequency as a dimension.
+    Returns:
+        xarray DataArray with frequency_bins instead of frequency as a dimension.
 
     """
     fft_freq_indices = (
@@ -593,19 +603,16 @@ def spectra_ds_to_bands(
     return psd_bands
 
 
-def pcm2float(s, dtype="float64"):
+def pcm2float(s: np.array, dtype: str = "float64") -> np.array:
     """
     Convert PCM signal to floating point with a range from -1 to 1.
     Use dtype='float32' for single precision.
-    Parameters
-    ----------
-    s : array_like
-        Input array, must have integral type.
-    dtype : data type, optional
-        Desired (floating point) data type.
-    Returns
-    -------
-    numpy.ndarray
+
+    Args:
+        s: Input array, must have integral type.
+        dtype: Desired (floating point) data type.
+
+    Returns:
         Normalized floating point data.
     """
     s = np.asarray(s)
@@ -621,23 +628,18 @@ def pcm2float(s, dtype="float64"):
     return (s.astype(dtype) - offset) / abs_max
 
 
-def merge_ds(ds, new_ds, attrs_to_vars):
+def merge_ds(ds: xarray.Dataset, new_ds: xarray.Dataset, attrs_to_vars: list):
     """
     Merges de new_ds into the ds, the attributes that are file depending are converted to another coordinate
     depending on datetime.
 
-    Parameters
-    ----------
-    ds: xarray Dataset
-        Already existing dataset
-    new_ds : xarray Dataset
-        New dataset to merge
-    attrs_to_vars: list or None
-        List of all the attributes to convert to coordinates (not dimensions)
+    Args:
+        ds: Already existing dataset
+        new_ds : New dataset to merge
+        attrs_to_vars: List of all the attributes to convert to coordinates (not dimensions)
 
-    Returns
-    -------
-    ds : merged dataset
+    Returns:
+        ds : merged dataset
     """
     new_coords = {}
     for attr in attrs_to_vars:
@@ -660,13 +662,26 @@ def merge_ds(ds, new_ds, attrs_to_vars):
 
 
 def compute_spd(
-    psd_evolution,
-    data_var="band_density",
-    h=1.0,
-    percentiles=None,
-    max_val=None,
-    min_val=None,
-):
+    psd_evolution: xarray.Dataset,
+    data_var: str = "band_density",
+    h: float = 1.0,
+    percentiles: list or np.array = None,
+    max_val: float = None,
+    min_val: float = None,
+) -> xarray.Dataset:
+    """
+
+    Args:
+        psd_evolution: xarray dataset with the psd evolution
+        data_var: name of the data var which contains the psd
+        h: bin for the histogram
+        percentiles: list of the percentiles to compute
+        max_val: maximum value for the histogram of the spd
+        min_val: minimum value for the histogram of the spd
+
+    Returns:
+        Dataset with spd and value_percentiles as data vars
+    """
     pxx = psd_evolution[data_var].to_numpy().T
     freq_axis = psd_evolution[data_var].dims[1]
     if percentiles is None:
@@ -704,21 +719,19 @@ def compute_spd(
     return spd_ds
 
 
-def _swap_dimensions_if_not_dim(ds, datetime_coord):
+def _swap_dimensions_if_not_dim(
+    ds: xarray.Dataset, datetime_coord: str
+) -> xarray.Dataset:
     """
     Swap the coordinates between ds and datetime_coord
 
-    Parameters
-    ----------
-    ds: xarray.Dataset
-        Dataset to swap dimensions of
-    datetime_coord: str
-        Name of the datetime dimension
+    Args:
+        ds: Dataset to swap dimensions of
+        datetime_coord: Name of the datetime dimension
 
 
-    Returns
-    -------
-    xarray.Dataset
+    Returns:
+        xarray.Dataset with swapped coordinates
     """
     if datetime_coord not in ds.dims:
         ds = ds.swap_dims({"id": datetime_coord})
@@ -726,27 +739,24 @@ def _swap_dimensions_if_not_dim(ds, datetime_coord):
 
 
 def _selection_when_joining(
-    ds,
-    datetime_coord,
-    data_vars=None,
-    time_resample=None,
-    freq_band=None,
-    freq_coord="frequency",
+    ds: xarray.Dataset,
+    datetime_coord: str,
+    data_vars: str or list = None,
+    time_resample: str = None,
+    freq_band: list or tuple = None,
+    freq_coord: str = "frequency",
 ):
     """
 
-    Parameters
-    ----------
-    ds
-    datetime_coord
-    time_resample: None or str
-        String indicating the unit to resample to in time
-    freq_band: None or tuple
-        tuple or list with (min_freq, max_freq) to include
-    freq_coord: str
-        Name of the frequency coordinate
-    Returns
-    -------
+    Args:
+        ds: xarray dataset to perform selection on
+        datetime_coord: name of the datetime dimension
+        time_resample: String indicating the unit to resample to in time
+        freq_band: tuple or list with (min_freq, max_freq) to include
+        freq_coord: Name of the frequency coordinate
+
+    Returns:
+        xarray Dataset only with the selected frequency band and variables
 
     """
     ds = _swap_dimensions_if_not_dim(ds, datetime_coord)
@@ -763,47 +773,35 @@ def _selection_when_joining(
 
 
 def join_all_ds_output_deployment(
-    deployment_path,
-    data_vars=None,
-    datetime_coord="datetime",
-    join_only_if_contains=None,
-    load=False,
-    parallel=True,
-    time_resample=None,
-    freq_band=None,
-    freq_coord="frequency",
+    deployment_path: str or pathlib.Path,
+    data_vars: list = None,
+    datetime_coord: str = "datetime",
+    join_only_if_contains: str = None,
+    load: bool = False,
+    parallel: bool = True,
+    time_resample: str = None,
+    freq_band: list or tuple = None,
+    freq_coord: str = "frequency",
     **kwargs,
-):
+) -> xarray.Dataset:
     """
     Return a DataArray by joining the data you selected from all the output ds for one deployment
 
-    Parameters
-    ----------
-    deployment_path : str or Path
-        Where all the netCDF files of a deployment are stored
-    data_vars : list
-        Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
-    datetime_coord : str
-        Name of the time coordinate to join the datasets along
-    load : boolean
-        Set to True to load the entire dataset in memory. Otherwise it will return a dask xarray
-    join_only_if_contains: str
-        String which needs to be contained in the path name to be joined. If set to None (default), all the files are
-        joined
-    time_resample: None or str
-        String indicating the unit to resample to in time
-    freq_band: None or tuple
-        tuple or list with (min_freq, max_freq) to include
-    freq_coord: str
-        Name of the frequency coordinate
-    parallel: bool
-        Set to True to speed up loading
+    Args:
+    deployment_path: Where all the netCDF files of a deployment are stored
+    data_vars: Name of the data that you want to keep for joining ds. If None, all the data vars will be joined
+    datetime_coord: Name of the time coordinate to join the datasets along
+    load: Set to True to load the entire dataset in memory. Otherwise it will return a dask xarray
+    join_only_if_contains: String which needs to be contained in the path name to be joined. If set to None (default),
+        all the files are joined
+    time_resample: String indicating the unit to resample to in time
+    freq_band: tuple or list with (min_freq, max_freq) to include
+    freq_coord: Name of the frequency coordinate
+    parallel: Set to True to speed up loading
     **kwargs: any args which can be passed to open_mfdataset
 
-    Returns
-    -------
-    ds_tot : Dataset
-        Data joined of one deployment, if load=False, returns a xarray dask dataset. Otherwise it loads into memory.
+    Returns:
+    ds_tot: Data joined of one deployment, if load=False, returns a xarray dask dataset. Otherwise it loads into memory.
         To load the full dataset into memory, use afterwards ds_tot.load()
     """
     if dask is None:
@@ -842,25 +840,21 @@ def join_all_ds_output_deployment(
     return ds_tot
 
 
-def select_datetime_range(da_sxx, start_datetime, end_datetime):
+def select_datetime_range(
+    da_sxx: xarray.DataArray,
+    start_datetime: datetime.datetime,
+    end_datetime: datetime.datetime,
+) -> tuple:
     """
-    Parameters
-    ----------
-    da_sxx : xarray DataArray
-        Data in which we want to select only a certain range of datetime
-    start_datetime : datetime64
-        Lower limit of datetime that you want to plot
-    end_datetime : datetime64
-        Upper limit of datetime that you want to plot
+    Args:
+        da_sxx: Data in which we want to select only a certain range of datetime
+        start_datetime: Lower limit of datetime that you want to plot
+        end_datetime: Upper limit of datetime that you want to plot
 
-    Returns
-    -------
-    da_sxx : xarray DataArray
-        Data with the new limits
-    old_start_datetime : datetime64
-        Old lower datetime limit of the data
-    old_end_datetime : datetime64
-        Old upper datetime limit of the data
+    Returns:
+        da_sxx: Data with the new limits
+        old_start_datetime: Old lower datetime limit of the data
+        old_end_datetime: Old upper datetime limit of the data
     """
 
     old_start_datetime = np.asarray(da_sxx.datetime)[0]
@@ -872,24 +866,23 @@ def select_datetime_range(da_sxx, start_datetime, end_datetime):
     return da_sxx, old_start_datetime, old_end_datetime
 
 
-def select_frequency_range(ds, min_freq, max_freq, freq_coord="frequency"):
+def select_frequency_range(
+    ds: xarray.Dataset or xarray.DataArray,
+    min_freq: int,
+    max_freq: int,
+    freq_coord: str = "frequency",
+) -> xarray.Dataset or xarray.DataArray:
     """
     Crop the dataset to the specified band between min freq and max freq.
 
-    Parameters
-    ----------
-    ds: Dataset or DataArray
-        Data to crop
-    min_freq: float
-        Minimum frequency in Hz
-    max_freq: float
-        Maximum frequency in Hz
-    freq_coord: string
-        Name of the frequency coordinate
+    Args:
+        ds: Data to crop
+        min_freq: Minimum frequency in Hz
+        max_freq: Maximum frequency in Hz
+        freq_coord: Name of the frequency coordinate
 
-    Returns
-    -------
-    The dataset cropped
+    Returns:
+        The dataset cropped
     """
     ds_cropped = ds.sel(
         frequency=ds[freq_coord][
@@ -899,23 +892,19 @@ def select_frequency_range(ds, min_freq, max_freq, freq_coord="frequency"):
     return ds_cropped
 
 
-def join_all_ds_output_station(directory_path, station, data_var_name):
+def join_all_ds_output_station(
+    directory_path: str or pathlib.Path, station: str, data_var_name: str
+) -> xarray.DataArray:
     """
     Return a DataArray by joining the data you selected from all the output ds for one station
 
-    Parameters
-    ----------
-    directory_path : str or Path
-        Where all the deployments folders are
-    station : str
-        Name of the station to compute the spectrogram
-    data_var_name : str
-        Name of the data that you want to keep for joining ds
+    Args:
+        directory_path:  Where all the deployments folders are
+        station: Name of the station to compute the spectrogram
+        data_var_name: Name of the data that you want to keep for joining ds
 
-    Returns
-    -------
-    da_tot : xarray DataArray
-        Data joined of one deployment
+    Returns:
+        da_tot: Data joined of one deployment
     """
 
     list_path_deployment = list(directory_path.iterdir())
@@ -947,30 +936,26 @@ def join_all_ds_output_station(directory_path, station, data_var_name):
 
 
 def reindexing_datetime(
-    da, first_datetime, last_datetime, freq="10T", tolerance="1D", fill_value=np.nan
-):
+    da: xarray.DataArray,
+    first_datetime: datetime.datetime,
+    last_datetime: datetime.datetime,
+    freq: str = "10T",
+    tolerance: str = "1D",
+    fill_value=np.nan,
+) -> xarray.DataArray:
     """
     Reindex the datetime of your data and fill missing values
 
-    Parameters
-    ----------
-    da : xarray DataArray
-        Data you want to reindex
-    first_datetime : datetime64
-        Lower limit of the new datetime index
-    last_datetime : datetime64
-        Upper limit of the new datetime index
-    freq : str
-        Frequency of values in the new datetime index
-    tolerance : str
-        Maximum distance between original and new datetimes for inexact matches
-    fill_value : scalar
-        Value to use for newly missing values
+    Args:
+        da: Data you want to reindex
+        first_datetime: Lower limit of the new datetime index
+        last_datetime: Upper limit of the new datetime index
+        freq: Frequency of values in the new datetime index
+        tolerance: Maximum distance between original and new datetimes for inexact matches
+        fill_value: Value to use for newly missing values
 
-    Returns
-    -------
-    da_reindex : xarray DataArray
-        Data after reindexing
+    Returns:
+        da_reindex: Data after reindexing
     """
     index = pd.date_range(start=first_datetime, end=last_datetime, freq=freq).round("T")
     da_reindex = da.reindex(
@@ -979,30 +964,27 @@ def reindexing_datetime(
     return da_reindex
 
 
-def freq_band_aggregation(ds, data_var, aggregation_freq_band=None, freq_coord=None):
+def freq_band_aggregation(
+    ds: xarray.Dataset,
+    data_var: str,
+    aggregation_freq_band: list or tuple = None,
+    freq_coord: str = None,
+) -> xarray.Dataset:
     """
     It will compute the median of all the values included in the frequency band specified in 'aggregation_freq_band'.
 
-    Parameters
-    ----------
-    ds : xarray Dataset
-        Dataset to process, has to have datetime as coords, not id
-    data_var : str
-        Name of the data variable to select datetime
-    freq_coord : str
-        Name of the frequency coordinate
-    aggregation_freq_band : None, float or tuple
-        If a float is given, this function compute aggregation for the frequency which is selected
-        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
-        selected
-        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
-        frequency dependence
+    Args:
+        ds: Dataset to process, has to have datetime as coords, not id
+        data_var: Name of the data variable to select datetime
+        freq_coord: Name of the frequency coordinate
+        aggregation_freq_band : If a float is given, this function compute aggregation for the frequency which is selected
+            If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+            selected
+            If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+            frequency dependence
 
-
-    Returns
-    -------
-    ds_new : xarray Dataset
-        Same Dataset but the frequency axi is replaced by the median value
+    Returns:
+        ds_new : Same Dataset but the frequency axi is replaced by the median value
     """
     ds_copy = ds.copy()
     if freq_coord is None:
@@ -1035,7 +1017,21 @@ def freq_band_aggregation(ds, data_var, aggregation_freq_band=None, freq_coord=N
     return ds_copy
 
 
-def update_freq_cal(hydrophone, ds, data_var, **kwargs):
+def update_freq_cal(
+    hydrophone: pyhy.Hydrophone, ds: xarray.Dataset, data_var: str, **kwargs
+) -> xarray.Dataset:
+    """
+    Update the dataset with the difference between flat calibration and frequency-dependent calibration
+
+    Args:
+        hydrophone: hydrophone object with the frequency-dependent calibration information
+        ds: dataset to apply the update to
+        data_var: data variable to apply the update to
+        **kwargs:
+
+    Returns:
+        updated xarray dataset
+    """
     index_coord = ds[data_var].dims[0]
     freq_coord = ds[data_var].dims[1]
     frequencies = ds[freq_coord].values
@@ -1051,7 +1047,21 @@ def update_freq_cal(hydrophone, ds, data_var, **kwargs):
     return ds_copy
 
 
-def hmb_to_decidecade(ds, data_var, freq_coord, fs=None):
+def hmb_to_decidecade(
+    ds: xarray.Dataset, data_var: str, freq_coord: str, fs: int = None
+) -> xarray.Dataset:
+    """
+    Aggregate the hybrid millidecade bands to decidecade bands
+
+    Args:
+        ds: xarray dataset containing the hybrid millidecade bands
+        data_var: name of the variable where the hybrid millidecade bands are stored
+        freq_coord: name of the frequency coordinate
+        fs: sampling frequency. If set to none, the sampling frequency will be considered twice the maximum frequency value
+
+    Returns:
+        xarray dataset with decidecade bands
+    """
     # Convert back to upa for the sum operations
     ds_data_var = np.power(10, ds[data_var].copy() / 10.0 - np.log10(1))
     fft_bin_width = 1.0

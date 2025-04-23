@@ -4,10 +4,6 @@ Plots
 
 The module ``plots`` is an ensemble of functions to plot `pypam` output's in different ways
 
-
-.. autosummary::
-    :toctree: generated/
-
     plot_spd
     plot_spectrum_median
     plot_ltsa
@@ -18,15 +14,16 @@ The module ``plots`` is an ensemble of functions to plot `pypam` output's in dif
 
 """
 
+import pathlib
 import re
-import matplotlib.pyplot as plt
+
 import matplotlib.dates as mdates
-import xarray
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import pathlib
-import matplotlib.gridspec as gridspec
+import xarray
 
 try:
     import pvlib
@@ -41,28 +38,26 @@ sns.set_style("ticks")
 sns.set_palette("colorblind")
 
 
-def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
+def plot_spd(
+    spd: xarray.DataArray,
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
+) -> plt.Axes:
     """
     Plot the SPD graph of the bin
 
-    Parameters
-    ----------
-    spd : xarray DataArray
-        Data array with 2D data frequency-sound_pressure. Frequency needs to be the first dimension. It is prepared to
-        be used with the output of pypam.utils.compute_spd()
-    log : boolean
-        If set to True the scale of the y-axis is set to logarithmic
-    save_path : string or Path
-        Where to save the images
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : bool
-        set to True to show the plot
+    Args:
+        spd: Data array with 2D data frequency-sound_pressure. Frequency needs to be the first dimension. It is prepared to
+            be used with the output of pypam.utils.compute_spd()
+        log: If set to True the scale of the y-axis is set to logarithmic
+        save_path: Where to save the images
+        ax: ax to plot on
+        show: set to True to show the plot
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     # Plot the EPD
     if ax is None:
@@ -105,29 +100,23 @@ def plot_spd(spd, log=True, save_path=None, ax=None, show=True):
 
 
 def plot_spectrogram_per_chunk(
-    ds_spectrogram,
-    log=True,
-    save_path=None,
-    show=True,
-    datetime_coord="time",
-    freq_coord="frequency",
-):
+    ds_spectrogram: xarray.DataArray,
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    show: bool = True,
+    datetime_coord: str = "time",
+    freq_coord: str = "frequency",
+) -> None:
     """
     Plot the spectrogram for each id of the ds_spectrogram (separately)
 
-    Parameters
-    ----------
-    ds_spectrogram : xarray DataArray
-        Data array with 3D data (datetime, frequency and time as dimensions)
-    log : boolean
-        If set to True the scale of the y-axis is set to logarithmic
-    save_path : string or Path
-        Where to save the images (folder)
-    show : bool
-        set to True to show the plot
-    datetime_coord : str
-        Name of the coordinate representing time for the spectrogram (not for each chunk)
-    freq_coord
+    Args:
+        ds_spectrogram: Data array with 3D data (datetime, frequency and time as dimensions)
+        log: If set to True the scale of the y-axis is set to logarithmic
+        save_path: Where to save the images (folder)
+        show: set to True to show the plot
+        datetime_coord: Name of the coordinate representing time for the spectrogram (not for each chunk)
+        freq_coord:  Name of the coordinate representing the frequency for the spectrogram
     """
 
     for id_n in ds_spectrogram.id:
@@ -164,22 +153,22 @@ def plot_spectrogram_per_chunk(
         plt.close()
 
 
-def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
+def plot_spectrum_per_chunk(
+    ds: xarray.Dataset,
+    data_var: str,
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    show: bool = True,
+) -> None:
     """
-    Plot the spectrums contained on the dataset
+    Plot all the spectrum contained on the dataset
 
-    Parameters
-    ----------
-    ds : xarray Dataset
-        Dataset resultant from psd or power spectrum calculation
-    data_var : string
-        Name of the data variable to use
-    log : boolean
-        If set to True the scale of the y-axis is set to logarithmic
-    save_path: string or Path
-        Where to save the image
-    show : bool
-        set to True to show the plot
+    Args:
+        ds: Dataset resultant from psd or power spectrum calculation
+        data_var: Name of the data variable to use
+        log: If set to True the scale of the y-axis is set to logarithmic
+        save_path: Where to save the image
+        show: set to True to show the plot
     """
     xscale = "linear"
     if log:
@@ -209,45 +198,34 @@ def plot_spectrum_per_chunk(ds, data_var, log=True, save_path=None, show=True):
 
 
 def plot_multiple_spectrum_median(
-    ds_dict,
-    data_var,
-    percentiles="default",
-    frequency_coord="frequency",
-    time_coord="id",
-    log=True,
-    save_path=None,
-    ax=None,
-    show=True,
+    ds_dict: dict,
+    data_var: str,
+    percentiles: list or tuple or str = "default",
+    frequency_coord: str = "frequency",
+    time_coord: str = "id",
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
     **kwargs,
-):
+) -> plt.Axes:
     """
     Same than plot_spectrum_median but instead of one ds you can pass a dictionary of label: ds so they are all plot
     on one figure.
 
-    Parameters
-    ----------
-    ds_dict : dict
-        Dictionary of label: ds with all the ds to plot
-    data_var : string
-        Name of the data variable to use
-    percentiles: Tuple or 'default'
-        list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
-    time_coord: str
-        Name of the coordinate representing time
-    frequency_coord: str
-        Name of the coordinate representing frequency
-    log : boolean
-        If set to True, y-axis in logarithmic scale
-    save_path : string or Path
-        Where to save the output graph. If None, it is not saved
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : bool
-        set to True to show the plot
+    Args:
+        ds_dict: Dictionary of label: ds with all the ds to plot
+        data_var:  Name of the data variable to use
+        percentiles: Tuple or 'default'. list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
+        time_coord: Name of the coordinate representing time
+        frequency_coord: Name of the coordinate representing frequency
+        log: If set to True, y-axis in logarithmic scale
+        save_path : Where to save the output graph. If None, it is not saved
+        ax : ax to plot on
+        show : set to True to show the plot
 
-    Returns
-    -------
-    matplotlib.axes
+    Returns:
+        plt.Axes
     """
     if ax is None:
         fig, ax = plt.subplots()
@@ -276,45 +254,33 @@ def plot_multiple_spectrum_median(
 
 
 def plot_spectrum_median(
-    ds,
-    data_var,
-    percentiles="default",
-    frequency_coord="frequency",
-    time_coord="id",
-    log=True,
-    save_path=None,
-    ax=None,
-    show=True,
+    ds: xarray.Dataset,
+    data_var: str,
+    percentiles: tuple or list or str = "default",
+    frequency_coord: str = "frequency",
+    time_coord: str = "id",
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
     **kwargs,
-):
+) -> plt.Axes:
     """
     Plot the median spectrum
 
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Dataset to plot
-    data_var : string
-        Name of the data variable to use
-    percentiles: Tuple or 'default'
-        list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
-    time_coord: str
-        Name of the coordinate representing time
-    frequency_coord: str
-        Name of the coordinate representing frequency
-    log : boolean
-        If set to True, y-axis in logarithmic scale
-    save_path : string or Path
-        Where to save the output graph. If None, it is not saved
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : bool
-        set to True to show the plot
+    Args:
+        ds: Dataset to plot
+        data_var:  Name of the data variable to use
+        percentiles: Tuple or 'default'. list or tuple with (min_percentile, max_percentile). If set to 'default' it will be [10, 90]
+        time_coord: Name of the coordinate representing time
+        frequency_coord: Name of the coordinate representing frequency
+        log: If set to True, y-axis in logarithmic scale
+        save_path : Where to save the output graph. If None, it is not saved
+        ax : ax to plot on
+        show : set to True to show the plot
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     if ax is None:
         fig, ax = plt.subplots()
@@ -356,41 +322,30 @@ def plot_spectrum_median(
 
 
 def plot_ltsa(
-    ds,
-    data_var,
-    time_coord="id",
-    freq_coord="frequency",
-    log=True,
-    save_path=None,
-    ax=None,
-    show=True,
+    ds: xarray.Dataset,
+    data_var: str,
+    time_coord: str = "id",
+    freq_coord: str = "frequency",
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
 ):
     """
     Plot the evolution of the ds containing percentiles and band values
 
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Output of evolution
-    data_var : string
-        Column name of the value to plot. Can be 'density' or 'spectrum' or 'millidecade_bands
-    time_coord: string
-        name of the coordinate which represents time (has to be type np.datetime64)
-    freq_coord: string
-        name of the coordinate which represents frequency.
-    log : boolean
-        If set to True the scale of the y-axis is set to logarithmic
-    save_path : string or Path
-        Where to save the output graph. If None, it is not saved
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : boolean
-        Set to True to show the plot
+    Args:
+        ds: Output of evolution
+        data_var: name of the data variable to plot. Can be 'density' or 'spectrum' or 'millidecade_bands'
+        time_coord: Name of the coordinate representing time
+        frequency_coord: Name of the coordinate representing frequency
+        log: If set to True, y-axis in logarithmic scale
+        save_path: Where to save the output graph. If None, it is not saved
+        ax: ax to plot on
+        show: set to True to show the plot
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     if ax is None:
         fig, ax = plt.subplots()
@@ -421,47 +376,35 @@ def plot_ltsa(
 
 
 def plot_summary_dataset(
-    ds,
-    percentiles,
-    data_var="band_density",
-    time_coord="datetime",
-    freq_coord="frequency",
-    min_val=None,
-    max_val=None,
-    show=True,
-    log=True,
-    save_path=None,
-    location=None,
+    ds: xarray.Dataset,
+    percentiles: list or np.array,
+    data_var: str = "band_density",
+    time_coord: str = "datetime",
+    freq_coord: str = "frequency",
+    min_val: float = None,
+    max_val: float = None,
+    show: bool = True,
+    log: bool = True,
+    save_path: str or pathlib.Path = None,
+    location: tuple or list = None,
 ):
     """
     Plots a summary of the data combining the LTSA and a SPD. If location is given, it also plots an extra
     colorbar showing the day/night patterns
 
-    Parameters
-    ----------
-    ds: xarray Dataset
-        dataset output of pypam
-    data_var: string
-        name of the data variable to plot as a spectrogram. default band_density.
-    time_coord: string
-        name of the coordinate which represents time (has to be type np.datetime64)
-    freq_coord: string
-        name of the coordinate which represents frequency.
-    percentiles: list or numpy array
-        percentiles to compute and plot (1 to 100).
-    min_val: float
-        minimum value (SPL) in db to compute the SPD. If None, minimum of the dataset will be used
-    max_val: float
-        maximum value (SPL) in db to compute the SPD. If None, maximum of the dataset will be used
-    show: bool.
-        Set to True to show the plot
-    log: bool
-        Set to True to set the frequencies axis in a log scale
-    save_path: None, string or Path.
-        Where to save the plot. If None, the plot is not saved.
-    location: tuple or list
-        [longitude, latitude] in decimal coordinates. If location is passed, a bar with the sun position is going
-        to be added below the time axis
+    Args:
+        ds: dataset output of pypam
+        data_var: name of the data variable to plot as a spectrogram. default band_density.
+        time_coord: name of the coordinate which represents time (has to be type np.datetime64)
+        freq_coord: name of the coordinate which represents frequency.
+        percentiles: percentiles to compute and plot (1 to 100).
+        min_val: minimum value (SPL) in db to compute the SPD. If None, minimum of the dataset will be used
+        max_val: maximum value (SPL) in db to compute the SPD. If None, maximum of the dataset will be used
+        show: Set to True to show the plot
+        log: Set to True to set the frequencies axis in a log scale
+        save_path: Where to save the plot. If None, the plot is not saved.
+        location: [longitude, latitude] in decimal coordinates. If location is passed, a bar with the sun position is going
+            to be added below the time axis
     """
     plt.figure(figsize=(12, 7))
     gs = gridspec.GridSpec(2, 2, height_ratios=[10, 0.5], width_ratios=[3, 2])
@@ -585,39 +528,29 @@ def plot_summary_dataset(
 
 
 def plot_daily_patterns_from_ds(
-    ds,
-    data_var,
-    interpolate=True,
-    save_path=None,
-    ax=None,
-    show=True,
-    plot_kwargs=None,
-    datetime_coord="datetime",
-):
+    ds: xarray.Dataset,
+    data_var: str,
+    interpolate: bool = True,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
+    plot_kwargs: dict = None,
+    datetime_coord: str = "datetime",
+) -> plt.Axes:
     """
     Plot the daily rms patterns
 
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Dataset to process. Should be an output of pypam, or similar structure
-    data_var : str
-        Name of the data variable to plot
-    interpolate: bool
-        Set to False if no interpolation is desired for the nan values
-    save_path : string or Path
-        Where to save the output graph. If None, it is not saved
-    ax : matplotlib.axes
-        Ax to plot on
-    show : bool
-        Set to True to show directly
-    datetime_coord : str
-        Name of the coordinate representing time
+    Args:
+        ds: Dataset to process. Should be an output of pypam, or similar structure
+        data_var: Name of the data variable to plot
+        interpolate: Set to False if no interpolation is desired for the nan values
+        save_path: Where to save the output graph. If None, it is not saved
+        ax: Ax to plot on
+        show: Set to True to show directly
+        datetime_coord: Name of the coordinate representing time
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     if plot_kwargs is None:
         plot_kwargs = {}
@@ -665,25 +598,23 @@ def plot_daily_patterns_from_ds(
     return ax
 
 
-def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
+def plot_rms_evolution(
+    ds: xarray.Dataset,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
+):
     """
     Plot the rms evolution
 
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Dataset to process
-    save_path : string or Path
-        Where to save the image
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : boolean
-        Set to True to show the plot
+    Args:
+        ds: Dataset to process
+        save_path: sWhere to save the image
+        ax: ax to plot on
+        show: Set to True to show the plot
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     if ax is None:
         fig, ax = plt.subplots()
@@ -707,17 +638,34 @@ def plot_rms_evolution(ds, save_path=None, ax=None, show=True):
 
 
 def _plot_aggregation_evolution(
-    df_plot,
-    data_var,
-    standard_name,
-    units,
-    mode="boxplot",
-    ax=None,
-    save_path=None,
-    show=False,
-    aggregation_time="D",
+    df_plot: pd.DataFrame,
+    data_var: str,
+    standard_name: str,
+    units: str,
+    mode: str = "boxplot",
+    ax: plt.Axes = None,
+    save_path: str or pathlib.Path = None,
+    show: bool = False,
+    aggregation_time: str = "D",
     **kwargs,
-):
+) -> plt.Axes:
+    """
+
+    Args:
+        df_plot: aggregated dataframe, output of _prepare_aggregation_plot_data function
+        data_var: data variable name to plot
+        standard_name: name of the variable (for axis label)
+        units: units of the variable (for axis label)
+        mode: 'boxplot' or 'violin'
+        ax: ax to plot on
+        save_path: where to save the image
+        show: set to True to show the plot
+        aggregation_time: string representing the aggregation time
+        **kwargs:
+
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
+    """
     if ax is None:
         fig, ax = plt.subplots()
     if mode == "boxplot":
@@ -778,39 +726,31 @@ def _plot_aggregation_evolution(
 
 
 def _prepare_aggregation_plot_data(
-    ds,
-    data_var,
-    aggregation_freq_band=None,
-    aggregation_time="D",
-    freq_coord="frequency",
-    datetime_coord="datetime",
-):
+    ds: xarray.Dataset,
+    data_var: str,
+    aggregation_freq_band: list or tuple or float = None,
+    aggregation_time: str = "D",
+    freq_coord: str = "frequency",
+    datetime_coord: str = "datetime",
+) -> pd.DataFrame:
     """
     Prepare the data for the aggregation plot
 
-    Parameters
-    ----------
-    ds : Dataset
-        Dataset with all the ds to plot
-    data_var : str
-        Name of the data variable to plot
-    datetime_coord : str
-        Name of the coordinate representing time
-    aggregation_time : str
-        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
-    freq_coord : str
-        Name of the frequency coordinate
-    aggregation_freq_band : None, float or tuple
-        If a float is given, this function compute aggregation for the frequency which is selected
-        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
-        selected
-        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
-        frequency dependence
+    Args:
+        ds: Dataset with all the ds to plot
+        data_var: Name of the data variable to plot
+        datetime_coord: Name of the coordinate representing time
+        aggregation_time: Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+        freq_coord: Name of the frequency coordinate
+        aggregation_freq_band: None, float or tuple
+            If a float is given, this function compute aggregation for the frequency which is selected
+            If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+            selected
+            If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+            frequency dependence
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        pandas DataFrame with the aggregated data
     """
     ds_copy = pypam.utils.freq_band_aggregation(
         ds, data_var, aggregation_freq_band=aggregation_freq_band, freq_coord=freq_coord
@@ -827,55 +767,42 @@ def _prepare_aggregation_plot_data(
 
 
 def plot_multiple_aggregation_evolution(
-    ds_dict,
-    data_var,
-    mode,
-    save_path=None,
-    ax=None,
-    show=True,
-    datetime_coord="datetime",
-    aggregation_time="D",
-    freq_coord="frequency",
-    aggregation_freq_band=None,
+    ds_dict: dict,
+    data_var: str,
+    mode: str,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
+    datetime_coord: str = "datetime",
+    aggregation_time: str = "D",
+    freq_coord: str = "frequency",
+    aggregation_freq_band: list or tuple or float = None,
     **kwargs,
-):
+) -> plt.Axes:
     """
-    Same than plot_aggregation_evolution but instead of one ds you can pass a dictionary of label: ds so they are
+    Same than plot_aggregation_evolution but instead of one ds you can pass a dictionary {label: ds} so they are
     all plot on one figure.
 
-    Parameters
-    ----------
-    ds_dict : dict
-        Dictionary of label: ds with all the ds to plot
-    data_var : str
-        Name of the data variable to plot
-    mode : str
-        'boxplot' or 'violin'
-    save_path : string or Path
-        Where to save the image
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : boolean
-        Set to True to show the plot
-    datetime_coord : str
-        Name of the coordinate representing time
-    aggregation_time : str
-        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
-    freq_coord : str
-        Name of the frequency coordinate
-    aggregation_freq_band : None, float or tuple
-        If a float is given, this function compute aggregation for the frequency which is selected
-        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
-        selected
-        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
-        frequency dependence
-    kwargs:
-        Any other argument which can be passed to the seaborn plot function
+    Args:
+        ds_dict: Dictionary {label (str): ds (xarray.Dataset)} with all the ds to plot
+        data_var:  Name of the data variable to plot
+        mode: 'boxplot' or 'violin'
+        save_path: Where to save the image
+        ax: ax to plot on
+        show: Set to True to show the plot
+        datetime_coord: Name of the coordinate representing time
+        aggregation_time: Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+        freq_coord: Name of the frequency coordinate
+        aggregation_freq_band:  If a float is given, this function compute aggregation for the frequency which is selected
+            If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+            selected
+            If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+            frequency dependence
+        kwargs:
+            Any other argument which can be passed to the seaborn plot function
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
     total_df = pd.DataFrame()
     for label, ds in ds_dict.items():
@@ -908,56 +835,43 @@ def plot_multiple_aggregation_evolution(
 
 
 def plot_aggregation_evolution(
-    ds,
-    data_var,
-    mode,
-    save_path=None,
-    ax=None,
-    show=True,
-    datetime_coord="datetime",
-    aggregation_time="D",
-    freq_coord="frequency",
-    aggregation_freq_band=None,
+    ds: xarray.Dataset,
+    data_var: str,
+    mode: str,
+    save_path: str or pathlib.Path = None,
+    ax: plt.Axes = None,
+    show: bool = True,
+    datetime_coord: str = "datetime",
+    aggregation_time: str = "D",
+    freq_coord: str = "frequency",
+    aggregation_freq_band: list or tuple or float = None,
     **kwargs,
-):
+) -> plt.Axes:
     """
     Plot the aggregation evolution with boxplot, violin or quartiles, the limits of the box are Q1 and Q3.
     It will compute the median of all the values included in the frequency band specified in 'aggregation_freq_band'.
     Then it will plot the evolution considering the specified aggregation_time
 
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Dataset to process
-    data_var : str
-        Name of the data variable to plot
-    mode : str
-        'boxplot', 'violin' or 'quartiles'
-    save_path : string or Path
-        Where to save the image
-    ax : matplotlib.axes class or None
-        ax to plot on
-    show : boolean
-        Set to True to show the plot
-    datetime_coord : str
-        Name of the coordinate representing time
-    aggregation_time : str
-        Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
-    freq_coord : str
-        Name of the frequency coordinate
-    aggregation_freq_band : None, float or tuple
-        If a float is given, this function compute aggregation for the frequency which is selected
-        If a tuple is given, this function will compute aggregation for the average of all frequencies which are
-        selected
-        If None is given, this function will compute aggregation for the data_var given, assuming that there is no
-        frequency dependence
-    kwargs:
-        Any parameter which can be passed to the plot function of seaborn
+    Args:
+        ds: Dataset to process
+        data_var: Name of the data variable to plot
+        mode: 'boxplot', 'violin' or 'quartiles'
+        save_path: Where to save the image
+        ax: ax to plot on, or None
+        show: Set to True to show the plot
+        datetime_coord: Name of the coordinate representing time
+        aggregation_time: Resolution of the bin aggregation. Can be 'D' for day, 'H' for hour, 'W' for week and 'M' for month
+        freq_coord: Name of the frequency coordinate
+        aggregation_freq_band : If a float is given, this function compute aggregation for the frequency which is selected
+            If a tuple is given, this function will compute aggregation for the average of all frequencies which are
+            selected
+            If None is given, this function will compute aggregation for the data_var given, assuming that there is no
+            frequency dependence
+        kwargs:
+            Any parameter which can be passed to the plot function of seaborn
 
-    Returns
-    -------
-    ax : matplotlib.axes class
-        The ax with the plot if something else has to be plotted on the same
+    Returns:
+        ax: The ax with the plot if something else has to be plotted on the same
     """
 
     df_plot = _prepare_aggregation_plot_data(
@@ -984,7 +898,32 @@ def plot_aggregation_evolution(
     return ax
 
 
-def plot_2d(ds, x, y, cbar_label, xlabel, ylabel, title, ylog=False, ax=None, **kwargs):
+def plot_2d(
+    ds: xarray.Dataset,
+    x: str,
+    y: str,
+    cbar_label: str,
+    xlabel: str,
+    ylabel: str,
+    title: str,
+    ylog: bool = False,
+    ax: plt.Axes = None,
+    **kwargs,
+):
+    """
+
+    Args:
+        ds: Dataset to plot
+        x: name of coordinate to use as x axis
+        y: name of coordinate to use as y axis
+        cbar_label: label of the colorbar
+        xlabel: label to print on the x-axis
+        ylabel: label to print on the y-axis
+        title: title of the plot
+        ylog: set to bool to have the y axis in log scale
+        ax: axis to plot on
+        **kwargs:
+    """
     yscale = "linear"
     if ylog:
         yscale = "symlog"

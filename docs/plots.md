@@ -1,0 +1,2 @@
+::: pypam.plots
+    handler: python

@@ -1,1 +1,0 @@
-.. autoclass:: pypam.dataset.DataSet

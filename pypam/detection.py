@@ -1,21 +1,16 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 import datetime
-import os
 import pathlib
-import zipfile
 
+import dateutil
 import matplotlib.pyplot as plt
 import pandas as pd
+import pyhydrophone as pyhy
+import pytz
 import seaborn as sns
 import soundfile as sf
 
-from pypam import signal as sig
 from pypam import acoustic_file
+from pypam import signal as sig
 
 pd.plotting.register_matplotlib_converters()
 plt.rcParams.update({"pcolor.shading": "auto"})
@@ -27,41 +22,37 @@ sns.set_theme()
 class Detection(sig.Signal):
     """
     Detection recorded in a wav file, with start and end
-
-    Parameters
-    ----------
-    sfile : Sound file
-        Can be a path or a file object
-    hydrophone : Object for the class hydrophone
-    p_ref : Float
-        Reference pressure in upa
-    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
-        Timezone where the data was recorded in
-    channel : int
-        Channel to perform the calculations in
-    calibration: float, -1 or None
-        If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
-        the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
-    dc_subtract: bool
-        Set to True to subtract the dc noise (root mean squared value
-    start_seconds: float
-        Seconds from start where the detection starts
-    end_seconds: float
-        Seconds from start where the detection ends
     """
 
     def __init__(
         self,
-        start_seconds,
-        end_seconds,
-        sfile,
-        hydrophone,
-        p_ref,
-        timezone="UTC",
-        channel=0,
-        calibration=None,
-        dc_subtract=False,
+        start_seconds: float,
+        end_seconds: float,
+        sfile: pathlib.Path or sf.SoundFile,
+        hydrophone: pyhy.Hydrophone,
+        p_ref: float,
+        timezone: datetime.tzinfo
+        or pytz.tzinfo.BaseTZInfo
+        or dateutil.tz.tz.tzfile
+        or str = "UTC",
+        channel: int = 0,
+        calibration: int or float or None = None,
+        dc_subtract: bool = False,
     ):
+        """
+        Args:
+            start_seconds: Seconds from start where the detection starts
+            end_seconds: Seconds from start where the detection ends
+            sfile: Can be a path or a file object. File to analyze
+            hydrophone: Object for the class hydrophone
+            p_ref: Reference pressure in upa
+            timezone: Timezone where the data was recorded in
+            channel: Channel to perform the calculations in
+            calibration: float, -1 or None. If it is a float, it is the time ignored at the beginning of the file.
+                If None, nothing is done. If negative, the function calibrate from the hydrophone is performed,
+                and the first samples ignored (and hydrophone metadata attrs updated)
+            dc_subtract: Set to True to subtract the dc noise (root mean squared value
+        """
         self.acu_file = acoustic_file.AcuFile(
             sfile,
             hydrophone,
@@ -95,14 +86,12 @@ class Detection(sig.Signal):
             signal=signal_upa, fs=self.acu_file.fs, channel=self.acu_file.channel
         )
 
-    def save_clip(self, clip_path):
+    def save_clip(self, clip_path: str or pathlib.Path):
         """
         Save the snippet into a file (will keep original sampling rate and no filtering)
 
-        Parameters
-        ----------
-        clip_path: str or Path
-            path to save the clip to (.wav)
+        Args:
+            clip_path: path to save the clip to (.wav)
 
         """
         sf.write(clip_path, self.orig_wav, self.orig_fs)
