@@ -29,7 +29,7 @@ class Detection(sig.Signal):
         start_seconds: float,
         end_seconds: float,
         sfile: pathlib.Path or sf.SoundFile,
-        hydrophone: pyhy.Hydrophone,
+        hydrophone: object,
         p_ref: float,
         timezone: datetime.tzinfo
         or pytz.tzinfo.BaseTZInfo

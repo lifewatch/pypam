@@ -31,7 +31,7 @@ class ASA:
 
     def __init__(
         self,
-        hydrophone: pyhy.Hydrophone,
+        hydrophone: object,
         folder_path: str or pathlib.Path,
         zipped: bool = False,
         extension: str = ".wav",

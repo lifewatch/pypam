@@ -1018,7 +1018,7 @@ def freq_band_aggregation(
 
 
 def update_freq_cal(
-    hydrophone: pyhy.Hydrophone, ds: xarray.Dataset, data_var: str, **kwargs
+    hydrophone: object, ds: xarray.Dataset, data_var: str, **kwargs
 ) -> xarray.Dataset:
     """
     Update the dataset with the difference between flat calibration and frequency-dependent calibration

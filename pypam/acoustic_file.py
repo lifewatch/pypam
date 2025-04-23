@@ -35,7 +35,7 @@ class AcuFile:
     def __init__(
         self,
         sfile: sf.SoundFile or pathlib.Path,
-        hydrophone: pyhy.Hydrophone,
+        hydrophone: object,
         p_ref: float,
         timezone: datetime.tzinfo
         or pytz.tzinfo.BaseTZInfo
