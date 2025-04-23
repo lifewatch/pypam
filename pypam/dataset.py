@@ -1,9 +1,3 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -17,7 +11,8 @@ from pypam import utils
 
 
 class DataSet:
-    """A DataSet object is a representation of a group of acoustic deployments.
+    """
+    A DataSet object is a representation of a group of acoustic deployments.
     It allows to calculate all the acoustic features from all the deployments and store them in a structured way
     in the output folder. The structure is as follows:
 
@@ -29,42 +24,38 @@ class DataSet:
     - output_folder/img/data_overview : spatial and temporal coverage, and methods used
     - output_folder/img/features_analysis : still to be discussed
     - output_folder/img/spatial_features : spatial distribution of features
-
-    Parameters
-    ----------
-    summary_path : string or Path
-        Path to the csv file where all the metadata of the deployments is
-    output_folder : string or Path
-        Where to save the output files (`*.nc`) of the deployments with the processed data
-    instruments : dictionary of (name,  instrument_object) entries
-        A dictionary of all the instruments used in the deployments
-    temporal_features : list of strings
-        A list of all the features to be calculated
-    bands_list : list of tuples
-        A list of all the bands to consider (low_freq, high_freq)
-    frequency_features : list of strings
-        List of all the frequency features to compute
-    binsize : float
-        In seconds, duration of windows to consider
-    nfft : int
-        Number of samples of window to use for frequency analysis
     """
 
     def __init__(
         self,
-        summary_path,
-        output_folder,
-        instruments,
-        temporal_features=None,
-        frequency_features=None,
-        bands_list=None,
-        binsize=60.0,
-        bin_overlap=0.0,
-        nfft=512,
-        fft_overlap=0,
-        dc_subtract=False,
-        gridded_data=True,
+        summary_path: str or pathlib.Path,
+        output_folder: str or pathlib.Path,
+        instruments: dict,
+        temporal_features: list = None,
+        frequency_features: list = None,
+        bands_list: list = None,
+        binsize: float = 60.0,
+        bin_overlap: float = 0.0,
+        nfft: int = 512,
+        fft_overlap: int = 0,
+        dc_subtract: bool = False,
+        gridded_data: bool = True,
     ):
+        """
+        Args:
+            summary_path: Path to the csv file where all the metadata of the deployments is
+            output_folder: Where to save the output files (`*.nc`) of the deployments with the processed data
+            instruments: A dictionary of all the instruments used in the deployments of (name: instrument_object) entries
+            temporal_features: A list of all the features to be calculated, as strings
+            frequency_features: List of all the frequency features to compute
+            bands_list: A list of all the bands to consider (low_freq, high_freq)
+            binsize: In seconds, duration of windows to consider
+            bin_overlap: percentage (0 to 1) of overlap between consecutive bins
+            nfft: Number of samples of window to use for frequency analysis
+            fft_overlap: percentage (0 to 1) of overlap between consecutive fft windows
+            dc_subtract: set to True to subtract the mean of the signal (DC)
+            gridded_data: set to True so all the bins start at second :00
+        """
         self.metadata = pd.read_csv(summary_path)
         if "end_to_end_calibration" not in self.metadata.columns:
             self.metadata["end_to_end_calibration"] = np.nan
@@ -111,7 +102,7 @@ class DataSet:
             "hydrophone_sensitivity",
         ]
 
-    def __call__(self):
+    def __call__(self) -> None:
         """
         Calculates the acoustic features of every deployment and saves them as a pickle in the deployments folder with
         the name of the station of the deployment.
@@ -122,7 +113,7 @@ class DataSet:
             self[idx]
         self.metadata.to_csv(self.summary_path, index=False)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> xarray.Dataset:
         if i not in self.dataset.keys():
             idx, deployment_name, deployment_path = self._deployment(i)
             if deployment_path.exists():
@@ -135,14 +126,14 @@ class DataSet:
             deployment = self.dataset[i]
         return deployment
 
-    def _deployment(self, idx):
+    def _deployment(self, idx: int) -> tuple:
         deployment_row = self.metadata.iloc[idx]
         deployment_path = self.output_folder.joinpath(
             "deployments/%s_%s.nc" % (idx, deployment_row.deployment_name)
         )
         return idx, deployment_row["deployment_name"], deployment_path
 
-    def join_dataset(self):
+    def join_dataset(self) -> xarray.Dataset:
         ds = xarray.Dataset()
         for (
             idx,
@@ -153,29 +144,26 @@ class DataSet:
             ds = utils.merge_ds(ds, deployment, self.survey_dependent_attrs)
         return ds
 
-    def deployments(self):
+    def deployments(self) -> tuple:
         """
         Iterates through all the deployments listed in the metadata file
-        Returns
-        -------
-        idx, deployment_name, deployment_path per iteration
 
+        Returns:
+            idx, deployment_name, deployment_path per iteration
         """
         print("Reading dataset...")
         for idx in tqdm(self.metadata.index, total=len(self.metadata)):
             yield self._deployment(idx)
 
-    def generate_deployment(self, idx):
+    def generate_deployment(self, idx: int) -> xarray.Dataset:
         """
         Generate the deployment dataset for the index idx in the metadata file
-        Parameters
-        ----------
-        idx: int
-            Index of the deployment in the dataset
 
-        Returns
-        -------
-        ds: xarray Dataset
+        Args:
+            idx: Index of the deployment in the dataset
+
+        Returns:
+            xarray dataset for the deployment
         """
         hydrophone = self.instruments[self.metadata.loc[(idx, "instrument_name")]]
         hydrophone.sensitivity = self.metadata.loc[(idx, "instrument_sensitivity")]
@@ -219,7 +207,13 @@ class DataSet:
         self.metadata.to_csv(self.summary_path, index=False)
         return ds
 
-    def add_deployment_metadata(self, idx):
+    def add_deployment_metadata(self, idx: int) -> None:
+        """
+        Add to the metadata parameter of the class the metadata of the deployment of index idx
+
+        Args:
+            idx: index of deployment
+        """
         deployment_row = self.metadata.iloc[idx]
         hydrophone = self.instruments[deployment_row["instrument_name"]]
         hydrophone.sensitivity = deployment_row["instrument_sensitivity"]
@@ -232,9 +226,12 @@ class DataSet:
         duration = asa.duration()
         self.metadata.iloc[idx, ["start", "end", "duration"]] = start, end, duration
 
-    def add_temporal_metadata(self):
+    def add_temporal_metadata(self) -> dict:
         """
         Return a db with a data overview of the folder
+
+        Returns:
+            dict of metadata overview
         """
         metadata_params = ["start_datetime", "end_datetime", "duration"]
         for m_p in metadata_params:
@@ -247,7 +244,7 @@ class DataSet:
             self.add_deployment_metadata(idx)
         return self.metadata
 
-    def plot_all_features_evo(self):
+    def plot_all_features_evo(self) -> None:
         """
         Creates the images of the temporal evolution of all the features and saves them in the correspondent folder
         """
@@ -265,15 +262,16 @@ class DataSet:
                 plt.show()
                 i += 1
 
-    def plot_third_octave_bands_prob(self, h=1.0, percentiles=None):
+    def plot_third_octave_bands_prob(
+        self, h: float = 1.0, percentiles: list = None
+    ) -> None:
         """
         Create a plot with the probability distribution of the levels of the third octave bands
-        Parameters
-        ----------
-        h: float
-            Histogram bin size (in db)
-        percentiles: list of floats
-            Percentiles to plot (0 to 1). Default is 10, 50 and 90% ([0.1, 0.5, 0.9])
+
+        Args:
+            h: Histogram bin size (in db)
+            percentiles: Percentiles to plot (0 to 1). Default is 10, 50 and 90% ([0.1, 0.5, 0.9])
+
         """
         if percentiles is None:
             percentiles = []
@@ -316,7 +314,7 @@ class DataSet:
             plt.show()
             station_i += 1
 
-    def plot_third_octave_bands_avg(self):
+    def plot_third_octave_bands_avg(self) -> None:
         """
         Plot the average third octave bands per deployment
         """

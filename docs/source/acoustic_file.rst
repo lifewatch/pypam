@@ -1,1 +1,0 @@
-.. autoclass:: pypam.acoustic_file.AcuFile

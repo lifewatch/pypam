@@ -11,9 +11,6 @@ import pathlib
 import zipfile
 
 import dateutil.parser as parser
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import seaborn as sns
 import xarray
 from tqdm import tqdm
@@ -28,61 +25,53 @@ sns.set_theme()
 
 class ASA:
     """
-    Init a AcousticSurveyAnalysis (ASA)
-
-    Parameters
-    ----------
-    hydrophone : Hydrophone class from pyhydrophone
-    folder_path : string or Path
-        Where all the sound files are
-    zipped : boolean
-        Set to True if the directory is zipped
-    extension: str
-        Default to .wav, extension of the sound files to process
-    include_dirs : boolean
-        Set to True if the folder contains other folders with sound files
-    gridded_data: boolean
-        Set to True to start the processing at all the minutes with 0 seconds
-    p_ref : float
-        Reference pressure in uPa
-    binsize : float
-        Time window considered, in seconds. If set to None, only one value is returned
-    nfft : int
-        Samples of the fft bin used for the spectral analysis
-    bin_overlap : float [0 to 1]
-        Percentage to overlap the bin windows
-    period : tuple or list
-        Tuple or list with two elements: start and stop. Has to be a string in the
-        format YYYY-MM-DD HH:MM:SS
-    calibration: float, -1 or None
-        If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
-        the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
-    dc_subtract: bool
-        Set to True to subtract the dc noise (root mean squared value)
-    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
-        Timezone where the data was recorded in
+    AcousticSurveyAnalysis (ASA) is a class that represents a collection of audio files from one deployment
     """
 
     def __init__(
         self,
         hydrophone: object,
-        folder_path,
-        zipped=False,
-        extension=".wav",
-        include_dirs=False,
-        gridded_data=True,
-        p_ref=1.0,
-        binsize=None,
-        bin_overlap=0,
-        nfft=1.0,
-        fft_overlap=0.5,
-        period=None,
-        timezone="UTC",
-        channel=0,
-        calibration=None,
-        dc_subtract=False,
-        extra_attrs=None,
+        folder_path: str or pathlib.Path,
+        zipped: bool = False,
+        extension: str = ".wav",
+        include_dirs: bool = False,
+        gridded_data: bool = True,
+        p_ref: float = 1.0,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 1.0,
+        fft_overlap: float = 0.5,
+        period: tuple or list = None,
+        timezone: datetime.tzinfo
+        or pytz.tzinfo.BaseTZInfo
+        or dateutil.tz.tz.tzfile
+        or str = "UTC",
+        channel: int = 0,
+        calibration: float or int or None = None,
+        dc_subtract: bool = False,
+        extra_attrs: dict or None = None,
     ):
+        """
+        Args:
+            hydrophone: Hydrophone object from pyhydrophone
+            folder_path: Where all the sound files are
+            zipped: Set to True if the directory is zipped
+            extension: Default to .wav, extension of the sound files to process
+            include_dirs: Set to True if the folder contains other folders with sound files
+            gridded_data: Set to True to start the processing at all the minutes with 0 seconds
+            p_ref: Reference pressure in uPa
+            binsize: Time window considered, in seconds. If set to None, only one value is returned
+            bin_overlap: Percentage to overlap the bin windows [0 to 1]
+            nfft: Samples of the fft bin used for the spectral analysis
+            fft_overlap: Percentage of overlap between fft bins [0 to 1]
+            period: Tuple or list with two elements: start and stop. Has to be a string in the format YYYY-MM-DD HH:MM:SS
+            timezone: Timezone where the data was recorded in
+            channel: Channel to analyze
+            calibration: If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
+                the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
+            dc_subtract: Set to True to subtract the dc noise (root mean squared value)
+            extra_attrs: Extra attributes to store in the attrs variable of the output xarray Dataset
+        """
         self.hydrophone = hydrophone
         self.acu_files = AcousticFolder(
             folder_path=folder_path,
@@ -128,7 +117,7 @@ class ASA:
 
         self.gridded = gridded_data
 
-    def _files(self):
+    def _files(self) -> acoustic_file.AcuFile:
         """
         Iterator that returns AcuFile for each wav file in the folder
         """
@@ -147,17 +136,22 @@ class ASA:
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 yield sound_file
 
-    def _hydro_file(self, wav_file, wav_file_next=None, chunk_id_start=0):
+    def _hydro_file(
+        self,
+        wav_file: str or pathlib.Path,
+        wav_file_next: str or pathlib.Path = None,
+        chunk_id_start: int = 0,
+    ) -> acoustic_file.AcuFile:
         """
         Return the AcuFile object from the wav_file
-        Parameters
-        ----------
-        wav_file : str or Path
-            Sound file
 
-        Returns
-        -------
-        Object AcuFile
+        Args:
+            wav_file: Sound file
+            wav_file_next: Next Sound File
+            chunk_id_start: id of the chunk to start from
+
+        Returns:
+            Object AcuFile
         """
         hydro_file = acoustic_file.AcuFile(
             sfile=wav_file,
@@ -173,7 +167,7 @@ class ASA:
         )
         return hydro_file
 
-    def _get_metadata_attrs(self):
+    def _get_metadata_attrs(self) -> dict:
         metadata_keys = [
             "binsize",
             "nfft",
@@ -206,29 +200,23 @@ class ASA:
     def evolution_multiple(
         self,
         method_list: list,
-        band_list=None,
-        save_daily=False,
-        output_folder=None,
+        band_list: list = None,
+        save_daily: bool = False,
+        output_folder: str or pathlib.Path = None,
         **kwargs,
-    ):
+    ) -> xarray.Dataset:
         """
         Compute the method in each file and output the evolution
         Returns a xarray DataSet with datetime as index and one row for each bin of each file
 
-        Parameters
-        ----------
-        method_list : string
-            Method name present in AcuFile
-        band_list: list of tuples, tuple or None
-            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
-            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
-            frequency will be analyzed
-        save_daily : boolean
-            Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
-        output_folder : str or Path
-            Directory to save the netcdf files. Only works with save_daily
-        **kwargs :
-            Any accepted parameter for the method_name
+        Args:
+            method_list: List of method names present in AcuFile
+            band_list: list of tuples, tuple or None. Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
+                represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
+                frequency will be analyzed
+            save_daily: Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
+            output_folder: Directory to save the netcdf files. Only works with save_daily
+            **kwargs:  Any accepted parameter for the method_name
         """
         if save_daily and output_folder is None:
             raise ValueError(
@@ -259,40 +247,41 @@ class ASA:
             self.current_chunk_id += ds.id.max()
         return ds
 
-    def evolution(self, method_name, band_list=None, **kwargs):
+    def evolution(
+        self, method_name: str, band_list: list = None, **kwargs
+    ) -> xarray.Dataset:
         """
         Evolution of only one param name
 
-        Parameters
-        ----------
-        method_name : string
-            Method to compute the evolution of
-        band_list: list of tuples, tuple or None
-            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
-            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
-            frequency will be analyzed
-        **kwargs : any arguments to be passed to the method
+        Args:
+            method_name: Method to compute the evolution of
+            band_list: list of tuples, tuple or None. Bands to filter.
+                Can be multiple bands (all of them will be analyzed) or only one band. A band is represented with a
+                tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
+                frequency will be analyzed
+            **kwargs : any arguments to be passed to the method
         """
         return self.evolution_multiple(
             method_list=[method_name], band_list=band_list, **kwargs
         )
 
     def evolution_freq_dom(
-        self, method_name, save_daily=False, output_folder=None, **kwargs
-    ):
+        self,
+        method_name: str,
+        save_daily: bool = False,
+        output_folder: str or pathlib.Path = None,
+        **kwargs,
+    ) -> xarray.Dataset:
         """
         Returns the evolution of frequency domain parameters
-        Parameters
-        ----------
-        method_name : str
-            Name of the method of the acoustic_file class to compute
-        save_daily : boolean
-            Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
-        output_folder : str or Path
-            Directory to save the netcdf files. Only works with save_daily
-        Returns
-        -------
-        A xarray DataSet with a row per bin with the method name output
+
+        Args:
+            method_name: Name of the method of the acoustic_file class to compute
+            save_daily: Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
+            output_folder: Directory to save the netcdf files. Only works with save_daily
+
+        Returns:
+            A xarray DataSet with a row per bin with the method name output
         """
         if save_daily and output_folder is None:
             raise ValueError(
@@ -323,9 +312,9 @@ class ASA:
             ds.to_netcdf(output_folder.joinpath("%s.nc" % current_date))
         return ds
 
-    def timestamps_array(self):
+    def timestamps_array(self) -> xarray.Dataset:
         """
-        Return a xarray DataSet with the timestamps of each bin.
+        Returns a xarray DataSet with the timestamps of each bin.
         """
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller(
@@ -337,9 +326,9 @@ class ASA:
             self.current_chunk_id += ds.id.max()
         return ds
 
-    def start_end_timestamp(self):
+    def start_end_timestamp(self) -> tuple:
         """
-        Return the start and the end timestamps
+        Returns the start and the end timestamps
         """
         wav_file = self.acu_files[0][0]
 
@@ -355,17 +344,13 @@ class ASA:
 
         return start_datetime, end_datetime
 
-    def apply_to_all(self, method_name, **kwargs):
+    def apply_to_all(self, method_name: str, **kwargs):
         """
         Apply the method to all the files
 
-        Parameters
-        ----------
-        method_name : string
-            Method name present in AcuFile
-        **kwargs :
-            Any accepted parameter for the method_name
-
+        Args:
+            method_name: Method name present in AcuFile
+            **kwargs: Any accepted parameter for the method_name
         """
         f = operator.methodcaller(
             method_name,
@@ -378,7 +363,7 @@ class ASA:
         for sound_file in self._files():
             f(sound_file)
 
-    def duration(self):
+    def duration(self) -> float:
         """
         Return the duration in seconds of all the survey
         """
@@ -388,44 +373,39 @@ class ASA:
 
         return total_time
 
-    def mean_rms(self, **kwargs):
+    def mean_rms(self, **kwargs) -> xarray.DataArray:
         """
         Return the mean root mean squared value of the survey
         Accepts any other input than the correspondent method in the acoustic file.
         Returns the rms value of the whole survey
 
-        Parameters
-        ----------
-        **kwargs :
-            Any accepted arguments for the rms function of the AcuFile
+        Args:
+            **kwargs: Any accepted arguments for the rms function of the AcuFile
         """
         rms_evolution = self.evolution("rms", **kwargs)
         return rms_evolution["rms"].mean()
 
-    def spd(self, db=True, h=0.1, percentiles=None, min_val=None, max_val=None):
+    def spd(
+        self,
+        db: bool = True,
+        h: float = 0.1,
+        percentiles: list = None,
+        min_val: float = None,
+        max_val: float = None,
+    ) -> xarray.Dataset:
         """
         Return the empirical power density.
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True the result will be given in db. Otherwise, in uPa^2
-        h : float
-            Histogram bin (in the correspondent units, uPa or db)
-        percentiles : list or None
-            All the percentiles that have to be returned. If set to None, no percentiles
-            is returned (in 100 per cent)
-        min_val : float
-            Minimum value to compute the SPD histogram
-        max_val : float
-            Maximum value to compute the SPD histogram
+        Args:
+            db: If set to True the result will be given in db. Otherwise, in uPa^2
+            h: Histogram bin (in the correspondent units, uPa or db)
+            percentiles: All the percentiles that have to be returned. If set to None, no percentiles
+                is returned (in 100 per cent)
+            min_val: Minimum value to compute the SPD histogram
+            max_val: Maximum value to compute the SPD histogram
 
-        Returns
-        -------
-        percentiles : array like
-            List of the percentiles calculated
-        p : np.array
-            Matrix with all the probabilities
+        Returns:
+            xarray Dataset
         """
         psd_evolution = self.evolution_freq_dom("psd", db=db, percentiles=percentiles)
         return utils.compute_spd(
@@ -437,26 +417,23 @@ class ASA:
         )
 
     def hybrid_millidecade_bands(
-        self, db=True, method="spectrum", band=None, percentiles=None
-    ):
+        self,
+        db: bool = True,
+        method: str = "spectrum",
+        band: list or tuple = None,
+        percentiles: list = None,
+    ) -> xarray.Dataset:
         """
+        Args:
+            db: If set to True the result will be given in db, otherwise in upa^2
+            method: Can be 'spectrum' or 'density'
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+            percentiles:  List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
 
-        Parameters
-        ----------
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        method: string
-            Can be 'spectrum' or 'density'
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-
-        Returns
-        -------
-        An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
+        Returns:
+            An xarray dataset with the band_density (or band_spectrum) and the millidecade_bands variables
         """
         spectra_ds = self.evolution_freq_dom(
             "_spectrum", band=band, db=False, percentiles=percentiles, scaling=method
@@ -477,30 +454,28 @@ class ASA:
         spectra_ds["millidecade_bands"] = milli_spectra
         return spectra_ds
 
-    def plot_rms_evolution(self, db=True, save_path=None):
+    def plot_rms_evolution(
+        self, db: bool = True, save_path: str or pathlib.Path = None
+    ) -> None:
         """
         Plot the rms evolution
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution("rms", db=db)
         plots.plot_rms_evolution(ds=rms_evolution, save_path=save_path)
 
-    def plot_rms_daily_patterns(self, db=True, save_path=None):
+    def plot_rms_daily_patterns(
+        self, db: bool = True, save_path: str or pathlib.Path = None
+    ):
         """
         Plot the daily rms patterns
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, the output is in db and will be show in the units output
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
         """
         rms_evolution = self.evolution("rms", db=db).sel(band=0)
         daily_xr = rms_evolution.swap_dims(id="datetime")
@@ -509,19 +484,21 @@ class ASA:
             ds=daily_xr, data_var="rms", save_path=save_path, datetime_coord="datetime"
         )
 
-    def plot_median_power_spectrum(self, db=True, save_path=None, log=True, **kwargs):
+    def plot_median_power_spectrum(
+        self,
+        db: bool = True,
+        save_path: str or pathlib.Path = None,
+        log: bool = True,
+        **kwargs,
+    ):
         """
         Plot the resulting mean power spectrum
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        log : boolean
-            If set to True, y axis in logarithmic scale
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        **kwargs : Any accepted for the power_spectrum method
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
+            log: If set to True, y axis in logarithmic scale
+            **kwargs : Any accepted for the power_spectrum method
         """
         power = self.evolution_freq_dom(method_name="power_spectrum", db=db, **kwargs)
 
@@ -529,19 +506,21 @@ class ASA:
             ds=power, data_var="band_spectrum", log=log, save_path=save_path
         )
 
-    def plot_median_psd(self, db=True, save_path=None, log=True, **kwargs):
+    def plot_median_psd(
+        self,
+        db: bool = True,
+        save_path: str or pathlib.Path = None,
+        log: bool = True,
+        **kwargs,
+    ):
         """
         Plot the resulting mean psd
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        log : boolean
-            If set to True, y axis in logarithmic scale
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        **kwargs : Any accepted for the psd method
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
+            log: If set to True, y axis in logarithmic scale
+            **kwargs : Any accepted for the power_spectrum method
         """
         psd = self.evolution_freq_dom(method_name="psd", db=db, **kwargs)
 
@@ -549,17 +528,16 @@ class ASA:
             ds=psd, data_var="band_density", log=log, save_path=save_path
         )
 
-    def plot_power_ltsa(self, db=True, save_path=None, **kwargs):
+    def plot_power_ltsa(
+        self, db: bool = True, save_path: str or pathlib.Path = None, **kwargs
+    ):
         """
         Plot the evolution of the power frequency distribution (Long Term Spectrogram Analysis)
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        **kwargs : Any accepted for the power spectrum method
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
+            **kwargs : Any accepted for the power_spectrum method
         """
         power_evolution = self.evolution_freq_dom(
             method_name="power_spectrum", db=db, **kwargs
@@ -570,47 +548,40 @@ class ASA:
 
         return power_evolution
 
-    def plot_psd_ltsa(self, db=True, save_path=None, **kwargs):
+    def plot_psd_ltsa(
+        self, db: bool = True, save_path: str or pathlib.Path = None, **kwargs
+    ):
         """
         Plot the evolution of the psd power spectrum density (Long Term Spectrogram Analysis)
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        **kwargs : Any accepted for the psd method
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
+            **kwargs : Any accepted for the psd method
         """
         psd_evolution = self.evolution_freq_dom(method_name="psd", db=db, **kwargs)
         plots.plot_ltsa(ds=psd_evolution, data_var="band_density", save_path=save_path)
 
         return psd_evolution
 
-    def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spd(
+        self,
+        db: bool = True,
+        save_path: str or pathlib.Path = None,
+        log: bool = True,
+        **kwargs,
+    ):
         """
-        Plot the the SPD graph
+        Plot the SPD graph
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True, output in db
-        log : boolean
-            If set to True, y-axis in logarithmic scale
-        save_path : string or Path
-            Where to save the output graph. If None, it is not saved
-        **kwargs : Any accepted for the spd method
+        Args:
+            db: If set to True, output in db
+            save_path: Where to save the output graph. If None, it is not saved
+            log: If set to True, y axis in logarithmic scale
+            **kwargs : Any accepted for the pd method
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, log=log, save_path=save_path)
-
-    def save(self, file_path):
-        """
-        Save the ASA with all the computed values
-        Returns
-        -------
-
-        """
 
     def update_freq_cal(self, ds, data_var, **kwargs):
         return utils.update_freq_cal(
@@ -625,29 +596,23 @@ class AcousticFolder:
 
     def __init__(
         self,
-        folder_path,
-        zipped=False,
-        include_dirs=False,
-        extension=".wav",
-        extra_extensions=None,
+        folder_path: str or pathlib.Path,
+        zipped: bool = False,
+        include_dirs: bool = False,
+        extension: str = ".wav",
+        extra_extensions: list = None,
     ):
         """
         Store the information about the folder.
         It will create an iterator that returns all the pairs of extensions having the same name than the wav file
 
-        Parameters
-        ----------
-        folder_path : string or pathlib.Path
-            Path to the folder containing the acoustic files
-        zipped : boolean
-            Set to True if the subfolders are zipped
-        include_dirs : boolean
-            Set to True if the subfolders are included in the study
-        extension : str
-            Default to .wav, sound file extension
-        extra_extensions : list
-            List of strings with all the extra extensions that will be returned
-            i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
+        Args:
+            folder_path: Path to the folder containing the acoustic files
+            zipped: Set to True if the subfolders are zipped
+            include_dirs: Set to True if the subfolders are included in the study
+            extension: Default to .wav, sound file extension
+            extra_extensions: List of strings with all the extra extensions that will be returned
+                i.e. extensions=['.xml', '.bcl'] will return [wav, xml and bcl] files
         """
         self.folder_path = pathlib.Path(folder_path)
         self.extension = extension
@@ -738,16 +703,13 @@ class AcousticFolder:
         return n_files
 
 
-def move_file(file_path, new_folder_path):
+def move_file(file_path: str or pathlib.Path, new_folder_path: str or pathlib.Path):
     """
     Move the file to the new folder
 
-    Parameters
-    ----------
-    file_path : string or Path
-        Original file path
-    new_folder_path : string or Path
-        New folder destination (without the file name)
+    Args:
+        file_path: Original file path
+        new_folder_path: New folder destination (without the file name)
     """
     if not isinstance(file_path, pathlib.Path):
         file_path = pathlib.Path(file_path)

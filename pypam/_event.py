@@ -1,15 +1,11 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 from pypam.signal import Signal
 import numpy as np
 
 
 class Event(Signal):
-    def __init__(self, total_signal, fs, start=None, end=None):
+    def __init__(
+        self, total_signal: np.array, fs: int, start: int = None, end: int = None
+    ) -> None:
         """
         Definition of an acoustic event
 
@@ -27,7 +23,7 @@ class Event(Signal):
         self.end = end
         super().__init__(signal, fs)
 
-    def cut(self, start=0, end=None):
+    def cut(self, start: int = 0, end: int = None) -> None:
         """
         Cut the signal
         :param start:
@@ -40,7 +36,7 @@ class Event(Signal):
         self.end += end
         self.signal = self.signal[start:end]
 
-    def analyze(self, impulsive=False, energy_window=0.9):
+    def analyze(self, impulsive: bool = False, energy_window: float = 0.9) -> dict:
         """
         Perform all necessary calculations for a single event
 
@@ -82,7 +78,7 @@ class Event(Signal):
         }
         return out
 
-    def sel(self, high_noise=False):
+    def sel(self, high_noise: bool = False) -> float:
         """
         Compute the SEL by finding the peak of the event and then finding the first argument where the signal drops
         10 or 5 db below the peak (set high_noise to True if 5 db is desired)

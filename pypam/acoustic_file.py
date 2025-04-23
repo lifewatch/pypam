@@ -1,16 +1,12 @@
-__author__ = "Clea Parcerisas"
-__version__ = "0.1"
-__credits__ = "Clea Parcerisas"
-__email__ = "clea.parcerisas@vliz.be"
-__status__ = "Development"
-
 import datetime
 import pathlib
 import zipfile
 
+import dateutil
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytz
 import seaborn as sns
 import soundfile as sf
 import xarray
@@ -30,38 +26,38 @@ sns.set_theme()
 class AcuFile:
     """
     Data recorded in a wav file.
-
-    Parameters
-    ----------
-    sfile : Sound file
-        Can be a path or a file object
-    hydrophone : Object for the class hydrophone
-    p_ref : Float
-        Reference pressure in upa
-    timezone: datetime.tzinfo, pytz.tzinfo.BaseTZInfo, dateutil.tz.tz.tzfile, str or None
-        Timezone where the data was recorded in
-    channel : int
-        Channel to perform the calculations in
-    calibration: float, -1 or None
-        If it is a float, it is the time ignored at the beginning of the file. If None, nothing is done. If negative,
-        the function calibrate from the hydrophone is performed, and the first samples ignored (and hydrophone updated)
-    dc_subtract: bool
-        Set to True to subtract the dc noise (root mean squared value
     """
 
     def __init__(
         self,
-        sfile,
-        hydrophone,
-        p_ref,
+        sfile: sf.SoundFile or pathlib.Path,
+        hydrophone: object,
+        p_ref: float,
+        timezone: datetime.tzinfo
+        or pytz.tzinfo.BaseTZInfo
+        or dateutil.tz.tz.tzfile
+        or str
+        or None = "UTC",
+        channel: int = 0,
+        calibration: str or None or int or float = None,
+        dc_subtract: bool = False,
         sfile_next=None,
-        gridded=True,
-        timezone="UTC",
-        channel=0,
-        calibration=None,
-        dc_subtract=False,
-        chunk_id_start=0,
+        gridded: bool = True,
+        chunk_id_start: int = 0,
     ):
+        """
+
+        Args:
+            sfile: Can be a path or a file object, referring to the audio file to analyze
+            hydrophone: Object for the class hydrophone
+            p_ref: Reference pressure in upa
+            timezone: Timezone where the data was recorded in
+            channel: Channel to perform the calculations in
+            calibration: If it is a float, it is the time ignored at the beginning of the file. If None, nothing is
+            done. If negative, the function calibrate from the hydrophone is performed, and the first samples ignored
+            (and hydrophone object's metadata updated)
+            dc_subtract: Set to True to subtract the dc noise (root mean squared value
+        """
         # Save hydrophone model
         self.hydrophone = hydrophone
 
@@ -129,7 +125,7 @@ class AcuFile:
         # Start to count chunk id's
         self.chunk_id_start = chunk_id_start
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """
         Specific methods to make it easier to access attributes
         """
@@ -143,21 +139,21 @@ class AcuFile:
         else:
             return self.__dict__[name]
 
-    def _bins(self, binsize=None, bin_overlap=0):
+    def _bins(self, binsize: float = None, bin_overlap: float = 0) -> tuple:
         """
-        Yields the bins each binsize
-        Parameters
-        ----------
-        binsize: float or None
-            Number of seconds per bin to yield. If set to None, a single bin is yield for the entire file
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
+        Iterates through all the bins, yields (i, time_bin, signal, start_sample, end_sample), where i is the index,
+        time_bin is the datetime of the beginning of the block and signal is the signal object of the bin
 
-        Returns
-        -------
-        Iterates through all the bins, yields i, time_bin, signal, start_sample, end_sample
-        Where i is the index, time_bin is the datetime of the beginning of the block and signal is the signal object
-        of the bin
+        Args:
+            binsize: Number of seconds per bin to yield. If set to None, a single bin is yield for the entire file
+            bin_overlap: Percentage to overlap the bin windows
+
+        Returns:
+             i: index
+             time_bin: datetime of the beginning of the block
+             signal: signal object of the time bin
+             start_sample: number sample to start
+             end_sample: number sample to end
         """
         if bin_overlap > 1:
             raise ValueError(f"bin_overlap must be fractional.")
@@ -203,7 +199,7 @@ class AcuFile:
 
         self.file.seek(0)
 
-    def _n_blocks(self, blocksize, noverlap, add_last):
+    def _n_blocks(self, blocksize: int, noverlap: int, add_last: bool) -> int:
         if add_last:
             n_blocks = int(
                 np.ceil((self.file.frames - self._start_frame) / (blocksize - noverlap))
@@ -216,23 +212,20 @@ class AcuFile:
             )
         return n_blocks
 
-    def samples(self, bintime):
+    def samples(self, bintime: float):
         """
         Return the samples according to the fs
 
-        Parameters
-        ----------
-        bintime : Float
-            Seconds of bintime desired to convert to samples
+        Args:
+            bintime: Seconds of bintime desired to convert2324.sh to samples
         """
         return int(bintime * self.fs)
 
-    def set_calibration_time(self, calibration_time):
+    def set_calibration_time(self, calibration_time: float):
         """
         Set a calibration time in seconds. This time will be ignored in the processing
 
-        Parameters
-        ----------
+        Args:
         calibration_time : float
             Seconds to ignore at the beginning of the file
         """
@@ -250,51 +243,43 @@ class AcuFile:
         """
         return self.samples2time(self.file.frames)
 
-    def samples2time(self, samples):
+    def samples2time(self, samples: int):
         """
         Return the samples according to the fs
 
-        Parameters
-        ----------
-        samples : Int
-            Number of samples to convert to seconds
+        Args:
+            samples: Number of samples to convert to seconds
         """
         return float(samples) / self.fs
 
-    def is_in_period(self, period):
+    def is_in_period(self, period: list or tuple):
         """
         Return True if the WHOLE file is included in the specified period
 
-        Parameters
-        ----------
-        period : list or a tuple with (start, end).
-            Values have to be a datetime object
+        Args:
+            period: list or a tuple with (start, end). Values have to be a datetime object
         """
         if period is None:
             return True
         else:
             return (self.date >= period[0]) & (self.date <= period[1])
 
-    def contains_date(self, date):
+    def contains_date(self, date: datetime.datetime):
         """
         Return True if data is included in the file
 
-        Parameters
-        ----------
-        date : datetime object
-            Datetime to check
+        Args:
+            date: Datetime to check
         """
         end = self.date + datetime.timedelta(seconds=self.file.frames / self.fs)
         return (self.date < date) & (end > date)
 
-    def split(self, date):
+    def split(self, date: datetime.date):
         """
         Save two different files out of one splitting on the specified date
 
-        Parameters
-        ----------
-        date : datetime object
-            Datetime where to split the file
+        Args:
+            date: Datetime where to split the file
         """
         if issubclass(self.file_path, zipfile.ZipExtFile):
             raise Exception("The split method is not implemented for zipped files")
@@ -317,15 +302,13 @@ class AcuFile:
 
         return self.file_path, new_file_path
 
-    def freq_resolution_window(self, freq_resolution):
+    def freq_resolution_window(self, freq_resolution: int) -> int:
         """
         Given the frequency resolution, window length needed to obtain it
         Returns window length in samples
 
-        Parameters
-        ----------
-        freq_resolution : int
-            Must be a power of 2, in Hz
+        Args:
+        freq_resolution: Must be a power of 2, in Hz
         """
         n = np.log2(self.fs / freq_resolution)
         nfft = 2**n
@@ -336,14 +319,12 @@ class AcuFile:
             )
         return nfft
 
-    def signal(self, units="wav"):
+    def signal(self, units: str = "wav") -> np.array:
         """
         Returns the signal in the specified units
 
-        Parameters
-        ----------
-        units : string
-            Units in which to return the signal. Can be 'wav', 'db', 'upa', 'Pa' or 'acc'.
+        Args:
+            units: Units in which to return the signal. Can be 'wav', 'db', 'upa', 'Pa' or 'acc'.
         """
         # First time, read the file and store it to not read it over and over
         if self.wav is None:
@@ -364,7 +345,7 @@ class AcuFile:
 
         return signal
 
-    def _time_array(self, binsize=None, bin_overlap=0):
+    def _time_array(self, binsize: float = None, bin_overlap: float = 0) -> tuple:
         """
         Return a time array for each point of the signal
         """
@@ -388,7 +369,9 @@ class AcuFile:
             )
         return self.time, blocks_samples.astype(int), end_samples.astype(int)
 
-    def timestamp_da(self, binsize=None, bin_overlap=0):
+    def timestamp_da(
+        self, binsize: float = None, bin_overlap: float = 0
+    ) -> xarray.Dataset:
         time_array, start_samples, end_samples = self._time_array(binsize, bin_overlap)
         ds = xarray.Dataset(
             coords={
@@ -400,14 +383,12 @@ class AcuFile:
         )
         return ds
 
-    def wav2upa(self, wav=None):
+    def wav2upa(self, wav: np.array = None) -> np.array:
         """
         Compute the pressure from the wav signal
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
         if wav is None:
@@ -419,15 +400,13 @@ class AcuFile:
 
         return utils.set_gain(wave=wav, gain=gain_upa)
 
-    def wav2db(self, wav=None):
+    def wav2db(self, wav: np.array = None) -> np.array:
         """
         Compute the db from the wav signal. Consider the hydrophone sensitivity in db.
         If wav is None, it will read the whole file.
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         # Read if no signal is passed
         if wav is None:
@@ -435,41 +414,35 @@ class AcuFile:
         upa = self.wav2upa(wav)
         return utils.to_db(wave=upa, ref=self.p_ref, square=True)
 
-    def db2upa(self, db=None):
+    def db2upa(self, db: np.array = None) -> np.array:
         """
         Compute the upa from the db signals. If db is None, it will read the whole file.
 
-        Parameters
-        ----------
-        db : ndarray
-            Signal in db
+        Args:
+            db: Signal in db
         """
         if db is None:
             db = self.signal("db")
         # return np.power(10, db / 20.0 - np.log10(self.p_ref))
         return utils.to_mag(wave=db, ref=self.p_ref)
 
-    def upa2db(self, upa=None):
+    def upa2db(self, upa: np.array = None) -> np.array:
         """
         Compute the db from the upa signal. If upa is None, it will read the whole file.
 
-        Parameters
-        ----------
-        upa : ndarray
-            Signal in upa
+        Args:
+            upa: Signal in upa
         """
         if upa is None:
             upa = self.signal("upa")
         return utils.to_db(upa, ref=self.p_ref, square=True)
 
-    def wav2acc(self, wav=None):
+    def wav2acc(self, wav: np.array = None) -> np.array:
         """
         Convert the wav file to acceleration. If wav is None, it will read the whole file.
 
-        Parameters
-        ----------
-        wav : ndarray
-            Signal in wav (-1 to 1)
+        Args:
+            wav: Signal in wav (-1 to 1)
         """
         if wav is None:
             wav = self.file.read()
@@ -510,28 +483,27 @@ class AcuFile:
         return metadata_attrs
 
     def _apply_multiple(
-        self, method_list, binsize=None, band_list=None, bin_overlap=0, **kwargs
-    ):
+        self,
+        method_list: list,
+        binsize: float = None,
+        band_list: list = None,
+        bin_overlap: float = 0,
+        **kwargs,
+    ) -> xarray.Dataset:
         """
         Apply multiple methods per bin to save computational time
 
-        Parameters
-        ----------
-        method_list: list of strings
-            List of all the methods to apply
-        band_list: list of tuples, tuple or None
-            Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
-            represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
-            frequency will be analyzed
-        binsize: float
-            Length in seconds of the bins to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        kwargs: any parameters that have to be passed to the methods
+        Args:
+            method_list: List of all the methods to apply as strings
+            band_list: list of tuples, tuple or None of the bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
+                represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
+                frequency will be analyzed
+            binsize: Length in seconds of the bins to analyze
+            bin_overlap: Percentage to overlap the bin windows [0 to 1]
+            kwargs: any parameters that have to be passed to the methods
 
-        Returns
-        -------
-        DataFrame with time as index and a multiindex column with band, method as levels.
+        Returns:
+            DataFrame with time as index and a multiindex column with band, method as levels.
         """
         # TODO decide if it is downsampled or not
         downsample = False
@@ -568,26 +540,21 @@ class AcuFile:
 
     def _apply(
         self,
-        method_name,
-        binsize=None,
-        db=True,
-        band_list=None,
-        bin_overlap=0,
+        method_name: str,
+        binsize: float = None,
+        db: bool = True,
+        band_list: list = None,
+        bin_overlap: float = 0,
         **kwargs,
-    ):
+    ) -> xarray.Dataset:
         """
         Apply one single method
 
-        Parameters
-        ----------
-        method_name : string
-            Name of the method to apply
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
+        Args:
+            method_name: Name of the method to apply
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            overlap: Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa
         """
         return self._apply_multiple(
             method_list=[method_name],
@@ -598,57 +565,53 @@ class AcuFile:
             **kwargs,
         )
 
-    def rms(self, binsize=None, bin_overlap=0, db=True):
+    def rms(
+        self, binsize: float = None, bin_overlap: float = 0, db: bool = True
+    ) -> xarray.Dataset:
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
         Returns Dataset with 'datetime' as coordinate and 'rms' value as a variable
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap:  Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa
         """
         rms_ds = self._apply(
             method_name="rms", binsize=binsize, bin_overlap=bin_overlap, db=db
         )
         return rms_ds
 
-    def kurtosis(self, binsize=None, bin_overlap=0):
+    def kurtosis(self, binsize: float = None, bin_overlap: float = 0) -> xarray.Dataset:
         """
         Calculation of kurtosis value of the signal for each bin
         Returns Dataset with 'datetime' as coordinate and 'kurtosis' value as a variable
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap:  Percentage to overlap the bin windows [0 to 1]
         """
         kurtosis_ds = self._apply(
             method_name="kurtosis", binsize=binsize, bin_overlap=bin_overlap, db=False
         )
         return kurtosis_ds
 
-    def aci(self, binsize=None, bin_overlap=0, nfft=1024, fft_overlap=0.5):
+    def aci(
+        self,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 1024,
+        fft_overlap: float = 0.5,
+    ) -> xarray.Dataset:
         """
         Calculation of root mean squared value (rms) of the signal in upa for each bin
         Returns Dataset with 'datetime' as coordinate and 'aci' value as a variable
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Window size for processing
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap: Percentage to overlap the bin windows [0 to 1]
+            nfft: Window size for processing
+            fft_overlap : Percentage to overlap the bin windows [0 to 1]
         """
         aci_ds = self._apply(
             method_name="aci",
@@ -659,63 +622,60 @@ class AcuFile:
         )
         return aci_ds
 
-    def dynamic_range(self, binsize=None, bin_overlap=0, db=True):
+    def dynamic_range(
+        self, binsize: float = None, bin_overlap: float = 0, db: bool = True
+    ) -> xarray.Dataset:
         """
         Compute the dynamic range of each bin
         Returns a Dataset with 'datetime' as coordinate and 'dr' as variable
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap:  Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa
         """
         dr_ds = self._apply(
             method_name="dynamic_range", binsize=binsize, bin_overlap=bin_overlap, db=db
         )
         return dr_ds
 
-    def cumulative_dynamic_range(self, binsize=None, bin_overlap=0, db=True):
+    def cumulative_dynamic_range(
+        self, binsize: float = None, bin_overlap: float = 0, db: bool = True
+    ) -> xarray.Dataset:
         """
         Compute the cumulative dynamic range for each bin
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap:  Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa
 
-        Returns
-        -------
-        DataFrame with an extra column with the cumulative sum of dynamic range of each bin
+        Returns:
+              Dataset with an extra column with the cumulative sum of dynamic range of each bin
         """
         cumdr = self.dynamic_range(binsize=binsize, bin_overlap=bin_overlap, db=db)
         cumdr["cumsum_dr"] = cumdr.dr.cumsum()
         return cumdr
 
-    def octaves_levels(self, binsize=None, bin_overlap=0, db=True, band=None, **kwargs):
+    def octaves_levels(
+        self,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        db: bool = True,
+        band: list or tuple = None,
+        **kwargs,
+    ) -> xarray.Dataset:
         """
-        Return the octave levels
-        Parameters
-        ----------
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db: boolean
-            Set to True if the result should be in decibels
-        band: list or tuple
-            List or tuple of [low_frequency, high_frequency]
+        Returns the octave levels
 
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
+        Args:
+        binsize: Length in seconds of the bin to analyze
+        bin_overlap: Percentage to overlap the bin windows [0 to 1]
+        db: Set to True if the result should be in decibels
+        band: List or tuple of [low_frequency, high_frequency]
+
+        Returns:
+            Dataset with multiindex columns with levels method and band. The method is '3-oct'
 
         """
         return self._octaves_levels(
@@ -723,50 +683,49 @@ class AcuFile:
         )
 
     def third_octaves_levels(
-        self, binsize=None, bin_overlap=0, db=True, band=None, **kwargs
-    ):
+        self,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        db: bool = True,
+        band: list or tuple = None,
+        **kwargs,
+    ) -> xarray.Dataset:
         """
-        Return the octave levels
-        Parameters
-        ----------
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db: boolean
-            Set to True if the result should be in decibels
-        band: list or tuple
-            List or tuple of [low_frequency, high_frequency]
+        Returns the octave levels
 
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
+        Args:
+            binsize: Length in seconds of the bin to analyze
+            bin_overlap : Percentage to overlap the bin windows [0 to 1]
+            db: Set to True if the result should be in decibels
+            band: List or tuple of [low_frequency, high_frequency]
 
+        Returns:
+            Dataset with multiindex columns with levels method and band. The method is '3-oct'
         """
         return self._octaves_levels(
             fraction=3, binsize=binsize, bin_overlap=bin_overlap, db=db, band=band
         )
 
     def _octaves_levels(
-        self, fraction=1, binsize=None, bin_overlap=0, db=True, band=None
-    ):
+        self,
+        fraction: int = 1,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        db: bool = True,
+        band: list or tuple = None,
+    ) -> xarray.Dataset:
         """
-        Return the octave levels
-        Parameters
-        ----------
-        fraction: int
-            Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
-        binsize: float
-            Length in seconds of the bin to analyze
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db: boolean
-            Set to True if the result should be in decibels
+        Returns the octave levels
 
-        Returns
-        -------
-        DataFrame with multiindex columns with levels method and band. The method is '3-oct'
+        Args:
+            fraction: Fraction of the desired octave. Set to 1 for octave bands, set to 3 for 1/3-octave bands
+            binsize: Length in seconds of the bin to analyze
+            bin_overlap : Percentage to overlap the bin windows [0 to 1]
+            db: Set to True if the result should be in decibels
+            band: List or tuple of [low_frequency, high_frequency]
 
+        Returns:
+            Dataset with multiindex columns with levels method and band. The method is '3-oct'
         """
         downsample = True
 
@@ -791,41 +750,32 @@ class AcuFile:
 
     def hybrid_millidecade_bands(
         self,
-        nfft,
-        fft_overlap=0.5,
-        binsize=None,
-        bin_overlap=0,
-        db=True,
-        method="density",
-        band=None,
-        percentiles=None,
-    ):
+        nfft: int,
+        fft_overlap: float = 0.5,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        db: bool = True,
+        method: str = "density",
+        band: list or tuple = None,
+        percentiles: list or np.array = None,
+    ) -> xarray.Dataset:
         """
+        Returns the hybrid millidecade bands
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        method: string
-            Can be 'spectrum' or 'density'
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap: Percentage to overlap the bin windows [0 to 1]
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            method: Can be 'spectrum' or 'density'
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+            percentiles : List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
 
-        Returns
-        -------
-
+        Returns:
+            xarray Dataset
         """
 
         if band is None:
@@ -857,45 +807,26 @@ class AcuFile:
 
     def spectrogram(
         self,
-        binsize=None,
-        bin_overlap=0,
-        nfft=512,
-        fft_overlap=0.5,
-        scaling="density",
-        db=True,
-        band=None,
-    ):
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        scaling: str = "density",
+        db: bool = True,
+        band: list or tuple = None,
+    ) -> xarray.Dataset:
         """
         Return the spectrogram of the signal (entire file)
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-
-        Returns
-        -------
-        time : ndarray
-            Array with the starting time of each bin
-        freq : ndarray
-            Array with all the frequencies
-        t : ndarray
-            Time array in seconds of the windows of the spectrogram
-        sxx_list : list
-            Spectrogram list, one for each bin
+        Args:
+            binsize: Time window considered. If set to None, only one value is returned
+            bin_overlap: ercentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the bin windows [0 to 1]
+            scaling: Can be set to 'spectrum' or 'density' depending on the desired output
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
         """
         downsample = True
         if band is None:
@@ -921,40 +852,33 @@ class AcuFile:
 
     def _spectrum(
         self,
-        scaling="density",
-        binsize=None,
-        bin_overlap=0,
-        nfft=512,
-        fft_overlap=0.5,
-        db=True,
-        percentiles=None,
-        band=None,
+        scaling: str = "density",
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        db: bool = True,
+        percentiles: list or np.array = None,
+        band: list or tuple = None,
     ):
         """
-        Return the spectrum : frequency distribution of every bin (periodogram)
-        Returns Dataframe with 'datetime' as index and a column for each frequency and each
-        percentile, and a frequency array
+        Return the spectrum (frequency distribution of every bin (periodogram))
 
-        Parameters
-        ----------
-        scaling : string
-            Can be set to 'spectrum' or 'density' depending on the desired output
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+
+        Args:
+            scaling:  Can be set to 'spectrum' or 'density' depending on the desired output
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap: Percentage to overlap the bin windows [0 to 1]
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            percentiles: List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+
+        Returns:
+             xarray Dataset
         """
         downsample = True
         if percentiles is None:
@@ -989,21 +913,18 @@ class AcuFile:
 
     def psd(
         self,
-        binsize=None,
-        bin_overlap=0,
-        nfft=512,
-        fft_overlap=0.5,
-        db=True,
-        percentiles=None,
-        band=None,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        db: bool = True,
+        percentiles: list or np.array = None,
+        band: list or tuple = None,
     ):
         """
         Return the power spectrum density (PSD) of all the file (units^2 / Hz) re 1 V 1 upa
-        Returns a Dataframe with 'datetime' as index and a column for each frequency and each
-        percentile
 
-        Parameters
-        ----------
+        Args:
         binsize : float, in sec
             Time window considered. If set to None, only one value is returned
         bin_overlap : float [0 to 1]
@@ -1020,6 +941,9 @@ class AcuFile:
         band : tuple or None
             Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
             (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+
+        Returns:
+            xarray Dataset
         """
         psd_ds = self._spectrum(
             scaling="density",
@@ -1035,37 +959,29 @@ class AcuFile:
 
     def power_spectrum(
         self,
-        binsize=None,
-        bin_overlap=0,
-        nfft=512,
-        fft_overlap=0.5,
-        db=True,
-        percentiles=None,
-        band=None,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        db: bool = True,
+        percentiles: list or np.array = None,
+        band: list or tuple = None,
     ):
         """
         Return the power spectrum of all the file (units^2 / Hz) re 1 V 1 upa
         Returns a Dataframe with 'datetime' as index and a column for each frequency and
         each percentile
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the windows in the fft
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        percentiles : list or None
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap: Percentage to overlap the bin windows
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the windows in the fft [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            percentiles: List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
         """
 
         spectrum_ds = self._spectrum(
@@ -1082,61 +998,33 @@ class AcuFile:
 
     def spd(
         self,
-        binsize=None,
-        bin_overlap=0,
-        h=0.1,
-        nfft=512,
-        fft_overlap=0.5,
-        db=True,
-        percentiles=None,
-        min_val=None,
-        max_val=None,
-        band=None,
+        binsize: float = None,
+        bin_overlap: float = 0,
+        h: float = 0.1,
+        nfft: int = 512,
+        fft_overlap: float = 0.5,
+        db: bool = True,
+        percentiles: list or np.array = None,
+        min_val: float = None,
+        max_val: float = None,
+        band: list or tuple = None,
     ):
         """
         Return the spectral probability density.
 
-        Parameters
-        ----------
-        binsize : float, in sec
-            Time window considered. If set to None, only one value is returned
-        bin_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        h : float
-            Histogram bin width (in the correspondent units, upa or db)
-        nfft : int
-            Length of the fft window in samples. Power of 2.
-        fft_overlap : float [0 to 1]
-            Percentage to overlap the bin windows
-        db : bool
-            If set to True the result will be given in db, otherwise in upa^2
-        min_val : float
-            Minimum value to compute the SPD histogram
-        max_val : float
-            Maximum value to compute the SPD histogram
-        percentiles : array_like
-            List of all the percentiles that have to be returned. If set to empty list,
-            no percentiles is returned
-        band : tuple or None
-            Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
-            (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
-
-        Returns
-        -------
-        time : ndarray
-            list with the starting point of each spd df
-        fbands : ndarray
-            list of all the frequencies
-        percentiles : list of float
-            Percentiles to compute
-        edges_list : list of float
-            list of the psd values of the distribution
-        spd_list : list of ndarray
-            list of dataframes with 'frequency' as index and a column for each psd bin and
-            for each percentile (one df per bin)
-        p_list : list of 2d ndarray
-            list of matrices with all the probabilities
-
+        Args:
+            binsize: Time window considered in seconds. If set to None, only one value is returned
+            bin_overlap:  Percentage to overlap the bin windows [0 to 1]
+            h: Histogram bin width (in the correspondent units, upa or db)
+            nfft: Length of the fft window in samples. Power of 2.
+            fft_overlap: Percentage to overlap the bin windows [0 to 1]
+            db: If set to True the result will be given in db, otherwise in upa^2
+            min_val: Minimum value to compute the SPD histogram
+            max_val: Maximum value to compute the SPD histogram
+            percentiles: List of all the percentiles that have to be returned. If set to empty list,
+                no percentiles is returned
+            band: Band to filter the spectrogram in. A band is represented with a tuple - or a list - as
+                (low_freq, high_freq). If set to None, the broadband up to the Nyquist frequency will be analyzed
         """
         psd_evolution = self.psd(
             binsize=binsize,
@@ -1156,22 +1044,22 @@ class AcuFile:
         )
 
     def plot_spectrum_median(
-        self, scaling="density", db=True, log=True, save_path=None, **kwargs
+        self,
+        scaling: str = "density",
+        db: bool = True,
+        log: bool = True,
+        save_path: str or pathlib.Path = None,
+        **kwargs,
     ):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
-        Parameters
-        ----------
-        scaling : str
-            'density' or 'spectrum'
-        db : boolean
-            If set to True the result will be given in db. Otherwise in upa^2/Hz
-        log : boolean
-            If set to True the scale of the y axis is set to logarithmic
-        save_path : string or Path
-            Where to save the images
-        **kwargs : any attribute valid on psd() function
+        Args:
+            scaling: 'density' or 'spectrum'
+            db: If set to True the result will be given in db. Otherwise in upa^2/Hz
+            log: If set to True the scale of the y axis is set to logarithmic
+            save_path: Where to save the images
+            **kwargs: any attribute valid on psd() function
         """
         psd = self._spectrum(db=db, scaling=scaling, **kwargs)
         plots.plot_spectrum_median(
@@ -1179,63 +1067,67 @@ class AcuFile:
         )
 
     def plot_spectrum_per_chunk(
-        self, scaling="density", db=True, log=True, save_path=None, **kwargs
+        self,
+        scaling: str = "density",
+        db: bool = True,
+        log: bool = True,
+        save_path: str or pathlib.Path = None,
+        **kwargs,
     ):
         """
         Plot the power spectrogram density of all the file (units^2 / Hz) re 1 V 1 upa
 
-        Parameters
-        ----------
-        scaling : str
-            'density' or 'spectrum'
-        db : boolean
-            If set to True the result will be given in db. Otherwise in upa^2/Hz
-        log : boolean
-            If set to True the scale of the y axis is set to logarithmic
-        save_path : string or Path
-            Where to save the images
-        **kwargs : any attribute valid on psd() function
+        Args:
+            scaling: 'density' or 'spectrum'
+            db: If set to True the result will be given in db. Otherwise in upa^2/Hz
+            log: If set to True the scale of the y axis is set to logarithmic
+            save_path:  Where to save the images
+            **kwargs : any attribute valid on psd() function
         """
         psd = self._spectrum(db=db, scaling=scaling, **kwargs)
         plots.plot_spectrum_per_chunk(
             ds=psd, data_var="band_" + scaling, log=log, save_path=save_path
         )
 
-    def plot_spectrogram(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spectrogram(
+        self,
+        db: bool = True,
+        log: bool = True,
+        save_path: str or pathlib.Path = None,
+        **kwargs,
+    ):
         """
         Return the spectrogram of the signal (entire file)
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True the result will be given in db. Otherwise in upa^2/Hz
-        log : boolean
-            If set to True the scale of the y axis is set to logarithmic
-        save_path : string or Path
-            Where to save the images
-        **kwargs : any attribute valid on spectrogram() function
+        Args:
+            db: If set to True the result will be given in db. Otherwise in upa^2/Hz
+            log: If set to True the scale of the y axis is set to logarithmic
+            save_path: Where to save the images
+            **kwargs: any attribute valid on spectrogram() function
         """
         ds_spectrogram = self.spectrogram(db=db, **kwargs)
         plots.plot_spectrogram_per_chunk(ds_spectrogram, log, save_path)
 
-    def plot_spd(self, db=True, log=True, save_path=None, **kwargs):
+    def plot_spd(
+        self,
+        db: bool = True,
+        log: bool = True,
+        save_path: str or pathlib.Path = None,
+        **kwargs,
+    ):
         """
         Plot the SPD graph of the bin
 
-        Parameters
-        ----------
-        db : boolean
-            If set to True the result will be given in db. Otherwise, in upa^2/Hz
-        log : boolean
-            If set to True the scale of the y-axis is set to logarithmic
-        save_path : string or Path
-            Where to save the images
-        **kwargs : any attribute valid on spd() function
+        Args:
+            db: If set to True the result will be given in db. Otherwise, in upa^2/Hz
+            log: If set to True the scale of the y-axis is set to logarithmic
+            save_path: Path where to save the images
+            **kwargs : any attribute valid on spd() function
         """
         spd_ds = self.spd(db=db, **kwargs)
         plots.plot_spd(spd_ds, log=log, save_path=save_path)
 
-    def update_freq_cal(self, ds, data_var, **kwargs):
+    def update_freq_cal(self, ds: xarray.Dataset, data_var: str, **kwargs):
         return utils.update_freq_cal(
             hydrophone=self.hydrophone, ds=ds, data_var=data_var, **kwargs
         )
