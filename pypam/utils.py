@@ -365,6 +365,8 @@ def get_bands_limits(
 ) -> tuple:
     """
     Get the limits of the frequency bands between min and max frequency bands specified in band.
+    As specified in Martin et al. (2021) https://doi.org/10.1121/10.0003324
+
     Args:
         band: tuple of [min, max] frequency in Hz
         nfft: number of FFT to use
@@ -472,6 +474,7 @@ def get_center_freq(
 
 def get_hybrid_millidecade_limits(band: list or tuple, nfft: int, fs: int = None):
     """
+    Get band limits in hybrid mode for millidecade bands
 
     Args:
         band: band to get the limits of [min_freq, max_freq]
