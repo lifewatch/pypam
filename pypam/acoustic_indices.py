@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Adapted version of acoustic_indexes.py (https://github.com/patriceguyot/Acoustic_Indices)
+Some of the functions below are adapted version of acoustic_indexes.py (https://github.com/patriceguyot/Acoustic_Indices):
 
 Set of functions to compute acoustic indices in the framework of Soundscape Ecology.
 Some features are inspired or ported from those proposed in:
@@ -10,12 +10,6 @@ Some features are inspired or ported from those proposed in:
     Luis J. Villanueva-Rivera and Bryan C. Pijanowski
 This file use an object oriented type for audio files described in the file "acoustic_index.py".
 """
-
-__author__ = "Patrice Guyot"
-__version__ = "0.4"
-__credits__ = ["Patrice Guyot", "Alice Eldridge", "Mika Peck"]
-__email__ = ["guyot.patrice@gmail.com", "alicee@sussex.ac.uk", "m.r.peck@sussex.ac.uk"]
-__status__ = "Development"
 
 import maad.features
 import numpy as np

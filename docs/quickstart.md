@@ -5,41 +5,53 @@
 The idea of *pypam* is to process all the acoustic data resulting from an
 underwater acoustic deployment. For a deployment, we understand a single
 instrument from the moment it gets into the water until the moment it is
-taken out. This data is usually stored in different files (and folders),
-and sometimes has to be zipped because of lack of storage space. Don\'t
-panic, you can still work with zipped folders directly from *pypam*
-without having to unzip the whole project. Usually these files have a
+taken out. This data is usually stored in different files (and folders), and usually these files have a
 continuity in time, and very often it is interesting to extract time
 series.
 
-*pypam* allows to choose a time window (currently named binsize) for processing, both for DataSet, and ASA. 
-The selected binsize which will be the time resolution of the computed output. Then each feature will be
+*pypam* allows to choose a time window (currently named binsize) for processing. 
+The selected binsize will be the time resolution of the computed output. Each feature will be
 computed on that time window (independently of the file duration and sampling frequency). 
-The output is an xarray dataset. The dimensions of these arrays are always:
 
-- *id*: id of the bin (increasing integer)
+The output will be in the form of an [xarray](https://xarray.dev/) dataset. The dimensions of these arrays are always:
 
-extra coordinates (metadata)
+- *id*: id of the bin for the total deployment (increasing integer)
 
-- *datetime*: bin start timestamp of the \"time window\"
+Extra coordinates (metadata) on the same dimension that *id*:
+
+- *datetime*: bin start timestamp of the "time window"
 - *start_sample*: start sample of the bin respect to the file
 - *end_sample*: end sample of the bin respect to the file
-- *id\_*: id with respect to the file (changes when multiple files per
+- *file_id*: id with respect to the file (changes when multiple files per
   deployment)
 
-Frequency dependent features 
+For frequency dependent features, there coordinates are also present: 
+
 - *frequency*: center frequency of the band 
 - *frequency_bins* (only for hybrid millidecade bands): center frequency of joined bands
 - *upper_frequency*: upper limit of the frequency band
 - *lower_frequency*: lower limit of the frequency band
 
+The processed acoustic features are then stored in one data variable of the xarray dataset per feature. 
+
+
+## File format 
+Pypam allows for any file format supported by [SoundFile](https://python-soundfile.readthedocs.io). 
+
+
+Sometimes the collected underwater acoustics data is zipped to save storage space. Don't
+panic, you can still work with zipped folders directly from *pypam*
+without having to unzip the whole deployment. 
+
 ## General workflow
 
 First, we need to define our metadata by defining the hydrophone used,
-using [pyhydrophone](<https://github.com/lifewatch/pyhydrophone>).
-Check the docs of pyhydrophone to know the specific parameters needed
-for your hydrophone. An example would be as follows:
+using [pyhydrophone](<https://github.com/lifewatch/pyhydrophone>), which deals with the complexities of specific brands
+of hydrophones. Check the docs of pyhydrophone to know the specific parameters needed for your hydrophone, 
+and to know if the brand is supported (if not, you can always raise an issue asking for it!).
 
+A typical example would be as follows:
+```python
     import pyhydrophone as pyhy
 
     # SoundTrap
@@ -47,13 +59,21 @@ for your hydrophone. An example would be as follows:
     name = 'SoundTrap'
     serial_number = 67416073
     soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+```
+Once the hydrophone is declared, we can process the data. 
+This can be done using one of the four main classes: 
 
-Then, we need to process either a Signal, AcuFile or ASA:
+| Class Equivalent | Class Object Name                       | Description                                                                                                                                                                                             |
+|------------------|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Signal           | [Signal](signal.md)                     | The signal extracted from one (or a part of) recording                                                                                                                                                  |
+| One sound file   | [AcuFile](acufile.md)  (Acoustic File)  | One single audio file, with its associated metadata                                                                                                                                                     | 
+| One Deployment   | [ASA](asa.md) (Acoustic Survey Analyis) | All the files contained in one deployment (continuous or not in time), stored in one folder (can contain multiple subfolders)                                                                           |
+| A full dataset   | [Dataset](dataset.md)                   | A conjunction of deployments which need to be processed the same way. For this, a csv with metadata needs to be created first specifying the location of each deployment and its corresponding metadata |
 
-## Acoustic File (acoustic_file.AcuFile)
+## Acoustic File ([acoustic_file.AcuFile](acufile.md))
 
 To create or process an acoustic file, you can run:
-
+```python
     from pypam import acoustic_file
 
     acu_file = acoustic_file.AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
@@ -62,12 +82,13 @@ To create or process an acoustic file, you can run:
     nfft = 8000  # Set to the same as sampling rate (or higher band limit, when downsampling) for 1s time resolution
     acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
                                                    method='density', band=None)
+```
 
-## Acoustic Survey (acoustic_survey.ASA)
+## Acoustic Survey ([acoustic_survey.ASA](asa.md))
 
-For example, to obtain several features on a certain binsize, at three
-different frequency bands:
+For example, to obtain several features on a certain binsize, at three different frequency bands:
 
+```python
     from pypam import acoustic_survey
 
     # Analysis parameters
@@ -77,9 +98,11 @@ different frequency bands:
 
     asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
     features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
+```
 
 Another example would be to obtain the third octave bands:
 
+```python
     from pypam import acoustic_survey
 
     # Analysis parameters
@@ -88,18 +111,24 @@ Another example would be to obtain the third octave bands:
 
     asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
     oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+```
 
-### Save the output
+### Save the results (processed data + metadata)
 
-Finally, the output can be saved as a netCDF file. The output should
-contain all the metadata necessary to reproduce the results, such as all
-the metadata passed to the functions.
+Finally, the output can be saved as a netCDF file. The output will contain all the metadata necessary to reproduce 
+the results, such as all the metadata and selected parameters specified by the user.: 
 
-The saved files can afterward be loaded in *pypam* to produce plots.:
-
+```python
     oct_ds.to_netcdf('path_to_the_file.nc')
+```
 
-## Acoustic Dataset (dataset.Dataset)
+The saved files can afterward be loaded to analyze, or to be used with *pypam* utils / plots modules to produce plots.:
+
+```python
+    ds = xarray.load_dataset('path_to_the_file.nc')
+```
+
+## Acoustic Dataset ([dataset.Dataset](dataset.md))
 
 Alternatively, we can process several deployments at once using the
 Dataset class. To create an acoustic dataset made out of several
@@ -132,6 +161,7 @@ The output is always in a structured folder.
 
 To create a dataset, run:
 
+```python
     import pathlib
 
     import pyhydrophone as pyhy
@@ -189,11 +219,13 @@ To create a dataset, run:
 
     # Call the dataset creation. Will create the files in the corresponding folder
     ds()
+```
 
 ## To produce plots
 
 There are functions to plot compute and plot in one-go, such as:
 
+```python
     h_db = 1
     percentiles = [1, 10, 50, 90, 95]
     min_val = 60
@@ -201,6 +233,7 @@ There are functions to plot compute and plot in one-go, such as:
 
     # ASA defined before
     asa.plot_spd(db=True, h=h_db, percentiles=percentiles, min_val=min_val, max_val=max_val)
+```
 
-But there is also the module plots, which allows to pass the saved
-*.nc files to produce plots.
+If you want to plot data which has already been processed, you can use the [plots](plots.md) module. 
+This module which allows to pass the saved *.nc files to produce specific plots of interest.

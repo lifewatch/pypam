@@ -1,4 +1,8 @@
-# Pypam
+# *Pypam*: a package to process underwater acoustics time series
+
+!!! note "WIP"
+    Thanks for your interest in pypam. The package and the documentation are still a work in progress :construction:.
+    Please get in touch if you have any questions or suggestions.
 
 ## Description
 
@@ -14,6 +18,13 @@ several deployments with one line of code, so it is easy to create
 datasets to work with. *pypam* is oriented to extracting
 features that can be used for machine learning algorithms or to the
 extraction of broad acoustic information in time-series.
+
+*pypam* works with [xarray](https://xarray.dev/) structures as output, making it very easy to store the results 
+using different formats (we recommend netCDF). 
+
+![image](./source/_static/PyPAM_colour_white_bg.png)
+Logo by [Dr. Stan Pannier](https://www.vliz.be/en/imis?module=person&persid=37468)
+
 
 ### Citing pypam
 
