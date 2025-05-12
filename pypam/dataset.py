@@ -39,6 +39,7 @@ class DataSet:
         nfft: int = 512,
         fft_overlap: int = 0,
         dc_subtract: bool = False,
+        gridded_data: bool = True,
     ):
         """
         Args:
@@ -53,6 +54,7 @@ class DataSet:
             nfft: Number of samples of window to use for frequency analysis
             fft_overlap: percentage (0 to 1) of overlap between consecutive fft windows
             dc_subtract: set to True to subtract the mean of the signal (DC)
+            gridded_data: set to True so all the bins start at second :00
         """
         self.metadata = pd.read_csv(summary_path)
         if "end_to_end_calibration" not in self.metadata.columns:
@@ -67,6 +69,7 @@ class DataSet:
         self.nfft = nfft
         self.fft_overlap = fft_overlap
         self.dc_subtract = dc_subtract
+        self.gridded = gridded_data
 
         if not isinstance(output_folder, pathlib.Path):
             output_folder = pathlib.Path(output_folder)
@@ -144,7 +147,9 @@ class DataSet:
     def deployments(self) -> tuple:
         """
         Iterates through all the deployments listed in the metadata file
-        :return: idx, deployment_name, deployment_path per iteration
+
+        Returns:
+            idx, deployment_name, deployment_path per iteration
         """
         print("Reading dataset...")
         for idx in tqdm(self.metadata.index, total=len(self.metadata)):
@@ -154,8 +159,11 @@ class DataSet:
         """
         Generate the deployment dataset for the index idx in the metadata file
 
-        :param idx: Index of the deployment in the dataset
-        :return: xarray dataset for the deployment
+        Args:
+            idx: Index of the deployment in the dataset
+
+        Returns:
+            xarray dataset for the deployment
         """
         hydrophone = self.instruments[self.metadata.loc[(idx, "instrument_name")]]
         hydrophone.sensitivity = self.metadata.loc[(idx, "instrument_sensitivity")]
@@ -169,13 +177,20 @@ class DataSet:
             binsize=self.binsize,
             nfft=self.nfft,
             fft_overlap=self.fft_overlap,
+            gridded_data=self.gridded,
             extra_attrs=extra_attrs,
             **self.metadata.loc[(idx, survey_columns)].to_dict(),
         )
         ds = xarray.Dataset()
         if self.frequency_features not in [[], None]:
             for f in self.frequency_features:
-                freq_evo = asa.evolution_freq_dom(f, band=None, db=True)
+                freq_evo = asa.evolution_freq_dom(
+                    f,
+                    band=None,
+                    db=True,
+                    save_daily=True,
+                    output_folder=self.output_folder.joinpath("deployments"),
+                )
                 for data_var in freq_evo.data_vars:
                     ds = ds.merge(freq_evo[data_var])
         if self.temporal_features not in [[], None]:
@@ -195,8 +210,9 @@ class DataSet:
     def add_deployment_metadata(self, idx: int) -> None:
         """
         Add to the metadata parameter of the class the metadata of the deployment of index idx
-        :param idx: index of deplpoyment
-        :return: None
+
+        Args:
+            idx: index of deployment
         """
         deployment_row = self.metadata.iloc[idx]
         hydrophone = self.instruments[deployment_row["instrument_name"]]
@@ -213,7 +229,9 @@ class DataSet:
     def add_temporal_metadata(self) -> dict:
         """
         Return a db with a data overview of the folder
-        :return dict: metadata overview
+
+        Returns:
+            dict of metadata overview
         """
         metadata_params = ["start_datetime", "end_datetime", "duration"]
         for m_p in metadata_params:
@@ -250,9 +268,10 @@ class DataSet:
         """
         Create a plot with the probability distribution of the levels of the third octave bands
 
-        :param h: Histogram bin size (in db)
-        :param percentiles: Percentiles to plot (0 to 1). Default is 10, 50 and 90% ([0.1, 0.5, 0.9])
-        :return: None
+        Args:
+            h: Histogram bin size (in db)
+            percentiles: Percentiles to plot (0 to 1). Default is 10, 50 and 90% ([0.1, 0.5, 0.9])
+
         """
         if percentiles is None:
             percentiles = []

@@ -11,7 +11,6 @@ import pathlib
 import zipfile
 
 import dateutil.parser as parser
-import pyhydrophone as pyhy
 import seaborn as sns
 import xarray
 from tqdm import tqdm
@@ -36,16 +35,14 @@ class ASA:
         zipped: bool = False,
         extension: str = ".wav",
         include_dirs: bool = False,
+        gridded_data: bool = True,
         p_ref: float = 1.0,
         binsize: float = None,
         bin_overlap: float = 0,
         nfft: int = 1.0,
         fft_overlap: float = 0.5,
         period: tuple or list = None,
-        timezone: datetime.tzinfo
-        or pytz.tzinfo.BaseTZInfo
-        or dateutil.tz.tz.tzfile
-        or str = "UTC",
+        timezone: datetime.tzinfo or str = "UTC",
         channel: int = 0,
         calibration: float or int or None = None,
         dc_subtract: bool = False,
@@ -58,6 +55,7 @@ class ASA:
             zipped: Set to True if the directory is zipped
             extension: Default to .wav, extension of the sound files to process
             include_dirs: Set to True if the folder contains other folders with sound files
+            gridded_data: Set to True to start the processing at all the minutes with 0 seconds
             p_ref: Reference pressure in uPa
             binsize: Time window considered, in seconds. If set to None, only one value is returned
             bin_overlap: Percentage to overlap the bin windows [0 to 1]
@@ -107,36 +105,62 @@ class ASA:
             "_start_frame",
             "end_to_end_calibration",
         ]
+        self.file_dependent_attrs = [
+            "file_path",
+            "_start_frame",
+            "end_to_end_calibration",
+        ]
+        self.current_chunk_id = 0
+
+        self.gridded = gridded_data
 
     def _files(self) -> acoustic_file.AcuFile:
         """
         Iterator that returns AcuFile for each wav file in the folder
         """
-        for file_list in tqdm(self.acu_files):
+        self.current_chunk_id = 0
+        for file_i, file_list in tqdm(
+            enumerate(self.acu_files), total=len(self.acu_files)
+        ):
             wav_file = file_list[0]
-            print(wav_file)
-            sound_file = self._hydro_file(wav_file)
+            if file_i >= (len(self.acu_files) - 1):
+                next_file = None
+            else:
+                next_file = self.acu_files[file_i + 1][0]
+            sound_file = self._hydro_file(
+                wav_file, wav_file_next=next_file, chunk_id_start=self.current_chunk_id
+            )
             if sound_file.is_in_period(self.period) and sound_file.file.frames > 0:
                 yield sound_file
 
-    def _hydro_file(self, wav_file: str or pathlib.Path) -> acoustic_file.AcuFile:
+    def _hydro_file(
+        self,
+        wav_file: str or pathlib.Path,
+        wav_file_next: str or pathlib.Path = None,
+        chunk_id_start: int = 0,
+    ) -> acoustic_file.AcuFile:
         """
         Return the AcuFile object from the wav_file
 
         Args:
             wav_file: Sound file
+            wav_file_next: Next Sound File
+            chunk_id_start: id of the chunk to start from
 
         Returns:
             Object AcuFile
         """
         hydro_file = acoustic_file.AcuFile(
             sfile=wav_file,
+            sfile_next=wav_file_next,
             hydrophone=self.hydrophone,
             p_ref=self.p_ref,
             timezone=self.timezone,
             channel=self.channel,
             calibration=self.calibration,
             dc_subtract=self.dc_subtract,
+            chunk_id_start=chunk_id_start,
+            gridded=self.gridded,
         )
         return hydro_file
 
@@ -164,12 +188,19 @@ class ASA:
                 d = d.__dict__[sub_k]
             if isinstance(d, pathlib.Path):
                 d = str(d)
+            if isinstance(d, bool):
+                d = int(d)
             metadata_attrs[k.replace(".", "_")] = d
 
         return metadata_attrs
 
     def evolution_multiple(
-        self, method_list: list, band_list: list = None, **kwargs
+        self,
+        method_list: list,
+        band_list: list = None,
+        save_daily: bool = False,
+        output_folder: str or pathlib.Path = None,
+        **kwargs,
     ) -> xarray.Dataset:
         """
         Compute the method in each file and output the evolution
@@ -180,8 +211,16 @@ class ASA:
             band_list: list of tuples, tuple or None. Bands to filter. Can be multiple bands (all of them will be analyzed) or only one band. A band is
                 represented with a tuple as (low_freq, high_freq). If set to None, the broadband up to the Nyquist
                 frequency will be analyzed
+            save_daily: Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
+            output_folder: Directory to save the netcdf files. Only works with save_daily
             **kwargs:  Any accepted parameter for the method_name
         """
+        if save_daily and output_folder is None:
+            raise ValueError(
+                "output_folder must not be none to save daily netcdf files"
+            )
+        if isinstance(output_folder, str):
+            output_folder = pathlib.Path(output_folder)
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller(
             "_apply_multiple",
@@ -193,9 +232,16 @@ class ASA:
             band_list=band_list,
             **kwargs,
         )
+        start_date, end_date = self.start_end_timestamp()
+        current_date = start_date.date()
         for sound_file in self._files():
+            if save_daily and (sound_file.date.date() > current_date):
+                ds.to_netcdf(output_folder.joinpath("%s.nc" % current_date))
+                ds = xarray.Dataset(attrs=self._get_metadata_attrs())
+                current_date = sound_file.date.date()
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
         return ds
 
     def evolution(
@@ -216,16 +262,30 @@ class ASA:
             method_list=[method_name], band_list=band_list, **kwargs
         )
 
-    def evolution_freq_dom(self, method_name: str, **kwargs) -> xarray.Dataset:
+    def evolution_freq_dom(
+        self,
+        method_name: str,
+        save_daily: bool = False,
+        output_folder: str or pathlib.Path = None,
+        **kwargs,
+    ) -> xarray.Dataset:
         """
         Returns the evolution of frequency domain parameters
 
         Args:
             method_name: Name of the method of the acoustic_file class to compute
+            save_daily: Set to True to save daily netcdf files instead of returning a huge big file (useful for long deployments)
+            output_folder: Directory to save the netcdf files. Only works with save_daily
 
         Returns:
             A xarray DataSet with a row per bin with the method name output
         """
+        if save_daily and output_folder is None:
+            raise ValueError(
+                "output_folder must not be none to save daily netcdf files"
+            )
+        if isinstance(output_folder, str):
+            output_folder = pathlib.Path(output_folder)
         ds = xarray.Dataset(attrs=self._get_metadata_attrs())
         f = operator.methodcaller(
             method_name,
@@ -235,9 +295,18 @@ class ASA:
             bin_overlap=self.bin_overlap,
             **kwargs,
         )
+        start_date, end_date = self.start_end_timestamp()
+        current_date = start_date.date()
         for sound_file in self._files():
+            if save_daily and (sound_file.date.date() > current_date):
+                ds.to_netcdf(output_folder.joinpath("%s.nc" % current_date))
+                ds = xarray.Dataset(attrs=self._get_metadata_attrs())
+                current_date = sound_file.date.date()
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
+        if save_daily:
+            ds.to_netcdf(output_folder.joinpath("%s.nc" % current_date))
         return ds
 
     def timestamps_array(self) -> xarray.Dataset:
@@ -251,6 +320,7 @@ class ASA:
         for sound_file in self._files():
             ds_output = f(sound_file)
             ds = utils.merge_ds(ds, ds_output, self.file_dependent_attrs)
+            self.current_chunk_id += ds.id.max()
         return ds
 
     def start_end_timestamp(self) -> tuple:
@@ -258,14 +328,12 @@ class ASA:
         Returns the start and the end timestamps
         """
         wav_file = self.acu_files[0][0]
-        print(wav_file)
 
         sound_file = self._hydro_file(wav_file)
         start_datetime = sound_file.date
 
         file_list = self.acu_files[-1]
         wav_file = file_list[0]
-        print(wav_file)
         sound_file = self._hydro_file(wav_file)
         end_datetime = sound_file.date + datetime.timedelta(
             seconds=sound_file.total_time()
@@ -560,19 +628,6 @@ class AcousticFolder:
             extra_extensions = []
         self.extra_extensions = extra_extensions
 
-    def __getitem__(self, n):
-        """
-        Get n wav file
-        """
-        self.__iter__()
-        self.n = n
-        return self.__next__()
-
-    def __iter__(self):
-        """
-        Iteration
-        """
-        self.n = 0
         if not self.zipped:
             if self.recursive:
                 self.files_list = sorted(
@@ -583,12 +638,15 @@ class AcousticFolder:
         else:
             if self.recursive:
                 self.folder_list = sorted(self.folder_path.iterdir())
-                self.zipped_subfolder = AcousticFolder(
-                    self.folder_list[self.n],
-                    extra_extensions=self.extra_extensions,
-                    zipped=self.zipped,
-                    include_dirs=self.recursive,
-                )
+                self.files_list = []
+                for fol in self.folder_list:
+                    self.zipped_subfolder = AcousticFolder(
+                        fol,
+                        extra_extensions=self.extra_extensions,
+                        zipped=self.zipped,
+                        include_dirs=self.recursive,
+                    )
+                    np.concatenate((self.files_list, self.zipped_subfolder.files_list))
             else:
                 zipped_folder = zipfile.ZipFile(self.folder_path, "r", allowZip64=True)
                 self.files_list = []
@@ -597,52 +655,35 @@ class AcousticFolder:
                     extension = f.split(".")[-1]
                     if extension == "wav":
                         self.files_list.append(f)
-        return self
 
-    def __next__(self):
+    def __getitem__(self, index):
         """
-        Next wav file
+        Get n wav file
         """
-        if self.n < len(self.files_list):
+        if index < len(self.files_list):
             files_list = []
             if self.zipped:
-                if self.recursive:
-                    try:
-                        self.files_list = self.zipped_subfolder.__next__()
-                    except StopIteration:
-                        self.n += 1
-                        self.zipped_subfolder = AcousticFolder(
-                            self.folder_list[self.n],
-                            extra_extensions=self.extra_extensions,
-                            zipped=self.zipped,
-                            include_dirs=self.recursive,
-                        )
-                else:
-                    file_name = self.files_list[self.n]
-                    zipped_folder = zipfile.ZipFile(
-                        self.folder_path, "r", allowZip64=True
+                file_name = self.files_list[index]
+                zipped_folder = zipfile.ZipFile(self.folder_path, "r", allowZip64=True)
+                wav_file = zipped_folder.open(file_name)
+                files_list.append(wav_file)
+                for extension in self.extra_extensions:
+                    ext_file_name = file_name.parent.joinpath(
+                        file_name.name.replace(self.extension, extension)
                     )
-                    wav_file = zipped_folder.open(file_name)
-                    files_list.append(wav_file)
-                    for extension in self.extra_extensions:
-                        ext_file_name = file_name.parent.joinpath(
-                            file_name.name.replace(self.extension, extension)
-                        )
-                        files_list.append(zipped_folder.open(ext_file_name))
-                    self.n += 1
-                    return files_list
+                    files_list.append(zipped_folder.open(ext_file_name))
+                return files_list
             else:
-                wav_path = self.files_list[self.n]
+                wav_path = self.files_list[index]
                 files_list.append(wav_path)
                 for extension in self.extra_extensions:
                     files_list.append(
                         pathlib.Path(str(wav_path).replace(self.extension, extension))
                     )
 
-                self.n += 1
                 return files_list
         else:
-            raise StopIteration
+            raise IndexError
 
     def __len__(self):
         if not self.zipped:

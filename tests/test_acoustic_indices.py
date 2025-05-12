@@ -26,11 +26,7 @@ acu_file = AcuFile(
 
 class TestAcousticIndices(unittest.TestCase):
     def setUp(self) -> None:
-        self.signal = Signal(
-            signal=acu_file.signal(units="upa"),
-            fs=acu_file.fs,
-            channel=acu_file.channel,
-        )
+        self.signal = acu_file.signal("upa")
         self.frequencies, _, self.spectrogram = self.signal.spectrogram(db=False)
 
     def test_compute_aci(self):

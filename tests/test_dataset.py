@@ -86,6 +86,7 @@ class TestDataset(unittest.TestCase):
             nfft=nfft,
             fft_overlap=fft_overlap,
             dc_subtract=dc_subtract,
+            gridded_data=False,
         )
 
     def test_generate_dataset(self):

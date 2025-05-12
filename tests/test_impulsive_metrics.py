@@ -73,7 +73,7 @@ def simplePeaks(
 ):
     """very simple detection algorithm"""
     eventSeparation_samples = acu_file.fs * eventSeparation_s
-    sig = acu_file.signal(units=units)
+    sig = acu_file.signal(units=units).signal
     peaks, properties = scipy.signal.find_peaks(
         sig, height=threshold, distance=eventSeparation_samples
     )
@@ -91,7 +91,7 @@ def test_do_analysis():
     locations = simplePeaks(acu_file, 25, event_separation_s, buffer_s)
 
     events = []
-    signal, fs = acu_file.signal(units="upa"), acu_file.fs
+    signal, fs = acu_file.signal(units="upa").signal, acu_file.fs
     for i in range(len(locations) - 1):
         events.append(Event(signal, fs, start=locations[i], end=locations[i + 1]))
 

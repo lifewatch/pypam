@@ -39,7 +39,10 @@ import scipy.signal as sig
 import xarray
 from tqdm import tqdm
 
-import pyhydrophone as pyhy
+from functools import partial
+import zipfile
+import os
+import datetime
 
 try:
     import dask
@@ -648,13 +651,6 @@ def merge_ds(ds: xarray.Dataset, new_ds: xarray.Dataset, attrs_to_vars: list):
     for attr in attrs_to_vars:
         if attr in new_ds.attrs.keys():
             new_coords[attr] = ("id", [new_ds.attrs[attr]] * new_ds.dims["id"])
-    if len(ds.dims) != 0:
-        start_value = ds["id"][-1].values + 1
-    else:
-        start_value = 0
-    new_ids = np.arange(start_value, start_value + new_ds.dims["id"])
-    new_ds = new_ds.reset_index("id")
-    new_coords["id"] = new_ids
     new_ds = new_ds.assign_coords(new_coords)
     if len(ds.dims) == 0:
         ds = ds.merge(new_ds)
@@ -1050,6 +1046,19 @@ def update_freq_cal(
     return ds_copy
 
 
+def parse_file_name(sfile):
+    if type(sfile) == str:
+        file_name = os.path.split(sfile)[-1]
+    elif issubclass(sfile.__class__, pathlib.Path):
+        file_name = sfile.name
+    elif issubclass(sfile.__class__, zipfile.ZipExtFile):
+        file_name = sfile.name
+    else:
+        raise Exception("The filename has to be either a Path object or a string")
+
+    return file_name
+
+
 def hmb_to_decidecade(
     ds: xarray.Dataset, data_var: str, freq_coord: str, fs: int = None
 ) -> xarray.Dataset:
@@ -1151,3 +1160,15 @@ def hmb_to_decidecade(
     decidecade_psd = 10 * np.log10(decidecade_psd)
 
     return decidecade_psd
+
+
+def get_file_datetime(file_name, hydrophone):
+    try:
+        date = hydrophone.get_name_datetime(file_name)
+    except ValueError:
+        date = datetime.datetime.now()
+        print(
+            "Filename %s does not match the %s file structure. Setting time to now..."
+            % (file_name, hydrophone.name)
+        )
+    return date
