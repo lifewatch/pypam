@@ -201,9 +201,9 @@ class DataSet:
                 ds = ds.merge(temporal_evo[f])
 
         # Update the metadata in case the calibration changed the sensitivity
-        self.metadata.loc[
-            idx, "end_to_end_calibration"
-        ] = hydrophone.end_to_end_calibration(p_ref=1.0)
+        self.metadata.loc[idx, "end_to_end_calibration"] = (
+            hydrophone.end_to_end_calibration(p_ref=1.0)
+        )
         self.metadata.to_csv(self.summary_path, index=False)
         return ds
 

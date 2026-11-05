@@ -52,13 +52,15 @@ and to know if the brand is supported (if not, you can always raise an issue ask
 
 A typical example would be as follows:
 ```python
-    import pyhydrophone as pyhy
+import pyhydrophone as pyhy
 
-    # SoundTrap
-    model = 'SoundTrap 300 STD'
-    name = 'SoundTrap'
-    serial_number = 67416073
-    soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+# SoundTrap
+model = "SoundTrap 300 STD"
+name = "SoundTrap"
+serial_number = 67416073
+soundtrap = pyhy.soundtrap.SoundTrap(
+    name=name, model=model, serial_number=serial_number
+)
 ```
 Once the hydrophone is declared, we can process the data. 
 This can be done using one of the four main classes: 
@@ -74,14 +76,23 @@ This can be done using one of the four main classes:
 
 To create or process an acoustic file, you can run:
 ```python
-    from pypam import acoustic_file
+from pypam import acoustic_file
 
-    acu_file = acoustic_file.AcuFile('tests/test_data/67416073.210610033655.wav', soundtrap, 1)
-    acu_file.plot_power_spectrum()
+acu_file = acoustic_file.AcuFile(
+    "tests/test_data/67416073.210610033655.wav", soundtrap, 1
+)
+acu_file.plot_power_spectrum()
 
-    nfft = 8000  # Set to the same as sampling rate (or higher band limit, when downsampling) for 1s time resolution
-    acu_file.hybrid_millidecade_bands(nfft=nfft, fft_overlap=0.5, binsize=None, bin_overlap=0, db=True,
-                                                   method='density', band=None)
+nfft = 8000  # Set to the same as sampling rate (or higher band limit, when downsampling) for 1s time resolution
+acu_file.hybrid_millidecade_bands(
+    nfft=nfft,
+    fft_overlap=0.5,
+    binsize=None,
+    bin_overlap=0,
+    db=True,
+    method="density",
+    band=None,
+)
 ```
 
 ## Acoustic Survey ([acoustic_survey.ASA](asa.md))
@@ -89,28 +100,32 @@ To create or process an acoustic file, you can run:
 For example, to obtain several features on a certain binsize, at three different frequency bands:
 
 ```python
-    from pypam import acoustic_survey
+from pypam import acoustic_survey
 
-    # Analysis parameters
-    features = ['rms', 'sel', 'peak', 'aci']
-    band_list = [[10, 100], [500, 1000], [500, 100000]]
-    binsize = 60.0
+# Analysis parameters
+features = ["rms", "sel", "peak", "aci"]
+band_list = [[10, 100], [500, 1000], [500, 100000]]
+binsize = 60.0
 
-    asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
-    features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
+asa = acoustic_survey.ASA(
+    hydrophone=soundtrap, folder_path="/tests/test_data", binsize=binsize
+)
+features_ds = asa.evolution_multiple(method_list=features, band_list=band_list)
 ```
 
 Another example would be to obtain the third octave bands:
 
 ```python
-    from pypam import acoustic_survey
+from pypam import acoustic_survey
 
-    # Analysis parameters
-    binsize = 60.0
-    third_octaves = None  # Calculate third octaves for the entire freq range
+# Analysis parameters
+binsize = 60.0
+third_octaves = None  # Calculate third octaves for the entire freq range
 
-    asa = acoustic_survey.ASA(hydrophone=soundtrap, folder_path='/tests/test_data', binsize=binsize)
-    oct_ds = asa.evolution_freq_dom('third_octaves_levels', band=third_octaves, db=True)
+asa = acoustic_survey.ASA(
+    hydrophone=soundtrap, folder_path="/tests/test_data", binsize=binsize
+)
+oct_ds = asa.evolution_freq_dom("third_octaves_levels", band=third_octaves, db=True)
 ```
 
 ### Save the results (processed data + metadata)
@@ -119,13 +134,13 @@ Finally, the output can be saved as a netCDF file. The output will contain all t
 the results, such as all the metadata and selected parameters specified by the user.: 
 
 ```python
-    oct_ds.to_netcdf('path_to_the_file.nc')
+oct_ds.to_netcdf("path_to_the_file.nc")
 ```
 
 The saved files can afterward be loaded to analyze, or to be used with *pypam* utils / plots modules to produce plots.:
 
 ```python
-    ds = xarray.load_dataset('path_to_the_file.nc')
+ds = xarray.load_dataset("path_to_the_file.nc")
 ```
 
 ## Acoustic Dataset ([dataset.Dataset](dataset.md))
@@ -162,63 +177,87 @@ The output is always in a structured folder.
 To create a dataset, run:
 
 ```python
-    import pathlib
+import pathlib
 
-    import pyhydrophone as pyhy
-    import pypam
+import pyhydrophone as pyhy
+import pypam
 
-    # Acoustic Data
-    summary_path = pathlib.Path('./data_summary_example.csv')
-    include_dirs = False
+# Acoustic Data
+summary_path = pathlib.Path("./data_summary_example.csv")
+include_dirs = False
 
-    # Output folder
-    output_folder = summary_path.parent.joinpath('data_exploration')
+# Output folder
+output_folder = summary_path.parent.joinpath("data_exploration")
 
-    # Hydrophone Setup
-    # If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
-    model = 'ST300HF'
-    name = 'SoundTrap'
-    serial_number = 67416073
-    soundtrap = pyhy.soundtrap.SoundTrap(name=name, model=model, serial_number=serial_number)
+# Hydrophone Setup
+# If Vpp is 2.0 then it means the wav is -1 to 1 directly related to V
+model = "ST300HF"
+name = "SoundTrap"
+serial_number = 67416073
+soundtrap = pyhy.soundtrap.SoundTrap(
+    name=name, model=model, serial_number=serial_number
+)
 
-    bk_model = 'Nexus'
-    bk_name = 'B&K'
-    preamp_gain = -170
-    bk_Vpp = 2.0
-    bk = pyhy.BruelKjaer(name=bk_name, model=bk_model, preamp_gain=preamp_gain, Vpp=bk_Vpp, serial_number=1,
-                         type_signal='ref')
+bk_model = "Nexus"
+bk_name = "B&K"
+preamp_gain = -170
+bk_Vpp = 2.0
+bk = pyhy.BruelKjaer(
+    name=bk_name,
+    model=bk_model,
+    preamp_gain=preamp_gain,
+    Vpp=bk_Vpp,
+    serial_number=1,
+    type_signal="ref",
+)
 
-    upam_model = 'uPam'
-    upam_name = 'Seiche'
-    upam_serial_number = 'SM7213'
-    upam_sensitivity = -196.0
-    upam_preamp_gain = 0.0
-    upam_Vpp = 20.0
-    upam = pyhy.uPam(name=upam_name, model=upam_name, serial_number=upam_serial_number, sensitivity=upam_sensitivity,
-                     preamp_gain=upam_preamp_gain, Vpp=upam_Vpp)
+upam_model = "uPam"
+upam_name = "Seiche"
+upam_serial_number = "SM7213"
+upam_sensitivity = -196.0
+upam_preamp_gain = 0.0
+upam_Vpp = 20.0
+upam = pyhy.uPam(
+    name=upam_name,
+    model=upam_name,
+    serial_number=upam_serial_number,
+    sensitivity=upam_sensitivity,
+    preamp_gain=upam_preamp_gain,
+    Vpp=upam_Vpp,
+)
 
 
-    instruments = {'SoundTrap': soundtrap, 'uPam': upam, 'B&K': bk}
+instruments = {"SoundTrap": soundtrap, "uPam": upam, "B&K": bk}
 
-    # SURVEY PARAMETERS
-    nfft = 4096
-    fft_overlap = 0.5
-    binsize = 60.0
-    bin_overlap = 0.0
-    overlap = 0.5
-    dc_subtract = False
-    band_lf = [50, 500]
-    band_list = [band_lf]
-    temporal_features = ['rms', 'sel', 'aci']
-    frequency_features = ['third_octaves_levels']
+# SURVEY PARAMETERS
+nfft = 4096
+fft_overlap = 0.5
+binsize = 60.0
+bin_overlap = 0.0
+overlap = 0.5
+dc_subtract = False
+band_lf = [50, 500]
+band_list = [band_lf]
+temporal_features = ["rms", "sel", "aci"]
+frequency_features = ["third_octaves_levels"]
 
-    # Create the dataset object
-    ds = pypam.dataset.DataSet(summary_path, output_folder, instruments, temporal_features=temporal_features,
-                               frequency_features=frequency_features, bands_list=band_list, binsize=binsize,
-                               bin_overlap=bin_overlap, nfft=nfft, fft_overlap=fft_overlap, dc_subtract=dc_subtract)
+# Create the dataset object
+ds = pypam.dataset.DataSet(
+    summary_path,
+    output_folder,
+    instruments,
+    temporal_features=temporal_features,
+    frequency_features=frequency_features,
+    bands_list=band_list,
+    binsize=binsize,
+    bin_overlap=bin_overlap,
+    nfft=nfft,
+    fft_overlap=fft_overlap,
+    dc_subtract=dc_subtract,
+)
 
-    # Call the dataset creation. Will create the files in the corresponding folder
-    ds()
+# Call the dataset creation. Will create the files in the corresponding folder
+ds()
 ```
 
 ## To produce plots
