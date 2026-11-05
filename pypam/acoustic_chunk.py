@@ -498,10 +498,10 @@ class AcuChunk(GenericAcuFile):
                     dims=["id", "band"],
                     attrs=units_attrs,
                 )
-                if j == 0:
-                    ds_bands = methods_output
-                else:
-                    ds_bands = xarray.concat((ds_bands, methods_output), "band")
+            if j == 0:
+                ds_bands = methods_output
+            else:
+                ds_bands = xarray.concat((ds_bands, methods_output), "band")
 
         return ds_bands
 
