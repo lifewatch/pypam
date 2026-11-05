@@ -145,7 +145,7 @@ class Signal:
             self.signal = self.signal[0:n_samples]
             self._processed[self.band_n].append("crop")
         else:
-            one_array = np.full((n_samples,), 0)
+            one_array = np.full((n_samples,), 0.0)
             one_array[0 : self.signal.size] = self.signal
             self.signal = one_array
             self._processed[self.band_n].append("one-pad")
