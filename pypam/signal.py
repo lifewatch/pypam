@@ -973,7 +973,7 @@ class Signal:
         """
         y = []
         for spg_i in spg:
-            y.append(10.0 * np.log10(sum(10.0 ** (spg_i / 10.0), 1) * dt))
+            y.append(10.0 * np.log10(sum(10.0 ** (spg_i / 10.0), axis=1) * dt))
         return y
 
     def average_spectrum(self, spg: np.array) -> np.array:
