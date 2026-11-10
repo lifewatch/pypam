@@ -132,3 +132,19 @@ class TestAcuFile(unittest.TestCase):
         error = np.abs(dt - expected_dt)
         # error should be less than soundfile dt (if rounded)
         assert error <= (1 / self.acu_file.fs)
+
+    def test_apply_multiple(self):
+        band_list = [[50, 500], [500, 4000]]
+        ds = self.acu_file._apply_multiple(
+            method_list=["rms", "peak"], band_list=band_list, binsize=None, db=True
+        )
+        assert ds.sizes["band"] == len(band_list)
+        assert len(ds.data_vars) == 2
+        ds = self.acu_file._apply_multiple(
+            method_list=["rms", "peak", "sel"],
+            band_list=band_list,
+            binsize=None,
+            db=True,
+        )
+        assert ds.sizes["band"] == len(band_list)
+        assert len(ds.data_vars) == 3

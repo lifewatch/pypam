@@ -9,7 +9,6 @@ the hybrid millidecade bands for it.
 
 """
 
-
 import numpy as np
 import xarray
 import matplotlib.pyplot as plt
