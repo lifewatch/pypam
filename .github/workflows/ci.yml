@@ -36,3 +36,6 @@ jobs:
       - name: Run unit tests
         run: |
           uv run -m pytest
+
+      - name: Run Ruff
+        run: uv run ruff check
