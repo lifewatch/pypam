@@ -19,7 +19,9 @@ soundtrap = pyhy.soundtrap.SoundTrap(
 
 class TestSignal(unittest.TestCase):
     def setUp(self) -> None:
-        self.file = pathlib.Path(__file__).parent / "test_data/67416073.210610033655.wav"
+        self.file = (
+            pathlib.Path(__file__).parent / "test_data/67416073.210610033655.wav"
+        )
         self.start_sample = 10 * 8000
         self.end_sample = 70 * 8000
 
