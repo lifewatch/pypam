@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: ruff-format
         name: Format code with Ruff
-        entry: 'poetry run ruff format .'
+        entry: 'uv run ruff format .'
         verbose: true
         language: system
         types: [python]
