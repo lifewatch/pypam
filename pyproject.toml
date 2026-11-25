@@ -3,7 +3,7 @@ name = "lifewatch-pypam"
 version = "1.0.0"
 description = "Facilitate acoustic processing from underwater acoustic recorders"
 authors = [{ name = "Clea Parcerisas", email = "cleap@vliz.be" }]
-requires-python = ">=3.10, <=3.14.0"
+requires-python = ">=3.10"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 classifiers = [
